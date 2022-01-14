@@ -212,6 +212,11 @@ require (
 // replace github.com/Velocidex/etw => /home/mic/projects/etw
 // replace github.com/Velocidex/grpc-go-pool => /home/mic/projects/grpc-go-pool
 
+replace github.com/coreos/go-systemd/v22 => ./vql/parsers/sd_journal/go-systemd/v22
+
+require github.com/coreos/go-systemd/v22 v22.3.2
+
+
 replace github.com/russross/blackfriday/v2 => github.com/Velocidex/blackfriday/v2 v2.0.2-0.20200811050547-4f26a09e2b3b
 
 go 1.17
