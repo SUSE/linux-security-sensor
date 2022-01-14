@@ -5130,6 +5130,11 @@
     description: Pick every n row from query.
     required: true
   category: server
+- name: scan_journal
+  description: Scan the systemd journal for events
+  type: Plugin
+  metadata:
+    permissions: SERVER_ADMIN
 - name: scope
   description: return the scope.
   type: Function
@@ -6568,6 +6573,11 @@
   category: event
   metadata:
     permissions: FILESYSTEM_READ
+- name: watch_journal
+  description: Watch the systemd journal for events
+  type: Plugin
+  metadata:
+    permissions: SERVER_ADMIN
 - name: watch_monitoring
   description: |
     Watch clients' monitoring log. This is an event plugin. This
