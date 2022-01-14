@@ -11,16 +11,23 @@ parameters:
   - name: syslogAuthLogPath
     default: /var/log/{auth.log,secure}*
 
+  - name: SSHSystemdUnit
+    description: Systemd Unit responsible for sshd
+    default: sshd.service
+
   - name: SSHGrok
     description: A Grok expression for parsing SSH auth lines.
     default: >-
-      %{SYSLOGTIMESTAMP:Timestamp} (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: %{DATA:event} %{DATA:method} for (invalid user )?%{DATA:user} from %{IPORHOST:ip} port %{NUMBER:port} ssh2(: %{GREEDYDATA:system.auth.ssh.signature})?
+      (%{SYSLOGTIMESTAMP:Timestamp} (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: )?%{DATA:event} %{DATA:method} for (invalid user )?%{DATA:user} from %{IPORHOST:ip} port %{NUMBER:port} ssh2(: %{GREEDYDATA:system.auth.ssh.signature})?
 
 sources:
-  - query: |
+  - name: sshlogin-syslogd
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect SSH login attempts from syslog
+    query: |
       // Basic syslog parsing via GROK expressions.
       SELECT timestamp(string=Event.Timestamp) AS Time,
-               Event.ip AS IP,
+               Event.IP AS IP,
                Event.event AS Result,
                Event.method AS Method,
                Event.user AS AttemptedUser,
@@ -32,4 +39,22 @@ sources:
               SELECT grok(grok=SSHGrok, data=Line) AS Event, FullPath
               FROM parse_lines(filename=FullPath)
               WHERE Event.program = "sshd"
+          })
+  - name: sshlogin-journald
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect SSH login attempts from systemd journal
+    query: |
+      // Basic systemd journal parsing via GROK expressions.
+      SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+               Event.ip as IP,
+               Event.event AS Result,
+               Event.method AS Method,
+               Event.user AS AttemptedUser
+        FROM foreach(
+          row={
+            SELECT SSHSystemdUnit as systemdUnit from scope()
+          }, query={
+            SELECT REALTIME_TIMESTAMP, _SYSTEMD_UNIT, grok(grok=SSHGrok, data=MESSAGE) AS Event
+            FROM scan_journal()
+            WHERE Event.method AND _SYSTEMD_UNIT = systemdUnit
           })
