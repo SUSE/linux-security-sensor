@@ -9420,6 +9420,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: scan_journal
+  description: Scan the systemd journal for events
+  type: Plugin
+  metadata:
+    permissions: SERVER_ADMIN
+  platforms:
+  - linux_amd64_cgo
 - name: scope
   description: |
     Present the content of a scope variable as a file.
@@ -12475,6 +12482,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: watch_journal
+  description: Watch the systemd journal for events
+  type: Plugin
+  metadata:
+    permissions: SERVER_ADMIN
+  platforms:
+  - linux_amd64_cgo
 - name: watch_journald
   description: 'Watch a journald file and stream events from it. '
   type: Plugin
