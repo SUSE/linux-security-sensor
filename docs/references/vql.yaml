@@ -309,6 +309,14 @@
     type: bool
     description: If specified we run all queries asynchronously and combine the output.
   category: plugin
+- name: chattr
+  description: Queries the attributes for a file.
+  type: Function
+  args:
+  - name: file
+    type: string
+    description: The file whose attributes we require
+    required: true
 - name: cidr_contains
   description: |
     Calculates if an IP address falls within a range of CIDR specified
