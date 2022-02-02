@@ -5432,6 +5432,16 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: lsattr
+  description: Queries the attributes for a file.
+  type: Function
+  args:
+  - name: file
+    type: string
+    description: The file whose attributes we require
+    required: true
+  platforms:
+  - linux_amd64_cgo
 - name: lzxpress_decompress
   description: |
     Decompress an lzxpress blob.
