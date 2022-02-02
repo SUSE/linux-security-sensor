@@ -3092,6 +3092,14 @@
   - name: size
     type: int64
     description: Size of the LRU (default 1000)
+- name: lsattr
+  description: Queries the attributes for a file.
+  type: Function
+  args:
+  - name: file
+    type: string
+    description: The file whose attributes we require
+    required: true
 - name: lzxpress_decompress
   description: |
     Decompress an lzxpress blob.
