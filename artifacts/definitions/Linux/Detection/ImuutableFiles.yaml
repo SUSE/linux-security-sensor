@@ -1,0 +1,17 @@
+name: Linux.Detection.ImmutableFiles
+description: |
+   Returns all immutable files (that have i file attribute set) in a given path 
+
+# Can be CLIENT, CLIENT_EVENT, SERVER, SERVER_EVENT
+type: CLIENT
+
+parameters:
+   - name: Path
+     description: Path to scan for immutable files
+
+sources:
+  - precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+     SELECT * from glob(globs=Path) WHERE chattr(file=FullPath).String =~ "(?-i)i"
