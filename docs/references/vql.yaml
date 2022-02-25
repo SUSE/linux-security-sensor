@@ -5665,6 +5665,11 @@
     are emitted. Any further queries are ignored.
   type: Plugin
   category: plugin
+- name: tcpsnoop
+  description: Report incoming/outgoing tcp connections
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
 - name: tempdir
   description: Create a temporary directory. The directory will be removed when the
     query ends.
