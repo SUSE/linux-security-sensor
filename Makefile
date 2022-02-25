@@ -68,7 +68,7 @@ linux_musl:
 always-check:
 
 ifeq ($(BUILD_LIBBPFGO), 1)
-BPF_MODULES :=
+BPF_MODULES := vql/linux/tcpsnoop/tcpsnoop.bpf.o
 
 $(LIBBPFGO_DIR): always-check
 	echo "INFO: updating submodule 'libbpfgo'"
