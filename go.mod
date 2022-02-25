@@ -30,6 +30,7 @@ require (
 	github.com/alecthomas/chroma v0.7.2
 	github.com/alecthomas/participle v0.7.1
 	github.com/alexmullins/zip v0.0.0-20180717182244-4affb64b04d0
+	github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/aws/aws-sdk-go v1.40.6
 	github.com/clbanning/mxj v1.8.4
@@ -123,7 +124,6 @@ require (
 require (
 	github.com/Velocidex/file-rotatelogs v0.0.0-20211221020724-d12e4dae4e11
 	github.com/Velocidex/ordereddict v0.0.0-20220428153415-da46091cd216
-	github.com/aquasecurity/libbpfgo v0.1.1
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/shirou/gopsutil/v3 v3.21.11
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
