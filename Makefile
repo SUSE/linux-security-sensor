@@ -1,3 +1,18 @@
+mkfile_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+OUTPUT := $(mkfile_dir)output/.output
+CLANG ?= clang-13
+LLVM_STRIP ?= llvm-strip-13
+LIBBPF_SRC := /root/bcc/src/cc/libbpf
+LIBBPF_OBJ := $(abspath $(OUTPUT)/libbpf.a)
+INCLUDES := -I$(OUTPUT) -I$(LIBBPF_SRC)/include/uapi
+CFLAGS := -g -O2 -Wall
+ARCH := $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's/ppc64le/powerpc/' | sed 's/mips.*/mips/')
+
+GOFLAGS := CC=$(CLANG)
+GOFLAGS += CGO_CFLAGS="-I$(abspath $(OUTPUT))"
+GOFLAGS += CGO_LDFLAGS="-lelf -lz $(LIBBPF_OBJ) -lm"
+
+
 all:
 	go run make.go -v autoDev
 
@@ -27,8 +42,22 @@ darwin_intel:
 darwin_m1:
 	go run make.go -v DarwinM1
 
-linux:
-	go run make.go -v linux
+linux: tcpsnoop.bpf.o
+	$(GOFLAGS) go run make.go -v linux
+
+$(OUTPUT) $(OUTPUT)/libbpf:
+	@mkdir -p $@
+
+%.bpf.o: $(mkfile_dir)vql/linux/tcpsnoop/%.bpf.c $(LIBBPF_OBJ) | $(OUTPUT)
+	@$(CLANG) $(CFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH)	      \
+		     -I./ $(INCLUDES) -c $(filter %.c,$^) -o $(mkfile_dir)vql/linux/tcpsnoop/$@ && \
+	$(LLVM_STRIP) -g $(mkfile_dir)vql/linux/tcpsnoop/$@
+
+$(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/src/*.[ch]) | $(OUTPUT)/libbpf
+	@$(MAKE) -C $(LIBBPF_SRC)/src BUILD_STATIC_ONLY=1		      \
+		    OBJDIR=$(dir $@)/libbpf DESTDIR=$(dir $@)		      \
+		    INCLUDEDIR= LIBDIR= UAPIDIR=						  \
+		    install
 
 linux_bare:
 	go run make.go -v linuxBare

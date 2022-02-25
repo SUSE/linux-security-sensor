@@ -42,6 +42,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-elasticsearch/v7 v7.3.0 // indirect
 	github.com/elastic/go-libaudit v0.4.0
+	github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-sql-driver/mysql v1.5.0
