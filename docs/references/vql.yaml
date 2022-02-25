@@ -10629,6 +10629,13 @@
     permissions: MACHINE_STATE
   platforms:
   - linux_amd64_cgo
+- name: tcpsnoop
+  description: Report incoming/outgoing tcp connections
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: tempdir
   description: Create a temporary directory. The directory will be removed when the
     query ends.
