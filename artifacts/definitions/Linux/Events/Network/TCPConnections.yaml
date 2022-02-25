@@ -1,0 +1,13 @@
+name: Linux.Events.Network.TCPConnections
+description: |
+   Prints all incoming and outgoing TCP connection events
+
+type: CLIENT_EVENT
+
+sources:
+  - precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      SELECT Timestamp, RemoteAddr, LocalAddr, Task, Af, Pid, Uid,
+             RemotePort, LocalPort, Dir FROM tcpsnoop()
