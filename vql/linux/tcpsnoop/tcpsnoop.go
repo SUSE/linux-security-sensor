@@ -44,6 +44,7 @@ func (self TcpsnoopPlugin) Call(
 
 	if err != nil {
 		scope.Log("tcpsnoop: %s", err)
+		bpf.Close()
 		return output_chan
 	}
 
