@@ -52,12 +52,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	keepRunning := true
-
-	if verbose {
-		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.LstdFlags)
-	}
-
 	body, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatalf("error: could not open config file `%s': %s",
@@ -87,8 +81,6 @@ func main() {
 		log.Printf("warning: config missing `kafka.consumer_group'.  Using default `%s'", consumer.config.Kafka.ConsumerGroup)
 	}
 
-	log.Printf("Joining consumer group `%s'", consumer.config.Kafka.ConsumerGroup)
-
 	if consumer.config.Humio.EndpointUrl == "" {
 		log.Fatalf("error: config missing `humio.endpoint_url'")
 	}
@@ -98,19 +90,22 @@ func main() {
 		log.Fatalf("Humio Endpoint Url `%s' is not valid: %v", consumer.config.Humio.EndpointUrl, err)
 	}
 
-	log.Printf("Will post events to Humio Endpoint `%s'", consumer.config.Humio.EndpointUrl)
-
 	if consumer.config.Humio.IngestToken == "" {
 		log.Fatalf("error: config missing `humio.ingest_token'")
 	}
 
+	log.Printf("Joining consumer group `%s'", consumer.config.Kafka.ConsumerGroup)
+	log.Printf("Will post events to Humio Endpoint `%s'", consumer.config.Humio.EndpointUrl)
 
 	consumer.httpClient = http.Client{Timeout: time.Duration(1) * time.Second}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	if verbose {
+		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.LstdFlags)
+	}
 
 	saramaConfig := sarama.NewConfig()
-	client, err := sarama.NewConsumerGroup(consumer.config.Kafka.Brokers, consumer.config.Kafka.ConsumerGroup, saramaConfig)
+	client, err := sarama.NewConsumerGroup(consumer.config.Kafka.Brokers,
+					       consumer.config.Kafka.ConsumerGroup, saramaConfig)
 	if err != nil {
 		log.Panicf("Error creating consumer group client: %v", err)
 	}
@@ -121,6 +116,9 @@ func main() {
 
 	// Wait group for consumer initial setup completion
 	consumer.readyWg.Add(1)
+
+	// Context for consumer to be cancelable
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		defer wg.Done()
 		for {
@@ -147,6 +145,7 @@ func main() {
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
 
+	keepRunning := true
 	for keepRunning {
 		select {
 		case <-ctx.Done():
