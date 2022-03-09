@@ -40,20 +40,18 @@ type TransportConfig struct {
 }
 
 func init() {
-	flag.BoolVar(&verbose, "verbose", false, "Sarama logging")
-	flag.Parse()
-
-	args := flag.Args()
-
-	if len(args) != 1 {
-		log.Fatalf("error: config file missing")
-	}
-
-	configFile = args[0]
+	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
+	flag.StringVar(&configFile, "config", "config.yml", "Path to YaML file containing configuration")
 }
 
-
 func main() {
+	flag.Parse()
+
+	if flag.NArg() > 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	/**
 	 * Setup a new Sarama consumer group
 	 */
