@@ -68,8 +68,16 @@ func main() {
 	}
 
 	body, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Fatalf("error: could not open config file `%s': %s",
+			   configFile, err)
+	}
 
 	err = yaml.Unmarshal(body, &consumer.config)
+	if err != nil {
+		log.Fatalf("error: could not parse config file `%s': %s",
+			   configFile, err)
+	}
 
 	if len(consumer.config.Kafka.Brokers) == 0 {
 		log.Fatalf("error: config has missing or empty kafka.brokers")
