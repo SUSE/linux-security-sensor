@@ -167,7 +167,6 @@ type Consumer struct {
 	ready chan bool
 	httpClient http.Client
 	config TransportConfig
-	performTransformations bool
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
