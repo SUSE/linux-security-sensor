@@ -165,7 +165,7 @@ func main() {
 
 // Consumer represents a Sarama consumer group consumer
 type Consumer struct {
-	setupOnce  bool
+	setupOnce  sync.Once
 	readyWg    *sync.WaitGroup
 	httpClient http.Client
 	config     TransportConfig
@@ -173,11 +173,7 @@ type Consumer struct {
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
-	if !consumer.setupOnce {
-		// Allow the main thread to proceed
-		consumer.readyWg.Done()
-	}
-	consumer.setupOnce = true
+	consumer.setupOnce.Do(consumer.readyWg.Done())
 	return nil
 }
 
