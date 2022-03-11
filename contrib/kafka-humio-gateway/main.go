@@ -173,7 +173,7 @@ type Consumer struct {
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
-	consumer.setupOnce.Do(consumer.readyWg.Done())
+	consumer.setupOnce.Do(consumer.readyWg.Done)
 	return nil
 }
 
