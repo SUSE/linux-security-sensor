@@ -227,9 +227,12 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 		timezone := ""
 		if !ok {
 			timestamp, ok = values.RowData["timestamp"]
-			timezone = "UTC"
 		}
 
+		_, ok := timestamp.(uint64)
+		if ok {
+			timezone = "UTC"
+		}
 
 		if !ok {
 			log.Printf("Failed to gather timestamp from event: %s", message.Value)
