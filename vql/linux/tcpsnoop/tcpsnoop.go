@@ -42,6 +42,8 @@ func (self TcpsnoopPlugin) Call(
 	output_chan := make(chan vfilter.Row)
 
 	go func() {
+		defer close(output_chan)
+
 		err := vql_subsystem.CheckAccess(scope, acls.MACHINE_STATE)
 		if err != nil {
 			scope.Log("tcpsnoop: %s", err)
