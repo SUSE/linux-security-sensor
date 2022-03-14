@@ -61,7 +61,6 @@ struct {
 	__uint(max_entries, MAX_ENTRIES);
 	__type(key, u32);
 	__type(value, struct sock *);
-	__uint(map_flags, BPF_F_NO_PREALLOC);
 } sockets SEC(".maps");
 
 static __always_inline bool filter_port(__u16 port)
