@@ -40,17 +40,8 @@ func (self TcpsnoopPlugin) Call(
 	ctx context.Context, scope vfilter.Scope,
 	args *ordereddict.Dict) <-chan vfilter.Row {
 	output_chan := make(chan vfilter.Row)
-	bpf, err := initBpf()
-
-	if err != nil {
-		scope.Log("tcpsnoop: %s", err)
-		bpf.Close()
-		return output_chan
-	}
 
 	go func() {
-		defer bpf.Close()
-
 		err := vql_subsystem.CheckAccess(scope, acls.MACHINE_STATE)
 		if err != nil {
 			scope.Log("tcpsnoop: %s", err)
@@ -58,7 +49,12 @@ func (self TcpsnoopPlugin) Call(
 		}
 
 		// Load bpf program and attach to tracepoints
-		initBpf()
+		bpf, err : = initBpf()
+		if err != nil {
+			scope.Log("tcpsnoop: %s", err)
+			return output_chan
+		}
+		defer bpf.Close()
 
 		eventsChan := make(chan []byte)
 		lostChan := make(chan uint64)
