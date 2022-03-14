@@ -25,15 +25,15 @@ func (self TcpsnoopPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMap) 
 }
 
 type Event struct {
-	Saddr string `json:"saddr"`
-	Daddr string `json:"daddr"`
-	Task  string `json:"task"`
-	Af    string `json:"protocol"` // AF_INET or AF_INET6
-	Pid   uint32 `json:"pid"`
-	Uid   uint32 `json:"uid"`
-	Rport uint16 `json:"rport"`
-	Lport uint16 `json:"lport"`
-	Dir   string `json:"con_dir"`
+	RemoteAddr string `json:"local_address"`
+	LocalAddr  string `json:"remote_address"`
+	Task       string `json:"task"`
+	Af         string `json:"protocol"` // AF_INET or AF_INET6
+	Pid        uint32 `json:"pid"`
+	Uid        uint32 `json:"uid"`
+	RemotePort uint16 `json:"remote_port"`
+	LocalPort  uint16 `json:"local_port"`
+	Dir        string `json:"con_dir"`
 }
 
 func (self TcpsnoopPlugin) Call(
@@ -49,10 +49,10 @@ func (self TcpsnoopPlugin) Call(
 		}
 
 		// Load bpf program and attach to tracepoints
-		bpf, err : = initBpf()
+		bpf, err := initBpf()
 		if err != nil {
 			scope.Log("tcpsnoop: %s", err)
-			return output_chan
+			return
 		}
 		defer bpf.Close()
 
@@ -69,30 +69,30 @@ func (self TcpsnoopPlugin) Call(
 		for data := range eventsChan {
 			var event TcpsnoopEvent
 
-			var event2 Event
 			// Parses raw event from the ebpf map
 			err := binary.Read(bytes.NewBuffer(data), binary.LittleEndian, &event)
 
 			// Now we make into a more userfriendly struct for sending to VRR
-			event2.Lport = event.Lport
-			event2.Rport = event.Rport
-			event2.Uid = event.Uid
-			event2.Pid = event.Pid
-			event2.Task = string(bytes.Trim(event.Task[:], "\000"))
+			event2 := Event{
+				LocalPort:  event.Lport,
+				RemotePort: event.Rport,
+				Uid:        event.Uid,
+				Pid:        event.Pid,
+				Task:       string(bytes.Trim(event.Task[:], "\000")),
+			}
 
 			if event.Af == AF_INET {
 				event2.Af = "IPv4"
-				event2.Saddr = net.IP.String(event.Saddr[:4])
-				event2.Daddr = net.IP.String(event.Daddr[:4])
+				event2.RemoteAddr = net.IP.String(event.Saddr[:4])
+				event2.LocalAddr = net.IP.String(event.Daddr[:4])
 			} else {
-				event2.Saddr = net.IP.String(event.Saddr[:])
-				event2.Daddr = net.IP.String(event.Daddr[:])
+				event2.RemoteAddr = net.IP.String(event.Saddr[:])
+				event2.LocalAddr = net.IP.String(event.Daddr[:])
 				event2.Af = "IPv6"
 			}
 
 			if event.Dir == OUT_CON {
 				event2.Dir = "OUTGOING"
-				event2.Saddr, event2.Daddr = event2.Daddr, event2.Saddr
 			} else {
 				event2.Dir = "INCOMING"
 			}
