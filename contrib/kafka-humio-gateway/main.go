@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+// Copyright (c) 2022 SUSE LLC. All Rights Reserved.
+//
+// This is a Kafka Consumer that feeds Velociraptor events to a Humio server.
+
 package main
 
 import (
@@ -24,8 +29,9 @@ var (
 	verbose  = false
 	configFile string
 	defaultConsumerGroup = "velociraptor-consumer"
+	defaultEventBatchSize = 500
+	defaultBatchingTimeoutMs = 3000
 )
-
 
 type TransportConfig struct {
 	Kafka struct {
@@ -36,6 +42,8 @@ type TransportConfig struct {
 	Humio struct {
 		EndpointUrl string `yaml:"endpoint_url"`
 		IngestToken string `yaml:"ingest_token"`
+		BatchingTimeoutMs int `yaml:"batching_timeout_ms"`
+		EventBatchSize int  `yaml:"event_batch_size"`
 	}
 }
 
@@ -87,6 +95,14 @@ func main() {
 		log.Fatalf("error: config missing `humio.endpoint_url'")
 	}
 
+	if consumer.config.Humio.BatchingTimeoutMs == 0 {
+		consumer.config.Humio.BatchingTimeoutMs = defaultBatchingTimeoutMs
+	}
+
+	if consumer.config.Humio.EventBatchSize == 0 {
+		consumer.config.Humio.EventBatchSize = defaultEventBatchSize
+	}
+
 	_, err = url.ParseRequestURI(consumer.config.Humio.EndpointUrl)
 	if err != nil {
 		log.Fatalf("Humio Endpoint Url `%s' is not valid: %v",
@@ -107,6 +123,9 @@ func main() {
 	}
 
 	saramaConfig := sarama.NewConfig()
+	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs + 500) * time.Millisecond
+	saramaConfig.Consumer.MaxProcessingTime = maxTime
+
 	client, err := sarama.NewConsumerGroup(consumer.config.Kafka.Brokers,
 					       consumer.config.Kafka.ConsumerGroup, saramaConfig)
 	if err != nil {
@@ -172,6 +191,7 @@ type Consumer struct {
 	readyWg		*sync.WaitGroup
 	httpClient	 http.Client
 	config		 TransportConfig
+	eventChannel	 chan HumioPayload
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -204,15 +224,150 @@ type HumioPayload struct {
         Tags map[string]interface{}         `json:"tags,omitempty"`
 }
 
+type HumioSubmission struct {
+	Payload	HumioPayload
+	Message	*sarama.ConsumerMessage
+}
+
+// Submits the formatted JSON to the Humio server as a set of events.  If the submission is
+// successful, the messages are marked cleared.
+func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSession, payload []byte,
+					      messages []*sarama.ConsumerMessage) error {
+	if verbose {
+		log.Printf("POSTing data: [%s]", payload)
+	}
+
+	req, err := http.NewRequest("POST", consumer.config.Humio.EndpointUrl,
+				    bytes.NewReader(payload))
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s",
+						    consumer.config.Humio.IngestToken))
+
+	resp, err := consumer.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("Error while POSTing data: %v", err)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// We didn't land it in Humio - let the message sit until we can get to it
+		return fmt.Errorf("Failed to POST data [%s]: %s", resp.Status, body)
+	}
+
+	if verbose {
+		log.Printf("POSTed successfully.  Clearing %d messages", len(messages))
+	}
+
+	for _, msg := range messages {
+		// Message has landed, clear it
+		session.MarkMessage(msg, "")
+	}
+	return nil
+}
+
+func (consumer *Consumer) postFormattedEventsAsync(session sarama.ConsumerGroupSession,
+						   payload []byte,
+						   messages []*sarama.ConsumerMessage,
+						   wg *sync.WaitGroup) {
+	defer wg.Done()
+	err := consumer.postFormattedEvents(session, payload, messages)
+	if err != nil {
+		log.Printf("Failed to send event [%s]: %s", payload, err)
+	}
+}
+
+// Meant to be called as the sendEvents routine exits so that the queue is cleared.
+func (consumer *Consumer) postUnformattedEvents(session sarama.ConsumerGroupSession,
+						postData *[]HumioPayload,
+						messages []*sarama.ConsumerMessage) error {
+
+	payload, err := json.Marshal(postData)
+	if err != nil {
+		log.Printf("Failed to Marshal %v: %s", postData, err)
+	}
+
+	return consumer.postFormattedEvents(session, payload, messages)
+}
+
+// Queues events until we hit a timeout since last submission or a set
+// count of events.  Once the conditions are met, the entire queue is marshaled
+// as JSON and sent to be submitted asynchronously to the Humio server.
+// Ownership of the messages is passed to the submission goroutine and will
+// be cleared if the submission is successful.
+func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
+				     eventChannel chan HumioSubmission, wg *sync.WaitGroup) {
+
+	postData := []HumioPayload{}
+	messageQueue := make([]*sarama.ConsumerMessage, 0)
+	eventCount := 0
+
+	tickerTimeout := time.Duration(consumer.config.Humio.BatchingTimeoutMs) * time.Millisecond
+	ticker := time.NewTicker(tickerTimeout)
+
+	defer ticker.Stop()
+	defer consumer.postUnformattedEvents(session, &postData, messageQueue)
+	defer wg.Done()
+
+	for {
+		postEvents := false
+
+		select {
+		case <- ticker.C:
+			if eventCount > 0 {
+				postEvents = true
+			}
+		case message, ok := <-eventChannel:
+			if !ok {
+				break
+			}
+
+			postData = append(postData, message.Payload)
+			messageQueue = append(messageQueue, message.Message)
+
+			eventCount += 1
+			if eventCount > consumer.config.Humio.EventBatchSize {
+				postEvents = true
+			}
+		}
+
+		if postEvents {
+			data, err := json.Marshal(postData)
+			if err != nil {
+				log.Printf("Failed to Marshal %v: %s", postData, err)
+			}
+
+			wg.Add(1)
+			go consumer.postFormattedEventsAsync(session, data, messageQueue, wg)
+
+			postData = []HumioPayload{}
+			messageQueue = make([]*sarama.ConsumerMessage, 0)
+			eventCount = 0
+			ticker.Reset(batchingTimeoutMs)
+		}
+	}
+	if verbose {
+		log.Printf("sendEvents exiting")
+	}
+}
+
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 				       claim sarama.ConsumerGroupClaim) error {
+
+	// This WaitGroup tracks the sentEvents goroutine and any submitter goroutines it starts up
+	wg := sync.WaitGroup{}
+	eventChannel := make(chan HumioSubmission, 1)
+
+	wg.Add(1)
+	go consumer.sendEvents(session, eventChannel, &wg)
+
 	// NOTE:
 	// Do not move the code below to a goroutine.
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
-		var data []byte
 		var err error
 		if verbose {
 			log.Printf("Received message Topic[%s] Key[%s] Value[%s] Timestamp[%v]",
@@ -255,49 +410,11 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 			Tags: values.Tags,
 		}
 
-		// We now know we have a valid message.  Any failures must not MarkMessage
-		// the message.  It will be left in the queue until the failure has been resolved.
-
-		wrapped := []HumioPayload{payload}
-
-		data, err = json.Marshal(wrapped)
-		if err != nil {
-			log.Printf("Failed to marshal %v: %v", wrapped, err)
-			continue
-		}
-
-		if verbose {
-			log.Printf("POSTing data: [%s]", data)
-		}
-
-		req, err := http.NewRequest("POST", consumer.config.Humio.EndpointUrl, bytes.NewReader(data))
-		req.Header.Add("Accept", "application/json")
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", consumer.config.Humio.IngestToken))
-
-		resp, err := consumer.httpClient.Do(req)
-		if err != nil {
-			log.Printf("Error while POSTing data: %v", err)
-
-			continue
-		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("Failed to POST data [%s]: %s", resp.Status, body)
-
-			// We didn't land it in Humio - let the message sit until we can get to it
-			continue
-		}
-
-		if verbose {
-			log.Printf("POSTed successfully.")
-		}
-
-		// Message has landed, clear it
-		session.MarkMessage(message, "")
+		eventChannel <- HumioSubmission{payload, message}
 	}
+
+	close(eventChannel)
+	wg.Wait()
 
 	return nil
 }
