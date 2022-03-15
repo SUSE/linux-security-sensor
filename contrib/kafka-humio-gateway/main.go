@@ -233,8 +233,8 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 			timestamp, ok = values.RowData["timestamp"]
 		}
 
-		_, ok := timestamp.(uint64)
-		if ok {
+		_, isint := timestamp.(uint64)
+		if isint {
 			timezone = "UTC"
 		}
 
