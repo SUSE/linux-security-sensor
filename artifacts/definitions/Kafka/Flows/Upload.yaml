@@ -1,0 +1,73 @@
+name: Kafka.Flows.Upload
+description: |
+  This server side event monitoring artifact waits for new artifacts
+  to be collected from endpoints and automatically posts those to a
+  kafka topic.
+
+  We use the artifact name as the name of the index. This allows users
+  to adjust the index size/lifetime according to the artifact it is
+  holding.
+
+type: SERVER_EVENT
+
+parameters:
+  - name: kafkaBrokerAddresses
+    description: Comma-separated list of host:port pairs for Kafka Brokers
+    default: 127.0.0.1:9092
+    type: string
+      #  - name: Username
+      #  - name: Password
+      #  - name: Apikey
+  - name: kafkaTopic
+    description: Topic that will receive generated messages
+    type: string
+    default: velociraptor-artifacts
+  - name: keyField
+    description: Field to use as key in Kafka message
+    default: ""
+    type: string
+  - name: tagFields
+    description: Comma-separated list of field names to use as tags in the message; Can be renamed with <oldname>=<newname>.
+    default:
+    type: string
+  - name: numThreads
+    description: Number of threads to start up for consuming Events
+    type: int
+    default: 1
+  - name: partitionNumber
+    description: Which partition to use to send messages
+    type: int
+    default: -1
+  - name: ArtifactNameRegex
+    default: .
+    type: regex
+    description: Only upload these artifacts to elastic
+
+sources:
+  - query: |
+      LET completions = SELECT * FROM watch_monitoring(
+             artifact="System.Flow.Completion")
+             WHERE Flow.artifacts_with_results =~ ArtifactNameRegex
+
+      LET documents = SELECT * FROM foreach(row=completions,
+          query={
+             SELECT * FROM foreach(
+                 row=Flow.artifacts_with_results,
+                 query={
+                     SELECT *, _value AS Artifact,
+                            timestamp(epoch=now()) AS timestamp,
+                            ClientId, Flow.session_id AS FlowId
+                     FROM source(
+                        client_id=ClientId,
+                        flow_id=Flow.session_id,
+                        artifact=_value)
+                 })
+          })
+
+      SELECT * FROM kafka_producer(
+            query=documents,
+            addresses=split(string=kafkaBrokerAddresses, sep=","),
+            key_field=keyField,
+            tag_fields=split(string=tagFields, sep=","),
+            partition=partitionNumber,
+            topic=kafkaTopic)
