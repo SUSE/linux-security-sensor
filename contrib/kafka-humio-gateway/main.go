@@ -41,7 +41,8 @@ type TransportConfig struct {
 
 func init() {
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
-	flag.StringVar(&configFile, "config", "config.yml", "Path to YaML file containing configuration")
+	flag.StringVar(&configFile, "config", "config.yml",
+		       "Path to YaML file containing configuration")
 }
 
 func main() {
@@ -78,7 +79,8 @@ func main() {
 
 	if consumer.config.Kafka.ConsumerGroup == "" {
 		consumer.config.Kafka.ConsumerGroup = defaultConsumerGroup
-		log.Printf("warning: config missing `kafka.consumer_group'.  Using default `%s'", consumer.config.Kafka.ConsumerGroup)
+		log.Printf("warning: config missing `kafka.consumer_group'.  Using default `%s'",
+			   consumer.config.Kafka.ConsumerGroup)
 	}
 
 	if consumer.config.Humio.EndpointUrl == "" {
@@ -87,7 +89,8 @@ func main() {
 
 	_, err = url.ParseRequestURI(consumer.config.Humio.EndpointUrl)
 	if err != nil {
-		log.Fatalf("Humio Endpoint Url `%s' is not valid: %v", consumer.config.Humio.EndpointUrl, err)
+		log.Fatalf("Humio Endpoint Url `%s' is not valid: %v",
+			   consumer.config.Humio.EndpointUrl, err)
 	}
 
 	if consumer.config.Humio.IngestToken == "" {
@@ -165,10 +168,10 @@ func main() {
 
 // Consumer represents a Sarama consumer group consumer
 type Consumer struct {
-	setupOnce  sync.Once
-	readyWg    *sync.WaitGroup
-	httpClient http.Client
-	config     TransportConfig
+	setupOnce	 sync.Once
+	readyWg		*sync.WaitGroup
+	httpClient	 http.Client
+	config		 TransportConfig
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -181,7 +184,6 @@ func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
 func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
-
 
 // The Row data can be string or int.  We don't care which.  We just pass it through.
 type VRRKafkaMessage struct {
@@ -203,7 +205,8 @@ type HumioPayload struct {
 }
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
-func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
+				       claim sarama.ConsumerGroupClaim) error {
 	// NOTE:
 	// Do not move the code below to a goroutine.
 	// The `ConsumeClaim` itself is called within a goroutine, see:
@@ -212,7 +215,8 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 		var data []byte
 		var err error
 		if verbose {
-			log.Printf("Received message Topic[%s] Key[%s] Value[%s] Timestamp[%v]", message.Topic, message.Key, message.Value, message.Timestamp)
+			log.Printf("Received message Topic[%s] Key[%s] Value[%s] Timestamp[%v]",
+				   message.Topic, message.Key, message.Value, message.Timestamp)
 		}
 
 		var values VRRKafkaMessage
