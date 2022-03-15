@@ -344,7 +344,7 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 			postData = []HumioPayload{}
 			messageQueue = make([]*sarama.ConsumerMessage, 0)
 			eventCount = 0
-			ticker.Reset(batchingTimeoutMs)
+			ticker.Reset(tickerTimeout)
 		}
 	}
 	if verbose {
