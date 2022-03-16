@@ -1,0 +1,140 @@
+name: SUSE.Linux.Events.SystemLogins
+description: |
+   Pulls all the system login and logout events from auditd logs.
+   
+type: CLIENT_EVENT
+
+sources:
+  - name: SuccessfulLogins
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM audit() WHERE auth_category = 'user-login' AND auth_type = 'USER_AUTH' AND Result = 'success'
+      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+
+  - name: FailedLogins
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM audit() WHERE auth_category = 'user-login' AND auth_type = 'USER_AUTH' AND Result = 'fail'
+      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+
+  - name: SuccessfulLogouts
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM audit() WHERE auth_category = 'user-login' AND auth_type = 'USER_END' AND Result = 'success' AND Method != 'login'
+      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+
+reports:
+  - type: MONITORING_DAILY
+    template: |
+      {{ define "successful_login_resource" }}
+           SELECT Timestamp, count() As SuccessfulLogins
+           FROM source(source="SuccessfulLogins",
+                       artifact="SUSE.Linux.Events.SystemLogins")
+      {{ end }}
+
+      {{ define "successful_login_per_user_resource" }}
+           SELECT User, count() As SuccessfulLogins
+           FROM source(source="SuccessfulLogins",
+                       artifact="SUSE.Linux.Events.SystemLogins")
+           GROUP BY User
+      {{ end }}
+
+      {{ define "failed_login_resource" }}
+           SELECT Timestamp, count() As FailedLogins
+           FROM source(source="FailedLogins",
+                       artifact="SUSE.Linux.Events.SystemLogins")
+      {{ end }}
+
+      {{ define "failed_login_per_user_resource" }}
+           SELECT User, count() As FailedLogins
+           FROM source(source="FailedLogins",
+                       artifact="SUSE.Linux.Events.SystemLogins")
+           GROUP BY User
+      {{ end }}
+
+      {{ define "successful_logout_resource" }}
+           SELECT Timestamp, count() As SuccessfulLogouts
+           FROM source(source="SuccessfulLogouts",
+                       artifact="SUSE.Linux.Events.SystemLogins")
+      {{ end }}
+
+      {{ $client_info := Query "SELECT * FROM clients(client_id=ClientId) LIMIT 1" }}
+
+      # Successful system login attempts for {{ Get $client_info "0.os_info.fqdn" }}
+
+      The following graph shows the total number of success login attempts
+      reported by the auditd services for client with client ID
+      {{ Get $client_info "0.client_id" }}.
+
+        <div>
+        {{ Query "successful_login_resource" | LineChart "xaxis_mode" "time" "RSS.yaxis" 1 }}
+        </div>
+
+      ## VQL Query
+
+      The following VQL query was used to plot the graph above.
+
+      ```sql
+      {{ template "successful_login_resource" }}
+      ```
+
+      # Successful system login attempts group by user for {{ Get $client_info "0.os_info.fqdn" }}
+
+        <div>
+        {{ Query "successful_login_per_user_resource" | Table }}
+        </div>
+
+      # Failed system login attempts for {{ Get $client_info "0.os_info.fqdn" }}
+
+      The following graph shows the total number of fail login attempts
+      reported by the auditd services for client with client ID
+      {{ Get $client_info "0.client_id" }}.
+
+        <div>
+        {{ Query "failed_login_resource" | LineChart "xaxis_mode" "time" "RSS.yaxis" 1 }}
+        </div>
+
+      ## VQL Query
+
+      The following VQL query was used to plot the graph above.
+
+      ```sql
+      {{ template "failed_login_resource" }}
+      ```
+
+      # Failed system login attempts group by user for {{ Get $client_info "0.os_info.fqdn" }}
+
+        <div>
+        {{ Query "failed_login_per_user_resource" | Table }}
+        </div>
+
+      # Successful system logout attempts for {{ Get $client_info "0.os_info.fqdn" }}
+
+      The following graph shows the total number of success logout attempts
+      reported by the auditd services for client with client ID
+      {{ Get $client_info "0.client_id" }}.
+
+        <div>
+        {{ Query "successful_logout_resource" | LineChart "xaxis_mode" "time" "RSS.yaxis" 1 }}
+        </div>
+
+      ## VQL Query
+
+      The following VQL query was used to plot the graph above.
+
+      ```sql
+      {{ template "successful_logout_resource" }}
+      ```
+
+column_types:
+  - name: Timestamp
+    type: timestamp
+
+  - name: ClientId
+    type: client_id

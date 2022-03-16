@@ -1,0 +1,35 @@
+name: SUSE.Linux.Audit.SystemLogins
+description: |
+   Client artifact which pulls all the system logins and logouts from auditd
+   logs.
+   
+type: CLIENT
+
+parameters:
+   - name: AuditLogFile
+     default: /var/log/audit/audit.log
+
+sources:
+  - name: SuccessfulLogins
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM parse_auditd(filename=AuditLogFile) WHERE auth_category = 'user-login' AND auth_type = 'USER_AUTH' AND Result = 'success'
+      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+
+  - name: FailedLogins
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM parse_auditd(filename=AuditLogFile) WHERE auth_category = 'user-login' AND auth_type = 'USER_AUTH' AND Result = 'fail'
+      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+
+  - name: SuccessfulLogouts
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM parse_auditd(filename=AuditLogFile) WHERE auth_category = 'user-login' AND auth_type = 'USER_END' AND Result = 'success' AND Method != 'login'
+      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
