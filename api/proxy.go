@@ -129,43 +129,32 @@ func PrepareGUIMux(
 	}
 
 	base := config_obj.GUI.BasePath
+	fileStore := file_store.GetFileStore(config_obj)
 
-	mux.Handle(base+"/api/", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(config_obj, h)))
+	// Add Authenticated and CSRF-Protected handler
+	addAuthedHandler := func(path string, parent http.Handler) {
+		authedHandler := auther.AuthenticateUserHandler(config_obj, parent)
+		mux.Handle(base + path, csrfProtect(config_obj, authedHandler))
+	}
 
-	mux.Handle(base+"/api/v1/DownloadTable", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(
-			config_obj, downloadTable(config_obj))))
+	// Add Authenticated and CSRF-Protected File Server
+	addAuthedFileServer := func(path string) {
+		fileSystem := accessors.NewFileSystem(config_obj, fileStore, path)
+		fileServer := forceMime(http.FileServer(fileSystem))
+		addAuthedHandler(path, http.StripPrefix(base, fileServer))
+	}
 
-	mux.Handle(base+"/api/v1/DownloadVFSFile", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(
-			config_obj, vfsFileDownloadHandler(config_obj))))
-
-	mux.Handle(base+"/api/v1/UploadTool", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(
-			config_obj, toolUploadHandler(config_obj))))
-
-	mux.Handle(base+"/api/v1/UploadFormFile", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(
-			config_obj, formUploadHandler(config_obj))))
+	addAuthedHandler("/api/", h)
+	addAuthedHandler("/api/v1/DownloadTable", downloadTable(config_obj))
+	addAuthedHandler("/api/v1/DownloadVFSFile", vfsFileDownloadHandler(config_obj))
+	addAuthedHandler("/api/v1/UploadTool", toolUploadHandler(config_obj))
+	addAuthedHandler("/api/v1/UploadFormFile", formUploadHandler(config_obj))
 
 	// Serve prepared zip files.
-	mux.Handle(base+"/downloads/", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(
-			config_obj, http.StripPrefix(base, forceMime(http.FileServer(
-				accessors.NewFileSystem(
-					config_obj,
-					file_store.GetFileStore(config_obj),
-					"/downloads/")))))))
+	addAuthedFileServer("/downloads")
 
 	// Serve notebook items
-	mux.Handle(base+"/notebooks/", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(
-			config_obj, http.StripPrefix(base, forceMime(http.FileServer(
-				accessors.NewFileSystem(
-					config_obj,
-					file_store.GetFileStore(config_obj),
-					"/notebooks/")))))))
+	addAuthedFileServer("/notebooks/")
 
 	// Assets etc do not need auth.
 	install_static_assets(config_obj, mux)
@@ -180,10 +169,10 @@ func PrepareGUIMux(
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle(base+"/app/index.html", csrfProtect(config_obj,
-		auther.AuthenticateUserHandler(config_obj, h)))
 
-	mux.Handle(base+"/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	addAuthedHandler("/app/index.html", h)
+
+	addAuthedHandler("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, base+"/app/index.html", 302)
 	}))
 
