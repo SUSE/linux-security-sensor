@@ -57,7 +57,7 @@ func (self *GitHubAuthenticator) AddHandlers(config_obj *config_proto.Config, mu
 // Check that the user is proerly authenticated.
 func (self *GitHubAuthenticator) AuthenticateUserHandler(
 	config_obj *config_proto.Config,
-	parent http.Handler) http.Handler {
+	parent http.Handler) (http.Handler, error) {
 
 	return authenticateUserHandle(
 		config_obj, parent, "/auth/github/login", "GitHub")

@@ -60,7 +60,7 @@ func (self *AzureAuthenticator) AddHandlers(config_obj *config_proto.Config, mux
 // Check that the user is proerly authenticated.
 func (self *AzureAuthenticator) AuthenticateUserHandler(
 	config_obj *config_proto.Config,
-	parent http.Handler) http.Handler {
+	parent http.Handler) (http.Handler, error) {
 
 	return authenticateUserHandle(
 		config_obj, parent, "/auth/azure/login", "Microsoft O365/Azure AD")

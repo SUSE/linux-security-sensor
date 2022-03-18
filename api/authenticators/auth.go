@@ -13,7 +13,7 @@ type Authenticator interface {
 	AddHandlers(config_obj *config_proto.Config, mux *http.ServeMux) error
 	AuthenticateUserHandler(
 		config_obj *config_proto.Config,
-		parent http.Handler) http.Handler
+		parent http.Handler) (http.Handler, error)
 
 	IsPasswordLess() bool
 }

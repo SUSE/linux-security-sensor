@@ -91,7 +91,10 @@ func AddProxyMux(config_obj *config_proto.Config, mux *http.ServeMux) error {
 			if err != nil {
 				return err
 			}
-			handler = auther.AuthenticateUserHandler(config_obj, handler)
+			handler, err = auther.AuthenticateUserHandler(config_obj, handler)
+			if err != nil {
+				return err
+			}
 		}
 
 		mux.Handle(reverse_proxy_config.Route, handler)
@@ -132,29 +135,58 @@ func PrepareGUIMux(
 	fileStore := file_store.GetFileStore(config_obj)
 
 	// Add Authenticated and CSRF-Protected handler
-	addAuthedHandler := func(path string, parent http.Handler) {
-		authedHandler := auther.AuthenticateUserHandler(config_obj, parent)
+	addAuthedHandler := func(path string, parent http.Handler) error {
+		authedHandler, err := auther.AuthenticateUserHandler(config_obj, parent)
+		if err != nil {
+			return err
+		}
 		mux.Handle(base + path, csrfProtect(config_obj, authedHandler))
+		return nil
 	}
 
 	// Add Authenticated and CSRF-Protected File Server
-	addAuthedFileServer := func(path string) {
+	addAuthedFileServer := func(path string) error {
 		fileSystem := accessors.NewFileSystem(config_obj, fileStore, path)
 		fileServer := forceMime(http.FileServer(fileSystem))
-		addAuthedHandler(path, http.StripPrefix(base, fileServer))
+		return addAuthedHandler(path, http.StripPrefix(base, fileServer))
 	}
 
-	addAuthedHandler("/api/", h)
-	addAuthedHandler("/api/v1/DownloadTable", downloadTable(config_obj))
-	addAuthedHandler("/api/v1/DownloadVFSFile", vfsFileDownloadHandler(config_obj))
-	addAuthedHandler("/api/v1/UploadTool", toolUploadHandler(config_obj))
-	addAuthedHandler("/api/v1/UploadFormFile", formUploadHandler(config_obj))
+	err = addAuthedHandler("/api/", h)
+	if err != nil {
+		return nil, err
+	}
+
+	err = addAuthedHandler("/api/v1/DownloadTable", downloadTable(config_obj))
+	if err != nil {
+		return nil, err
+	}
+
+	err = addAuthedHandler("/api/v1/DownloadVFSFile", vfsFileDownloadHandler(config_obj))
+	if err != nil {
+		return nil, err
+	}
+
+	err = addAuthedHandler("/api/v1/UploadTool", toolUploadHandler(config_obj))
+	if err != nil {
+		return nil, err
+	}
+
+	err = addAuthedHandler("/api/v1/UploadFormFile", formUploadHandler(config_obj))
+	if err != nil {
+		return nil, err
+	}
 
 	// Serve prepared zip files.
-	addAuthedFileServer("/downloads")
+	err = addAuthedFileServer("/downloads")
+	if err != nil {
+		return nil, err
+	}
 
 	// Serve notebook items
-	addAuthedFileServer("/notebooks/")
+	err = addAuthedFileServer("/notebooks/")
+	if err != nil {
+		return nil, err
+	}
 
 	// Assets etc do not need auth.
 	install_static_assets(config_obj, mux)
@@ -170,11 +202,17 @@ func PrepareGUIMux(
 		return nil, err
 	}
 
-	addAuthedHandler("/app/index.html", h)
+	err = addAuthedHandler("/app/index.html", h)
+	if err != nil {
+		return nil, err
+	}
 
-	addAuthedHandler("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	err = addAuthedHandler("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, base+"/app/index.html", 302)
 	}))
+	if err != nil {
+		return nil, err
+	}
 
 	return mux, nil
 }

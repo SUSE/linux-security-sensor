@@ -50,7 +50,7 @@ func (self *BasicAuthenticator) IsPasswordLess() bool {
 
 func (self *BasicAuthenticator) AuthenticateUserHandler(
 	config_obj *config_proto.Config,
-	parent http.Handler) http.Handler {
+	parent http.Handler) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-CSRF-Token", csrf.Token(r))
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
@@ -116,5 +116,5 @@ func (self *BasicAuthenticator) AuthenticateUserHandler(
 		// the USER value in the context.
 		GetLoggingHandler(config_obj)(parent).ServeHTTP(
 			w, r.WithContext(ctx))
-	})
+	}), nil
 }

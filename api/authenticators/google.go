@@ -62,7 +62,7 @@ func (self *GoogleAuthenticator) IsPasswordLess() bool {
 // Check that the user is proerly authenticated.
 func (self *GoogleAuthenticator) AuthenticateUserHandler(
 	config_obj *config_proto.Config,
-	parent http.Handler) http.Handler {
+	parent http.Handler) (http.Handler, error) {
 
 	return authenticateUserHandle(
 		config_obj, parent, "/auth/google/login", "Google")
@@ -236,7 +236,7 @@ func installLogoff(config_obj *config_proto.Config, mux *http.ServeMux) {
 }
 
 func authenticateUserHandle(config_obj *config_proto.Config,
-	parent http.Handler, login_url string, provider string) http.Handler {
+	parent http.Handler, login_url string, provider string) (http.Handler, error) {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-CSRF-Token", csrf.Token(r))
@@ -361,5 +361,5 @@ to log in again:
 		// the contextKeyUser value in the context.
 		GetLoggingHandler(config_obj)(parent).ServeHTTP(
 			w, r.WithContext(ctx))
-	})
+	}), nil
 }

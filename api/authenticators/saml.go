@@ -74,7 +74,7 @@ func (self *SamlAuthenticator) AddHandlers(config_obj *config_proto.Config, mux 
 
 func (self *SamlAuthenticator) AuthenticateUserHandler(
 	config_obj *config_proto.Config,
-	parent http.Handler) http.Handler {
+	parent http.Handler) (http.Handler, error) {
 
 	reject_handler := samlMiddleware.RequireAccount(parent)
 
@@ -130,7 +130,7 @@ Contact your system administrator to get an account, then try again.
 		GetLoggingHandler(config_obj)(parent).ServeHTTP(
 			w, r.WithContext(ctx))
 		return
-	})
+	}), nil
 }
 
 func userAttr(config_obj *config_proto.Config) string {
