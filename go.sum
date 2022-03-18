@@ -1092,3 +1092,5 @@ www.velocidex.com/golang/vfilter v0.0.0-20220118013948-e60108136153 h1:lRkpuhh4R
 www.velocidex.com/golang/vfilter v0.0.0-20220118013948-e60108136153/go.mod h1:HVtgbXGQZxVN3eR3q6PD46ZoIJkyfT7E62SvCVNg5+A=
 www.velocidex.com/golang/vtypes v0.0.0-20220107071957-49947f744c34 h1:4lnDIznMHDrd1irccF3HSh843/T7kzwCVXw0dWokzoE=
 www.velocidex.com/golang/vtypes v0.0.0-20220107071957-49947f744c34/go.mod h1:gpuRaiyhcuPmZYvI/zw+rjlDXklR2ORaLQBuzCXe84o=
+github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1 h1:YGFburh0Fo4X7Ke7IgUzcyqjWWJLeWlaHXKsXi/09NQ=
+github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1/go.mod h1:/+clceXE103FaXvVTIY2HAkQjxNtkra4DRWvZYr2SKw=

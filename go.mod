@@ -41,6 +41,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-elasticsearch/v7 v7.3.0 // indirect
 	github.com/elastic/go-libaudit v0.4.0
+	github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-sql-driver/mysql v1.5.0
@@ -158,7 +159,6 @@ require (
 // replace github.com/Velocidex/grpc-go-pool => /home/mic/projects/grpc-go-pool
 
 replace github.com/russross/blackfriday/v2 => github.com/Velocidex/blackfriday/v2 v2.0.2-0.20200811050547-4f26a09e2b3b
-
 go 1.16
 
 replace github.com/alecthomas/chroma => github.com/Velocidex/chroma v0.6.8-0.20200418131129-82edc291369c
