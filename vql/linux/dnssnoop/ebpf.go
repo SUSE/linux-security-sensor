@@ -45,9 +45,9 @@ func initBpf() (*bpf.Module, int, error) {
 
 	if !helpers.OSBTFEnabled() {
 		var ok bool
-		moduleArgs.BTFObjPath, ok = os.LookupEnv("TCPSNOOP_BTF")
+		moduleArgs.BTFObjPath, ok = os.LookupEnv("BTF_PATH")
 		if !ok || moduleArgs.BTFObjPath == "" {
-			return nil, -1, fmt.Errorf("System doesn't have CONFIG_DEBUG_INFO_BTF and TCPSNOOP_BTF env var not set")
+			return nil, -1, fmt.Errorf("System doesn't have CONFIG_DEBUG_INFO_BTF and BTF_PATH env var not set")
 		}
 
 		_, err = os.Stat(moduleArgs.BTFObjPath)
