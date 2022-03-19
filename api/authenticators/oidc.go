@@ -39,8 +39,7 @@ func (*OidcAuthenticator) AddHandlers(config_obj *config_proto.Config, mux *http
 	mux.Handle(oidcLoginURI, oauthOidcLogin(config_obj, provider))
 	mux.Handle(oidcCallbackURI, oauthOidcCallback(config_obj, provider))
 
-	installLogoff(config_obj, mux)
-	return nil
+	return installLogoff(config_obj, mux)
 }
 
 func (*OidcAuthenticator) AuthenticateUserHandler(

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <link rel="shortcut icon" href="{{.BasePath}}/app/favicon.ico" />
+    <title>Velociraptor Response and Monitoring: Authorization Required</title>
+  </head>
+  <body id="body" class="{{.UserTheme}}">
+    <div id="root">
+     <h1>Authorization Required</h1>
+     <p>You must be successfully authenticated with a valid account to access this system.</p>
+     <p>The account {{.Username}} is not registered on this system or does not have sufficient permissions.</p>
+     <p><a href="{{.LoginUrl}}" style="text-transform:none">Login with {{.Provider}}</a></p>
+    </div>
+  </body>
+</html>

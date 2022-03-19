@@ -53,8 +53,7 @@ func (self *AzureAuthenticator) AddHandlers(config_obj *config_proto.Config, mux
 	mux.Handle("/auth/azure/callback", oauthAzureCallback(config_obj))
 	mux.Handle("/auth/azure/picture", oauthAzurePicture(config_obj))
 
-	installLogoff(config_obj, mux)
-	return nil
+	return installLogoff(config_obj, mux)
 }
 
 // Check that the user is proerly authenticated.

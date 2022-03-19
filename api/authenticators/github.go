@@ -50,8 +50,7 @@ func (self *GitHubAuthenticator) AddHandlers(config_obj *config_proto.Config, mu
 	mux.Handle("/auth/github/login", oauthGithubLogin(config_obj))
 	mux.Handle("/auth/github/callback", oauthGithubCallback(config_obj))
 
-	installLogoff(config_obj, mux)
-	return nil
+	return installLogoff(config_obj, mux)
 }
 
 // Check that the user is proerly authenticated.

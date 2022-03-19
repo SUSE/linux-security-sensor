@@ -15,6 +15,9 @@ custom:
   - files:
       - "gui/velociraptor/build/static/**"
       - "gui/velociraptor/build/index.html"
+      - "gui/velociraptor/build/unauthenticated.html.tmpl"
+      - "gui/velociraptor/build/unauthorized.html.tmpl"
+      - "gui/velociraptor/build/logoff.html.tmpl"
       - "gui/velociraptor/build/favicon.ico"
     base: "gui/velociraptor/build/"
     exclude:

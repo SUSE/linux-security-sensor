@@ -18,10 +18,12 @@
 package authenticators
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -37,6 +39,7 @@ import (
 	api_proto "www.velocidex.com/golang/velociraptor/api/proto"
 	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
 	"www.velocidex.com/golang/velociraptor/constants"
+	gui_assets "www.velocidex.com/golang/velociraptor/gui/velociraptor"
 	"www.velocidex.com/golang/velociraptor/json"
 	"www.velocidex.com/golang/velociraptor/logging"
 	users "www.velocidex.com/golang/velociraptor/users"
@@ -46,13 +49,17 @@ const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_
 
 type GoogleAuthenticator struct{}
 
+var (
+	unauthenticatedTemplateFileName = "/unauthenticated.html.tmpl"
+	unauthorizedTemplateFileName = "/unauthorized.html.tmpl"
+	logoffTemplateFileName = "/logoff.html.tmpl"
+)
+
 func (self *GoogleAuthenticator) AddHandlers(config_obj *config_proto.Config, mux *http.ServeMux) error {
 	mux.Handle("/auth/google/login", oauthGoogleLogin(config_obj))
 	mux.Handle("/auth/google/callback", oauthGoogleCallback(config_obj))
 
-	installLogoff(config_obj, mux)
-
-	return nil
+	return installLogoff(config_obj, mux)
 }
 
 func (self *GoogleAuthenticator) IsPasswordLess() bool {
@@ -210,15 +217,60 @@ func getUserDataFromGoogle(
 	return contents, nil
 }
 
-func installLogoff(config_obj *config_proto.Config, mux *http.ServeMux) {
+type _templateArgs struct {
+	// Used for Authentication/Authorization/Logoff
+	Timestamp  int64
+	Heading    string
+	CsrfToken  string
+	BasePath   string
+	UserTheme  string
+
+	// Only for Unauthenticated/Authorization failure
+	// Providing these to Logoff requires more plumbing
+	LoginUrl   string
+	Provider   string
+
+	// Only for Authorization failure
+	Username   string
+	Error      string
+}
+
+var defaultLogoffTemplate string = `
+<html><body>
+You have successfully logged off!
+</body></html>
+`
+
+// This will _not_ do variable substitution
+var fallbackLogoffMessage string = defaultLogoffTemplate
+
+func installLogoff(config_obj *config_proto.Config, mux *http.ServeMux) error {
+
+	base := config_obj.GUI.BasePath
+
+	logoffTemplate, err := parseTemplate(config_obj, logoffTemplateFileName, defaultLogoffTemplate)
+	if err != nil {
+		return err
+	}
+
 	// On logoff just clear the cookie and redirect.
 	mux.Handle("/logoff", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		var user_options *api_proto.SetGUIOptionsRequest
+
 		params := r.URL.Query()
 		old_username, ok := params["username"]
 		if ok && len(old_username) == 1 {
 			logger := logging.GetLogger(config_obj, &logging.Audit)
 			logger.Info("Logging off %v", old_username[0])
+			user_options, _ = users.GetUserOptions(config_obj, old_username[0])
 		}
+
+		if user_options == nil {
+			// Fallback
+			user_options = &api_proto.SetGUIOptionsRequest{}
+		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     "VelociraptorAuth",
 			Path:     "/",
@@ -227,42 +279,141 @@ func installLogoff(config_obj *config_proto.Config, mux *http.ServeMux) {
 			HttpOnly: true,
 			Expires:  time.Unix(0, 0),
 		})
-		fmt.Fprintf(w, `
-			<html><body>
-			You have successfully logged off!
-			</body></html>
-		`)
+
+		templateArgs := _templateArgs{
+				Timestamp: time.Now().UTC().UnixNano() / 1000,
+				CsrfToken: csrf.Token(r),
+				BasePath:  base,
+				Heading:   "Heading",
+				UserTheme: user_options.Theme,
+		}
+
+		err = logoffTemplate.Execute(&buf, templateArgs)
+		if err != nil {
+			logger := logging.GetLogger(config_obj, &logging.GUIComponent)
+			logger.Error("Failed to execute template logoffTemplate: %v", err)
+
+			// HTTP spec says clients must honor cookies unless the status code is 1xx
+			http.Error(w, fallbackLogoffMessage,
+				   http.StatusInternalServerError)
+			return
+		}
+
+		buf.WriteTo(w)
 	}))
+
+	return nil
+}
+
+var defaultUnauthenticatedTemplate string = `
+<html><body>
+<h1>Authentication required</h1>
+<p>This system is unavailable to unauthenticated users.</p>
+<p><a href="{{.LoginUrl}}" style="text-transform:none">
+        Login with {{.Provider}}
+      </a></p>
+</body></html>
+`
+
+var defaultUnauthorizedTemplate string = `
+<html><body>
+<h1>Authorization failed</h1>
+Authorization failed. The account {{.Username}} does not exist or does not have sufficient persmissions.
+Contact your system administrator to get an account, or click here
+to log in again:
+
+      <a href="{{.LoginUrl}}" style="text-transform:none">
+        Login with {{.Provider}}
+      </a>
+</body></html>
+`
+
+func parseTemplate(config_obj *config_proto.Config, templatePath string,
+		   fallbackTemplate string) (*template.Template, error) {
+	var tmpl *template.Template
+
+	guiLogger := logging.GetLogger(config_obj, &logging.GUIComponent)
+
+	data, err := gui_assets.ReadFile(templatePath)
+	if err == nil {
+		tmpl, err := template.New("").Parse(string(data))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse template %s: %v", templatePath, err)
+		}
+
+		return tmpl, nil
+	}
+
+	guiLogger.Error("Failed to read %s from gui assets, using built-in default. Reason: %v",
+			templatePath, err)
+
+	tmpl, err = template.New("").Parse(fallbackTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse fallback template for %s. Reason: %v",
+				       templatePath, err)
+	}
+
+	return tmpl, nil
 }
 
 func authenticateUserHandle(config_obj *config_proto.Config,
 	parent http.Handler, login_url string, provider string) (http.Handler, error) {
 
+	guiLogger := logging.GetLogger(config_obj, &logging.GUIComponent)
+
+	unauthenticatedTemplate, err := parseTemplate(config_obj, unauthenticatedTemplateFileName,
+						      defaultUnauthenticatedTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	unauthorizedTemplate, err := parseTemplate(config_obj, unauthorizedTemplateFileName,
+						   defaultUnauthorizedTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	base := config_obj.GUI.BasePath
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-CSRF-Token", csrf.Token(r))
 
-		// Reject by redirecting to the login handler.
-		reject_with_username := func(err error, username string) {
-			logger := logging.GetLogger(config_obj, &logging.Audit)
-			logger.WithFields(logrus.Fields{
-				"remote": r.RemoteAddr,
-				"error":  err.Error(),
-			}).Error("OAuth2 Redirect")
+		// Unauthenticated users have no options
+		user_options := &api_proto.SetGUIOptionsRequest{}
 
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		templateArgs := _templateArgs{
+				Timestamp: time.Now().UTC().UnixNano() / 1000,
+				CsrfToken: csrf.Token(r),
+				BasePath:  base,
+				Heading:   "Heading",
+				UserTheme: user_options.Theme,
+				LoginUrl: login_url,
+				Provider: provider,
+		}
+
+		// Reject by returning 401 and displaying an authenticated user message
+		// with link to authenticate
+		reject := func(err error) {
+			var buf bytes.Buffer
+
+			tmplErr := unauthenticatedTemplate.Execute(&buf, templateArgs)
+			if tmplErr != nil {
+				http.Error(w, "Failed to format page",
+					   http.StatusInternalServerError)
+				guiLogger.Error("Failed to execute template unauthenticatedTemplate: %v", tmplErr)
+				return
+			}
+
 			w.WriteHeader(http.StatusUnauthorized)
+			buf.WriteTo(w)
 
-			fmt.Fprintf(w, `
-<html><body>
-Authorization failed. You are not registered on this system as %v.
-Contact your system administrator to get an account, or click here
-to log in again:
+			// We don't really need to log every unauthenticated user, do we?
+		}
 
-      <a href="%s" style="text-transform:none">
-        Login with %s
-      </a>
-</body></html>
-`, username, login_url, provider)
+		// Reject by returning 401 and displaying a login failure with option
+		// to reauthenticate
+		reject_with_username := func(err error, username string) {
+			var buf bytes.Buffer
 
 			logging.GetLogger(config_obj, &logging.Audit).
 				WithFields(logrus.Fields{
@@ -270,10 +421,22 @@ to log in again:
 					"remote": r.RemoteAddr,
 					"method": r.Method,
 				}).Error("User rejected by GUI")
-		}
 
-		reject := func(err error) {
-			reject_with_username(err, "")
+			templateArgs.Username = username
+			templateArgs.Error = err.Error()
+
+			tmplErr := unauthorizedTemplate.Execute(&buf, templateArgs)
+			if tmplErr != nil {
+				http.Error(w, "Failed to format page",
+					   http.StatusInternalServerError)
+				guiLogger.Error("Failed to execute template unauthorizedTemplate: %v", tmplErr)
+				return
+			}
+
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			buf.WriteTo(w)
+
 		}
 
 		// We store the user name and their details in a local
