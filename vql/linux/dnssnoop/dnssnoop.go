@@ -103,6 +103,22 @@ func isLocalPacket(packet gopacket.Packet) bool {
 	return false
 }
 
+func try_parse_packet(raw []byte) gopacket.Packet {
+
+	packet := gopacket.NewPacket(raw, layers.LayerTypeEthernet, gopacket.Default)
+	if err := packet.ErrorLayer(); err != nil {
+		packet = gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.Default)
+		if err = packet.ErrorLayer(); err != nil {
+			packet = gopacket.NewPacket(raw, layers.LayerTypeIPv6, gopacket.Default)
+			if err = packet.ErrorLayer(); err != nil {
+				return nil
+			}
+		}
+	}
+
+	return packet
+}
+
 func (self DnssnoopPlugin) Call(
 	ctx context.Context, scope vfilter.Scope,
 	args *ordereddict.Dict) <-chan vfilter.Row {
@@ -141,7 +157,11 @@ func (self DnssnoopPlugin) Call(
 				log.Fatalf("Error reading from socket\n")
 			}
 
-			packet := gopacket.NewPacket(received_data, layers.LayerTypeEthernet, gopacket.Default)
+			packet := try_parse_packet(received_data)
+			if packet == nil {
+				continue
+			}
+
 			// skip duplicate replies from local resolver
 			if isLocalPacket(packet) {
 				continue
