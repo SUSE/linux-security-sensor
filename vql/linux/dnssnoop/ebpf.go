@@ -57,7 +57,6 @@ func initBpf() (*bpf.Module, int, error) {
 	}
 
 	if bpfModule, err = bpf.NewModuleFromBufferArgs(moduleArgs); err != nil {
-		bpfModule.Close()
 		return nil, -1, err
 	}
 
