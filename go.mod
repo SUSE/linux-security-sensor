@@ -41,7 +41,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-elasticsearch/v7 v7.3.0 // indirect
 	github.com/elastic/go-libaudit v0.4.0
-	github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-sql-driver/mysql v1.5.0
@@ -132,6 +131,7 @@ require (
 require (
 	github.com/Shopify/sarama v1.32.0
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible // indirect
+	github.com/google/gopacket v1.1.19 // indirect
 	github.com/hillu/go-archive-zip-crypto v0.0.0-20200712202847-bd5cf365dd44 // indirect
 	github.com/prometheus/common v0.29.0 // indirect
 	github.com/prometheus/procfs v0.7.2 // indirect

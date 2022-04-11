@@ -1,14 +1,13 @@
+//go:build linux && linuxbpf
 // +build linux,linuxbpf
 
 package linux
 
 import (
 	_ "embed"
-	"errors"
-	"os"
 
 	bpf "www.velocidex.com/golang/velociraptor/third_party/libbpfgo"
-	"www.velocidex.com/golang/velociraptor/third_party/libbpfgo/helpers"
+	"www.velocidex.com/golang/velociraptor/vql/linux/bpflib"
 )
 
 //go:embed tcpsnoop.bpf.o
@@ -34,73 +33,21 @@ type TcpsnoopEvent struct {
 	Dir   uint8
 }
 
-func attachKprobe(bpfModule *bpf.Module, progName string, attachFunc string) error {
-	bpfProg, err := bpfModule.GetProgram(progName)
-	if err != nil {
-		return err
-	}
-
-	_, err = bpfProg.AttachKprobe(attachFunc)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func attachKretprobe(bpfModule *bpf.Module, progName string, attachFunc string) error {
-	bpfProg, err := bpfModule.GetProgram(progName)
-	if err != nil {
-		return err
-	}
-
-	_, err = bpfProg.AttachKretprobe(attachFunc)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func initBpf() (*bpf.Module, error) {
-	var bpfModule *bpf.Module
-	var err error
-
-	moduleArgs := bpf.NewModuleArgs{
-		BPFObjBuff: bpfCode,
-		BPFObjName: "tcpsnoop",
-	}
-
-	if !helpers.OSBTFEnabled() {
-		var ok bool
-		moduleArgs.BTFObjPath, ok = os.LookupEnv("TCPSNOOP_BTF")
-		if !ok || moduleArgs.BTFObjPath == "" {
-			return nil, errors.New("System doesn't have CONFIG_DEBUG_INFO_BTF and TCPSNOOP_BTF env var not set")
-		}
-
-		_, err = os.Stat(moduleArgs.BTFObjPath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if bpfModule, err = bpf.NewModuleFromBufferArgs(moduleArgs); err != nil {
+	bpfModule, err := bpflib.LoadBpfModule("tcpsnoop", bpfCode)
+	if err != nil {
 		return nil, err
 	}
 
-	if err = bpfModule.BPFLoadObject(); err != nil {
+	if err = bpflib.AttachKretprobe(bpfModule, "inet_csk_accept_retprobe", "inet_csk_accept"); err != nil {
 		return nil, err
 	}
 
-	if err = attachKretprobe(bpfModule, "inet_csk_accept_retprobe", "inet_csk_accept"); err != nil {
+	if err = bpflib.AttachKretprobe(bpfModule, "tcp_v4_connect_ret", "tcp_v4_connect"); err != nil {
 		return nil, err
 	}
 
-	if err = attachKretprobe(bpfModule, "tcp_v4_connect_ret", "tcp_v4_connect"); err != nil {
-		return nil, err
-	}
-
-	if err = attachKprobe(bpfModule, "tcp_v4_connect", "tcp_v4_connect"); err != nil {
+	if err = bpflib.AttachKprobe(bpfModule, "tcp_v4_connect", "tcp_v4_connect"); err != nil {
 		return nil, err
 	}
 
