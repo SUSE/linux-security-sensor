@@ -204,6 +204,7 @@ require (
 require (
 	github.com/Shopify/sarama v1.32.0
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible // indirect
+	github.com/google/gopacket v1.1.19
 	github.com/hillu/go-archive-zip-crypto v0.0.0-20200712202847-bd5cf365dd44 // indirect
 	github.com/prometheus/common v0.29.0 // indirect
 	github.com/prometheus/procfs v0.7.2 // indirect
