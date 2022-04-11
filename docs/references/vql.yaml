@@ -1192,6 +1192,11 @@
     plugin (see Windows.Events.DNSQueries)
   type: Plugin
   category: windows
+- name: dnssnoop
+  description: Snoop dns replies
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
 - name: efivariables
   description: Enumerate efi variables.
   type: Plugin

@@ -1,0 +1,12 @@
+name: Linux.Events.Network.DNS
+description: |
+   Prints all DNS resolution events
+
+type: CLIENT_EVENT
+
+sources:
+  - precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      SELECT Timestamp, Type, Question, Answers FROM dnssnoop()
