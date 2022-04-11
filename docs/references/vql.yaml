@@ -2075,6 +2075,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: dnssnoop
+  description: Snoop dns replies
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: ebpf_events
   description: |
     Dumps information about potential ebpf_events that can be used by the
