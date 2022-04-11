@@ -120,6 +120,7 @@ require (
 	github.com/glaslos/tlsh v0.2.0
 	github.com/go-errors/errors v1.4.2
 	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/google/gopacket v1.1.19
 	github.com/hillu/go-archive-zip-crypto v0.0.0-20200712202847-bd5cf365dd44
 	github.com/pkg/errors v0.9.1
 	github.com/rogpeppe/go-internal v1.9.0
