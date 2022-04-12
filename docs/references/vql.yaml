@@ -874,6 +874,13 @@
   - windows_386_cgo
   - windows_amd64_cgo
   free_form_args: true
+- name: chattrsnoop
+  description: Shows when a file has the IMMUTABLE flag changed
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: cidr_contains
   description: |
     Calculates if an IP address falls within a range of CIDR specified
