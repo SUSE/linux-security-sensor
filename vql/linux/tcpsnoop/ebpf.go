@@ -39,14 +39,17 @@ func initBpf() (*bpf.Module, error) {
 	}
 
 	if err = bpflib.AttachKretprobe(bpfModule, "inet_csk_accept_retprobe", "inet_csk_accept"); err != nil {
+		bpfModule.Close()
 		return nil, err
 	}
 
 	if err = bpflib.AttachKretprobe(bpfModule, "tcp_v4_connect_ret", "tcp_v4_connect"); err != nil {
+		bpfModule.Close()
 		return nil, err
 	}
 
 	if err = bpflib.AttachKprobe(bpfModule, "tcp_v4_connect", "tcp_v4_connect"); err != nil {
+		bpfModule.Close()
 		return nil, err
 	}
 
