@@ -1,0 +1,62 @@
+name: Linux.Events.ProcessStatuses
+description: |
+  This artifact collects new processes created by non-root users from
+  the Linux kernel audit events.
+
+  This artifact relies on the presence of `auditctl` usually included
+  in the auditd package. On Ubuntu you can install it using:
+
+  ```
+  apt-get install auditd
+  ```
+
+  On OpenSuse you can install it using:
+
+  ```
+  zypper install audit
+  ```
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: pathToAugenrules
+    default: /sbin/augenrules
+    description: We depend on augenrules to load the process execution rules.
+
+sources:
+  - query: |
+     // Install the auditd rule if possible.
+     // Remove default filter if any
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_clear_default.rules ]; then echo '-d task,never -i' > /etc/audit/rules.d/vrr_clear_default.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_clear_default.rules)); if [ ! $filemd5sum = d4bdaa4f68d339a9f09bfa3f64d4a534 ]; then rm -rf /etc/audit/rules.d/vrr_clear_default.rules; else chmod 0640 /etc/audit/rules.d/vrr_clear_default.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     // add rules to collect new process 
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_proexec.rules ]; then echo -e '-a always,exit -F arch=b64 -S execve -F euid!=0 -F auid!=-1 -k vrr_proexec\n-a always,exit -F arch=b32 -S execve -F euid!=0 -F auid!=-1 -k vrr_proexec' > /etc/audit/rules.d/vrr_proexec.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_proexec.rules)); if [ ! $filemd5sum = a8600ecbc623cffb8fe16525ec474bd5 ]; then rm -rf /etc/audit/rules.d/vrr_proexec.rules; else chmod 0640 /etc/audit/rules.d/vrr_proexec.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     LET proc_exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Process.PID) AS Pid,
+           atoi(string=Process.PPID) AS Ppid,
+           Process.PPID AS PPID,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           Process.Title AS CmdLine,
+           Process.Exe AS Exe,
+           Process.CWD AS CWD,
+           hash(path=Process.Exe) AS Hash
+       FROM audit()
+       WHERE "vrr_proexec" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, Pid, Ppid, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State,CmdLine,
+              CWD, Exe AS ImagePath, Hash.SHA256 AS Hash_Sha256, Hash.SHA1 AS Hash_Sha1
+       FROM proc_exec_log
