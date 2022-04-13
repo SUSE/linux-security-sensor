@@ -1,3 +1,6 @@
+//go:build linux && linuxbpf
+// +build linux,linuxbpf
+
 package bpflib
 
 import (
