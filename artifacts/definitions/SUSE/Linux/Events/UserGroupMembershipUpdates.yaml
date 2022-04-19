@@ -1,0 +1,61 @@
+name: SUSE.Linux.Events.UserGroupMembershipUpdates
+description: |
+  This artifact collects user group changes from auditd events, by
+  monitoring updates made to either /etc/group or /etc/nsswitch.conf.
+
+  This artifact relies on the presence of `auditctl` usually included
+  in the auditd package. On Ubuntu you can install it using:
+
+  ```
+  apt-get install auditd
+  ```
+
+  On SUSE operating systems you can install it using:
+  ```
+  zypper install audit
+  ```
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: pathToAuditctl
+    default: /sbin/auditctl
+    description: We depend on auditctl to install the correct process execution rules.
+
+sources:
+  - query: |
+     // Install the auditd rule if possible.
+     // Remove default filter if any
+     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-d", "task,never"])
+
+     // add rule to monitor changes to /etc/group
+     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-w",
+          "/etc/group", "-p", "w", "-k", "vrr_etc_group"])
+
+     // add rule to monitor changes to /etc/nsswitch.conf
+     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-w",
+          "/etc/nsswitch.conf", "-p", "w", "-k", "vrr_etc_nsswitch_conf"])
+
+     LET change_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           Process.Title AS CmdLine,
+           Process.Exe AS Exe,
+           Process.CWD AS CWD,
+       FROM audit()
+       WHERE "vrr_etc_group" in Tags OR "vrr_etc_nsswitch_conf" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, UserId,
+            { SELECT User from usrs WHERE Uid = UserId} AS User,
+            State, CmdLine, Exe, CWD
+     FROM change_log
