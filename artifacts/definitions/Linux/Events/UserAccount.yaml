@@ -1,0 +1,61 @@
+name: Linux.Events.UserAccount
+description: |
+  This artifact collects Every change to User Accounts from the Linux kernel.
+
+  This artifact relies on the presence of `auditctl` usually included
+  in the auditd package. On Ubuntu you can install it using:
+
+  ```
+  apt-get install auditd
+  ```
+
+  On SUSE operating systems you can install it using:
+  ```
+  zypper install audit
+  ```
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: pathToAugenrules 
+    default: /sbin/augenrules
+    description: We depend on augenrules to install the newly added rules.
+
+sources:
+  - query: |
+     // Install the auditd rule if possible.
+     // Remove default filter if any
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_clear_default.rules ]; then echo '-d task,never -i' > /etc/audit/rules.d/vrr_clear_default.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_clear_default.rules)); if [ ! $filemd5sum = d4bdaa4f68d339a9f09bfa3f64d4a534 ]; then rm -rf /etc/audit/rules.d/vrr_clear_default.rules; else chmod 0640 /etc/audit/rules.d/vrr_clear_default.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     // add rule to monitor changes to /etc/shadow
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_etc_shadow.rules ]; then echo '-w /etc/shadow -p wa -k vrr_etc_shadow' > /etc/audit/rules.d/vrr_etc_shadow.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_etc_shadow.rules)); if [ ! $filemd5sum = 6ee436f807f4a7ae9bf20012129c83ad ]; then rm -rf /etc/audit/rules.d/vrr_etc_shadow.rules; else chmod 0640 /etc/audit/rules.d/vrr_etc_shadow.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     // add rule to monitor changes to /etc/passwd
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_etc_passwd.rules ]; then echo '-w /etc/passwd -p wa -k vrr_etc_modifications' > /etc/audit/rules.d/vrr_etc_passwd.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_etc_passwd.rules)); if [ ! $filemd5sum = c299be3a29271364c41d393c6000e921 ]; then rm -rf /etc/audit/rules.d/vrr_etc_passwd.rules; else chmod 0640 /etc/audit/rules.d/vrr_etc_passwd.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     // add rule to monitor changes to /etc/nsswitch.conf
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_etc_nsswitch_conf.rules ]; then echo '-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf' > /etc/audit/rules.d/vrr_etc_nsswitch_conf.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_etc_nsswitch_conf.rules)); if [ ! $filemd5sum = f748e2afabd1e1a333c06e605df7eb5f ]; then rm -rf /etc/audit/rules.d/vrr_etc_nsswitch_conf.rules; else chmod 0640 /etc/audit/rules.d/vrr_etc_nsswitch_conf.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     LET user_acct_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Process.PID) AS Pid,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           join(array=[Summary.action,Summary.object.type, Summary.object.primary], sep=" ") AS Action,
+           Process.Title AS CmdLine
+       FROM audit()
+       WHERE "vrr_etc_modifications" in Tags OR "vrr_etc_nsswitch_conf" in Tags OR "vrr_etc_shadow" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State, Action, CmdLine
+     FROM user_acct_log

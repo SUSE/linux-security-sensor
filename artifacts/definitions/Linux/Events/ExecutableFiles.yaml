@@ -1,0 +1,57 @@
+name: Linux.Events.ExecutableFiles
+description: |
+  This artifact collects Every new executable file in /tmp or login
+  directory from the Linux kernel.
+
+  This artifact relies on the presence of `auditctl` usually included
+  in the auditd package. On Ubuntu you can install it using:
+
+  ```
+  apt-get install auditd
+  ```
+
+  On SUSE operating systems you can install it using:
+  ```
+  zypper install audit
+  ```
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: pathToAugenrules 
+    default: /sbin/augenrules
+    description: We depend on augenrules to install the newly added rules.
+
+sources:
+  - query: |
+     // Install the auditd rule if possible.
+     // Remove default filter if any
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_clear_default.rules ]; then echo '-d task,never -i' > /etc/audit/rules.d/vrr_clear_default.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_clear_default.rules)); if [ ! $filemd5sum = d4bdaa4f68d339a9f09bfa3f64d4a534 ]; then rm -rf /etc/audit/rules.d/vrr_clear_default.rules; else chmod 0640 /etc/audit/rules.d/vrr_clear_default.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     // add rules to monitor new executable file 
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_exec_bit.rules ]; then echo '-a always,exit -F arch=b64 -S fchmodat -F a2&73 -k vrr_exec_bit_addition\n-a always,exit -F arch=b32 -S fchmodat -F a2&73 -k vrr_exec_bit_addition\n-a always,exit -F arch=b64 -S fchmod -F a1&73 -k vrr_exec_bit_addition\n-a always,exit -F arch=b32 -S fchmod -F a1&73 -k vrr_exec_bit_addition' > /etc/audit/rules.d/vrr_exec_bit.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_exec_bit.rules)); if [ ! $filemd5sum = e32635630ac4129ad7e75a347589e256 ]; then rm -rf /etc/audit/rules.d/vrr_exec_bit.rules; else chmod 0640 /etc/audit/rules.d/vrr_exec_bit.rules; " + pathToAugenrules + " --load; fi fi"])
+
+     LET exec_bit_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           File.path AS FileName,
+           join(array=[Process.CWD, File.path], sep='/') AS FilePath,
+           hash(path=join(array=[Process.CWD, File.path], sep='/')) AS Hash
+       FROM audit()
+       WHERE "vrr_exec_bit_addition" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State, FileName, FilePath, Hash.SHA256 AS Hash_Sha256, 
+              Hash.SHA1 AS Hash_Sha1
+     FROM exec_bit_log
