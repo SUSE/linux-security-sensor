@@ -17,20 +17,19 @@ required_permissions:
   - EXECVE
 
 parameters:
-  - name: pathToAuditctl
-    default: /sbin/auditctl
-    description: We depend on auditctl to install the correct process execution rules.
+  - name: pathToAugenrules 
+    default: /sbin/augenrules
+    description: We depend on augenrules to persist the correct process execution rules.
 
 sources:
   - query: |
-     // Remove default filter if any
-     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-d", "task,never"])     
      // Install the auditd rule if possible.
-     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-a",
-          "exit,always", "-F", "arch=b64", "-S", "execve", "-k", "procmon"])
+     // Remove default filter if any
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_clear_default.rules ]; then echo '-d task,never -i' > /etc/audit/rules.d/vrr_clear_default.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_clear_default.rules)); if [ ! $filemd5sum = d4bdaa4f68d339a9f09bfa3f64d4a534 ]; then rm -rf /etc/audit/rules.d/vrr_clear_default.rules; else chmod 0640 /etc/audit/rules.d/vrr_clear_default.rules; " + pathToAugenrules + " --load; fi fi"])
 
-     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-a",
-          "exit,always", "-F", "arch=b32", "-S", "execve", "-k", "procmon"])     
+     // add rule to collect new process 
+     LET _ <= SELECT * FROM execve(argv=["/bin/bash", "-c", "if [ ! -f /etc/audit/rules.d/vrr_procmon.rules ]; then echo -e '-a always,exit -F arch=b64 -S execve -k vrr_procmon\n-a always,exit -F arch=b32 -S execve -k vrr_procmon' > /etc/audit/rules.d/vrr_procmon.rules; filemd5sum=($(md5sum /etc/audit/rules.d/vrr_procmon.rules)); if [ ! $filemd5sum = 0af1126b607d3902a128dd4b54b5b06b ]; then rm -rf /etc/audit/rules.d/vrr_procmon.rules; else chmod 0640 /etc/audit/rules.d/vrr_procmon.rules; " + pathToAugenrules + " --load; fi fi"])
+
      LET exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
            atoi(string=Process.PID) AS Pid,
            atoi(string=Process.PPID) AS Ppid,
@@ -40,7 +39,7 @@ sources:
            Process.Exe AS Exe,
            Process.CWD AS CWD
        FROM audit()
-       WHERE "procmon" in Tags AND Result = 'success'
+       WHERE "vrr_procmon" in Tags AND Result = 'success'
 
      // Cache Uid -> Username mapping.
      LET users <= SELECT User, atoi(string=Uid) AS Uid
