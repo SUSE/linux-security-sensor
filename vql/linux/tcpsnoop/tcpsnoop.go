@@ -41,6 +41,8 @@ func (self TcpsnoopPlugin) Call(
 	output_chan := make(chan vfilter.Row)
 
 	go func() {
+		defer close(output_chan)
+
 		err := vql_subsystem.CheckAccess(scope, acls.MACHINE_STATE)
 		if err != nil {
 			scope.Log("tcpsnoop: %s", err)
@@ -61,6 +63,7 @@ func (self TcpsnoopPlugin) Call(
 		perfBuffer, err := bpf.InitPerfBuf("events", eventsChan, lostChan, 128)
 		if err != nil {
 			scope.Log("tcpsnoop: %s", err)
+			return
 		}
 
 		perfBuffer.Start()
