@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -169,17 +168,15 @@ func handleSuccesses(ctx context.Context, wg *sync.WaitGroup, producer sarama.As
 
 	defer logSuccesses(ctx, outputChan, count)
 	defer wg.Done()
-	defer fmt.Printf("handleSuccesses exiting\n")
 
 	for {
 		do_update_client := false
 
 		select {
-		case msg, ok := <- producer.Successes():
+		case _, ok := <- producer.Successes():
 			if !ok {
 				return
 			}
-			fmt.Printf("Got success %v\n", msg)
 			count += 1
 			if count % 100 == 0 {
 				do_update_client = true

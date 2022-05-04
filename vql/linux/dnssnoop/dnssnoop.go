@@ -6,7 +6,6 @@ import (
 	"context"
 	_ "embed"
 	"golang.org/x/sys/unix"
-	"log"
 	"os"
 
 	"github.com/Velocidex/ordereddict"
@@ -125,6 +124,7 @@ func (self DnssnoopPlugin) Call(
 	output_chan := make(chan vfilter.Row)
 
 	go func() {
+		defer close(output_chan)
 
 		err := vql_subsystem.CheckAccess(scope, acls.MACHINE_STATE)
 		if err != nil {
@@ -154,7 +154,8 @@ func (self DnssnoopPlugin) Call(
 		for {
 			_, err := f.Read(received_data)
 			if err != nil {
-				log.Fatalf("Error reading from socket\n")
+				scope.Log("Error reading from socket: %v", err)
+				return
 			}
 
 			packet := try_parse_packet(received_data)

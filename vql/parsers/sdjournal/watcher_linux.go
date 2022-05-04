@@ -179,8 +179,6 @@ func (self *JournalWatcherService) distributeEntry(entry *sdjournal.JournalEntry
 			self.nListeners -= 1
 
 		case handle.output_chan <- d:
-			logger := logging.GetLogger(self.config_obj, &logging.ClientComponent)
-			logger.Info("Output entry: %v", d)
 			new_handles = append(new_handles, handle)
 		}
 	}
