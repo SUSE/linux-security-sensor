@@ -1,3 +1,4 @@
+//go:build linux && linuxbpf
 // +build linux,linuxbpf
 
 package linux
@@ -7,6 +8,7 @@ import (
 	"context"
 	"encoding/binary"
 	"net"
+	"time"
 
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/velociraptor/acls"
@@ -24,6 +26,7 @@ func (self TcpsnoopPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMap) 
 }
 
 type Event struct {
+	Timestamp  string `json:"timestamp"`
 	RemoteAddr string `json:"local_address"`
 	LocalAddr  string `json:"remote_address"`
 	Task       string `json:"task"`
@@ -76,6 +79,7 @@ func (self TcpsnoopPlugin) Call(
 
 			// Now we make into a more userfriendly struct for sending to VRR
 			event2 := Event{
+				Timestamp:  time.Now().UTC().Format("2006-01-02 15:04:05"),
 				LocalPort:  event.Lport,
 				RemotePort: event.Rport,
 				Uid:        event.Uid,

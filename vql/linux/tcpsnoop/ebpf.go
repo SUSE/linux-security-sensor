@@ -24,7 +24,6 @@ type TcpsnoopEvent struct {
 	Saddr [16]byte
 	Daddr [16]byte
 	Task  [16]byte
-	Ts_us uint64
 	Af    uint32 // AF_INET or AF_INET6
 	Pid   uint32
 	Uid   uint32

@@ -32,7 +32,6 @@ struct event {
 		__u8 daddr_v6[16];
 	};
 	char task[TASK_COMM_LEN];
-	__u64 ts_us;
 	__u32 af; // AF_INET or AF_INET6
 	__u32 pid;
 	__u32 uid;
@@ -137,7 +136,6 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	rport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 	event.pid = pid;
 	event.uid = bpf_get_current_uid_gid();
-	event.ts_us = bpf_ktime_get_ns() / 1000;
 	event.rport = rport;
 	event.lport = lport;
 	event.direction = OUT_CONNECTION;
@@ -191,7 +189,6 @@ bpf__inet_csk_accept(struct pt_regs *ctx, int ret)
 
 	event.pid = pid;
 	event.uid = bpf_get_current_uid_gid();
-	event.ts_us = bpf_ktime_get_ns() / 1000;
 	event.rport = rport;
 	event.lport = lport;
 	event.direction = IN_CONNECTION;

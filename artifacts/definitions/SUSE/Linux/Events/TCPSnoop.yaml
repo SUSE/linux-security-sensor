@@ -1,0 +1,13 @@
+name: SUSE.Linux.Events.Tcp
+description: |
+   Prints all incoming and outgoing tcp connection events
+
+type: CLIENT_EVENT
+
+sources:
+  - name: Connections
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      SELECT * FROM tcpsnoop()

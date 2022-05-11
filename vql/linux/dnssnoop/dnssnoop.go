@@ -1,3 +1,4 @@
+//go:build linux && linuxbpf
 // +build linux,linuxbpf
 
 package linux
@@ -7,6 +8,7 @@ import (
 	_ "embed"
 	"golang.org/x/sys/unix"
 	"os"
+	"time"
 
 	"github.com/Velocidex/ordereddict"
 	"github.com/google/gopacket"
@@ -19,9 +21,10 @@ import (
 type DnssnoopPlugin struct{}
 
 type DnsReply struct {
-	Type     string
-	Question string
-	Answers  []string
+	Timestamp string
+	Type      string
+	Question  string
+	Answers   []string
 }
 
 type DnsKey struct {
@@ -81,7 +84,7 @@ func processAnswers(answers []layers.DNSResourceRecord, c chan vfilter.Row) {
 
 	for k, v := range replies {
 
-		c <- DnsReply{k.Type, k.q, v}
+		c <- DnsReply{time.Now().UTC().Format("2006-01-02 15:04:05"), k.Type, k.q, v}
 	}
 
 }
