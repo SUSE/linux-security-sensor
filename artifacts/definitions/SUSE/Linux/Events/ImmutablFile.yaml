@@ -1,0 +1,13 @@
+name: SUSE.Linux.Events.ImmutableFile
+description: |
+   Print events when a file gets the IMMUTABLE flag changed
+
+type: CLIENT_EVENT
+
+sources:
+  - name: Connections
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      SELECT * FROM chattrsnoop()
