@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	VERSION                    = "0.6.4-1"
+	VERSION                    = "0.6.4-2"
 	ENROLLMENT_WELL_KNOWN_FLOW = "E:Enrol"
 	MONITORING_WELL_KNOWN_FLOW = FLOW_PREFIX + "Monitoring"
 
@@ -78,6 +78,11 @@ const (
 	EVTX_FREQUENCY      = "EVTX_FREQUENCY"
 	USN_FREQUENCY       = "USN_FREQUENCY"
 	ZIP_FILE_CACHE_SIZE = "ZIP_FILE_CACHE_SIZE"
+
+	// Certain VQL errors represent a failure in artifact
+	// collection. We use this RegExp to determine if log messages
+	// represent failure.
+	VQL_ERROR_REGEX = "(?i)(Error:|Symbol.+?not found|Expecting a path arg type, not)"
 )
 
 type key int
