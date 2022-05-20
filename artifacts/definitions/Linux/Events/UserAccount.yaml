@@ -1,0 +1,34 @@
+name: Linux.Events.UserAccount
+description: |
+  This artifact collects Every change to User Accounts from the Linux kernel.
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+sources:
+
+  - query: |
+     LET user_acct_rules =  ("-w /etc/shadow -p wa -k vrr_etc_shadow", "-w /etc/passwd -p wa -k vrr_etc_modifications", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
+
+     LET user_acct_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Process.PID) AS Pid,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           join(array=[Summary.action,Summary.object.type, Summary.object.primary], sep=" ") AS Action,
+           Process.Title AS CmdLine
+       FROM audit(rules=user_acct_rules)
+       WHERE "vrr_etc_modifications" in Tags OR "vrr_etc_nsswitch_conf" in Tags OR "vrr_etc_shadow" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State, Action, CmdLine
+     FROM user_acct_log
