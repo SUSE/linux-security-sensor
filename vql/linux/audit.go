@@ -6,15 +6,21 @@ import (
 	"context"
 	"fmt"
 	"time"
+        "strings"
 
 	"github.com/Velocidex/ordereddict"
 	"github.com/elastic/go-libaudit"
 	"github.com/elastic/go-libaudit/aucoalesce"
 	"github.com/elastic/go-libaudit/auparse"
+        "github.com/elastic/go-libaudit/rule"
+	"github.com/elastic/go-libaudit/rule/flags"
 	"www.velocidex.com/golang/velociraptor/acls"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
+        "www.velocidex.com/golang/vfilter/arg_parser"
 )
+
+var auditrules [][]byte
 
 type streamHandler struct {
 	scope       vfilter.Scope
@@ -37,12 +43,51 @@ func (self *streamHandler) outputMultipleMessages(msgs []*auparse.AuditMessage) 
 	self.output_chan <- event
 }
 
+type _AuditPluginArgs struct {
+        Rules      []string            `vfilter:"optional,field=rules,doc=List of rules"`
+}
+
 type AuditPlugin struct{}
+
 
 func (self AuditPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMap) *vfilter.PluginInfo {
 	return &vfilter.PluginInfo{
 		Name: "audit",
 		Doc:  "Register as an audit daemon in the kernel.",
+	}
+}
+
+func addRules(c *libaudit.AuditClient, rulelst []string, s vfilter.Scope) (error) {
+       for _, line := range rulelst {
+              r, err := flags.Parse(line)
+              if err != nil {
+                     s.Log("Error parsing Rule %v: %s", err)
+                     return fmt.Errorf("Error while adding rules: %w", err)
+               }
+               data, err := rule.Build(r)
+               if err != nil {
+                      s.Log("Error Building Rule: %s", err)
+                      return fmt.Errorf("Error while adding rules: %w", err)
+               }
+               defer c.GetRules()
+               //defer deleteRules(c)
+               if err := c.AddRule([]byte(data)); err != nil {
+                       if strings.Contains(err.Error(), "rule exists"){
+                              continue
+                       } else {
+                              s.Log("Error while adding Rule %s: %s", line,err)
+                              return fmt.Errorf("error adding audit rule: %w", err)
+                       }
+
+               }
+               auditrules = append(auditrules, []byte(data))
+               s.Log("Added Rule %s", line)
+       }
+       return nil
+}
+
+func deleteRules(client *libaudit.AuditClient) {
+	if _, err := client.DeleteRules(); err != nil {
 	}
 }
 
@@ -60,6 +105,9 @@ func (self AuditPlugin) Call(
 			return
 		}
 
+                arg := _AuditPluginArgs{}
+                err = arg_parser.ExtractArgsWithContext(ctx, scope, args, &arg)
+
 		client, err := libaudit.NewMulticastAuditClient(nil)
 		if err != nil {
 			scope.Log("audit: %v", err)
@@ -74,6 +122,12 @@ func (self AuditPlugin) Call(
 			return
 		}
 		defer reassembler.Close()
+
+                //defer deleteRules(client)
+                err = addRules(client, arg.Rules, scope)
+                if err != nil {
+                        scope.Log("Error: %s", err)
+                }
 
 		// Start goroutine to periodically purge timed-out events.
 		go func() {
@@ -93,6 +147,21 @@ func (self AuditPlugin) Call(
 		}()
 
 		for {
+                        //defer deleteRules(client)
+                        //currules, err := client.GetRules()
+                        //if err != nil {
+                        //        scope.Log("Error Getting existing rules: %s", err)
+                        //}
+                        //if len(currules) == 0 {
+                        //       defer deleteRules(client)
+                        //       defer client.GetRules()
+
+                        //       for _, line := range auditrules {
+                        //              if err := client.AddRule([]byte(line)); err != nil {
+                        //                     scope.Log("Error while adding Rule %s: %s", line,err)
+                        //              }
+                        //       }
+                        //}
 			rawEvent, err := client.Receive(false)
 			if err != nil {
 				scope.Log("receive failed: %s", err)
