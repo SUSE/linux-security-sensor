@@ -2,13 +2,6 @@ name: Linux.Events.ProcessExecutions
 description: |
   This artifact collects process execution logs from the Linux kernel.
 
-  This artifact relies on the presence of `auditctl` usually included
-  in the auditd package. On Ubuntu you can install it using:
-
-  ```
-  apt-get install auditd
-  ```
-
 precondition: SELECT OS From info() where OS = 'linux'
 
 type: CLIENT_EVENT
@@ -16,21 +9,11 @@ type: CLIENT_EVENT
 required_permissions:
   - EXECVE
 
-parameters:
-  - name: pathToAuditctl
-    default: /sbin/auditctl
-    description: We depend on auditctl to install the correct process execution rules.
-
 sources:
   - query: |
-     // Remove default filter if any
-     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-d", "task,never"])
-     // Install the auditd rule if possible.
-     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-a",
-          "exit,always", "-F", "arch=b64", "-S", "execve", "-k", "procmon"])
 
-     LET _ <= SELECT * FROM execve(argv=[pathToAuditctl, "-a",
-          "exit,always", "-F", "arch=b32", "-S", "execve", "-k", "procmon"])
+     LET proc_exec_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
+
      LET exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
            atoi(string=Process.PID) AS Pid,
            atoi(string=Process.PPID) AS Ppid,
@@ -39,8 +22,8 @@ sources:
            Process.Title AS CmdLine,
            Process.Exe AS Exe,
            Process.CWD AS CWD
-       FROM audit()
-       WHERE "procmon" in Tags AND Result = 'success'
+       FROM audit(rules=proc_exec_rules)
+       WHERE "vrr_procmon" in Tags AND Result = 'success'
 
      // Cache Uid -> Username mapping.
      LET users <= SELECT User, atoi(string=Uid) AS Uid
