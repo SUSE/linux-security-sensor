@@ -59,6 +59,7 @@ type AuditMessage struct {
 	data   map[string]string // The key value pairs parsed from the message.
 	tags   []string          // The keys associated with the event (e.g. the values set in rules with -F key=exec).
 	error  error             // Error that occurred while parsing.
+	Owner	interface{}
 }
 
 type field struct {
@@ -193,6 +194,24 @@ func Parse(typ AuditMessageType, message string) (*AuditMessage, error) {
 	return msg, nil
 }
 
+func ParseBytes(typ AuditMessageType, messageBytes []byte, msg *AuditMessage) error {
+	message := strings.TrimSpace(string(messageBytes))
+
+	timestamp, seq, end, err := parseAuditHeader(messageBytes)
+	if err != nil {
+		return err
+	}
+
+	*msg = AuditMessage{
+		RecordType: typ,
+		Timestamp:  timestamp,
+		Sequence:   seq,
+		offset:     indexOfMessage(message[end:]),
+		RawData:    message,
+	}
+
+	return nil
+}
 // parseAuditHeader parses the timestamp and sequence number from the audit
 // message header that has the form of "audit(1490137971.011:50406):".
 func parseAuditHeader(line []byte) (time.Time, uint32, int, error) {
