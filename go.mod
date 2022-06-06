@@ -130,7 +130,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/clayscode/Go-Splunk-HTTP/splunk/v2 v2.0.1-0.20221027171526-76a36be4fa02
 	github.com/coreos/go-oidc/v3 v3.11.0
-	github.com/elastic/go-libaudit/v2 v2.4.0
+	github.com/elastic/go-libaudit/v2 v2.3.1-0.20221118223002-d56d27cfa498
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/glaslos/tlsh v0.2.0
 	github.com/go-errors/errors v1.4.2
@@ -416,3 +416,5 @@ replace github.com/go-errors/errors => github.com/Velocidex/errors v0.0.0-202210
 replace github.com/aquasecurity/libbpfgo => ./third_party/libbpfgo
 
 replace github.com/aquasecurity/libbpfgo/helpers => ./third_party/libbpfgo/helpers
+
+replace github.com/elastic/go-libaudit/v2 => github.com/jeffmahoney/go-libaudit/v2 v2.3.3-0.20230911192631-db54ebd6c467
