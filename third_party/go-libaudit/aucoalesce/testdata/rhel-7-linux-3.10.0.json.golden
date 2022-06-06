@@ -1,0 +1,772 @@
+[
+  {
+    "test_name": "CONFIG_CHANGE add rule",
+    "event": {
+      "@timestamp": "2017-04-21T04:37:47.018Z",
+      "sequence": 1209,
+      "category": "configuration",
+      "record_type": "config_change",
+      "result": "success",
+      "session": "unset",
+      "tags": [
+        "pam"
+      ],
+      "summary": {
+        "actor": {
+          "primary": "unset"
+        },
+        "action": "changed-audit-configuration",
+        "object": {
+          "type": "audit-config",
+          "primary": "add_rule"
+        }
+      },
+      "user": {
+        "ids": {
+          "auid": "unset"
+        },
+        "selinux": {
+          "domain": "unconfined_service_t",
+          "level": "s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {},
+      "data": {
+        "list": "4",
+        "op": "add_rule"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "process",
+            "configuration"
+          ],
+          "type": [
+            "change"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "CONFIG_CHANGE backlog limit",
+    "event": {
+      "@timestamp": "2017-04-21T05:49:55.844Z",
+      "sequence": 15406,
+      "category": "configuration",
+      "record_type": "config_change",
+      "result": "success",
+      "session": "unset",
+      "summary": {
+        "actor": {
+          "primary": "unset"
+        },
+        "action": "changed-audit-configuration",
+        "object": {
+          "type": "audit-config",
+          "primary": "64"
+        }
+      },
+      "user": {
+        "ids": {
+          "auid": "unset"
+        },
+        "selinux": {
+          "domain": "unconfined_service_t",
+          "level": "s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {},
+      "data": {
+        "audit_backlog_limit": "64",
+        "old": "8192"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "process",
+            "configuration"
+          ],
+          "type": [
+            "change"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "CRYPTO_KEY_USER",
+    "event": {
+      "@timestamp": "2016-12-07T02:17:21.497Z",
+      "sequence": 404,
+      "category": "crypto",
+      "record_type": "crypto_key_user",
+      "result": "success",
+      "session": "unset",
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "0"
+        },
+        "action": "negotiated-crypto-key",
+        "object": {
+          "type": "user-session",
+          "primary": "6d:a3:7f:ed:de:4a:79:f2:aa:49:ec:d1:75:36:97:a3",
+          "secondary": "96.241.146.97"
+        },
+        "how": "/usr/sbin/sshd"
+      },
+      "user": {
+        "ids": {
+          "auid": "unset",
+          "suid": "0",
+          "uid": "0"
+        },
+        "selinux": {
+          "category": "c0.c1023",
+          "domain": "sshd_t",
+          "level": "s0-s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "1299",
+        "exe": "/usr/sbin/sshd"
+      },
+      "source": {
+        "ip": "96.241.146.97"
+      },
+      "network": {
+        "direction": "ingress"
+      },
+      "data": {
+        "fp": "6d:a3:7f:ed:de:4a:79:f2:aa:49:ec:d1:75:36:97:a3",
+        "kind": "server",
+        "op": "destroy",
+        "spid": "1299"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "process"
+          ],
+          "type": [
+            "info"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "CRYPTO_SESSION",
+    "event": {
+      "@timestamp": "2016-12-07T02:17:21.515Z",
+      "sequence": 406,
+      "category": "crypto",
+      "record_type": "crypto_session",
+      "result": "success",
+      "session": "unset",
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "0"
+        },
+        "action": "started-crypto-session",
+        "object": {
+          "type": "user-session",
+          "primary": "96.241.146.97",
+          "secondary": "63927"
+        },
+        "how": "/usr/sbin/sshd"
+      },
+      "user": {
+        "ids": {
+          "auid": "unset",
+          "suid": "74",
+          "uid": "0"
+        },
+        "selinux": {
+          "category": "c0.c1023",
+          "domain": "sshd_t",
+          "level": "s0-s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "1298",
+        "exe": "/usr/sbin/sshd"
+      },
+      "source": {
+        "ip": "96.241.146.97"
+      },
+      "network": {
+        "direction": "ingress"
+      },
+      "data": {
+        "cipher": "chacha20-poly1305@openssh.com",
+        "direction": "from-server",
+        "ksize": "512",
+        "laddr": "10.142.0.2",
+        "lport": "22",
+        "op": "start",
+        "pfs": "curve25519-sha256@libssh.org",
+        "rport": "63927",
+        "spid": "1299"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "process"
+          ],
+          "type": [
+            "info"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "LOGIN success",
+    "event": {
+      "@timestamp": "2016-12-07T02:17:23.057Z",
+      "sequence": 414,
+      "category": "unknown",
+      "record_type": "login",
+      "result": "success",
+      "session": "1",
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "0"
+        },
+        "action": "changed-login-id-to",
+        "object": {
+          "type": "user-session",
+          "primary": "1000"
+        }
+      },
+      "user": {
+        "ids": {
+          "auid": "1000",
+          "old-auid": "unset",
+          "uid": "0"
+        },
+        "selinux": {
+          "category": "c0.c1023",
+          "domain": "sshd_t",
+          "level": "s0-s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "1298"
+      },
+      "data": {
+        "old-ses": "4294967295"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "authentication"
+          ],
+          "type": [
+            "start"
+          ]
+        },
+        "user": {
+          "id": "unset",
+          "effective": {
+            "id": "1000"
+          },
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "USER_LOGIN",
+    "event": {
+      "@timestamp": "2017-04-24T15:00:15.752Z",
+      "sequence": 42120,
+      "category": "user-login",
+      "record_type": "user_login",
+      "result": "fail",
+      "session": "unset",
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "root"
+        },
+        "action": "logged-in",
+        "object": {
+          "type": "user-session",
+          "primary": "ssh",
+          "secondary": "46.160.144.250"
+        },
+        "how": "/usr/sbin/sshd"
+      },
+      "user": {
+        "ids": {
+          "auid": "unset",
+          "uid": "0"
+        },
+        "selinux": {
+          "category": "c0.c1023",
+          "domain": "sshd_t",
+          "level": "s0-s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "18981",
+        "exe": "/usr/sbin/sshd"
+      },
+      "source": {
+        "ip": "46.160.144.250"
+      },
+      "network": {
+        "direction": "ingress"
+      },
+      "data": {
+        "acct": "root",
+        "op": "login",
+        "terminal": "ssh"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "authentication"
+          ],
+          "type": [
+            "start"
+          ]
+        },
+        "user": {
+          "id": "unset",
+          "effective": {
+            "name": "root"
+          },
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "USER_LOGOUT",
+    "event": {
+      "@timestamp": "2017-04-26T03:56:45.243Z",
+      "sequence": 73336,
+      "category": "user-login",
+      "record_type": "user_logout",
+      "result": "success",
+      "session": "132",
+      "summary": {
+        "actor": {
+          "primary": "1000",
+          "secondary": "1000"
+        },
+        "action": "logged-out",
+        "object": {
+          "type": "user-session",
+          "primary": "/dev/pts/1"
+        },
+        "how": "/usr/sbin/sshd"
+      },
+      "user": {
+        "ids": {
+          "auid": "1000",
+          "uid": "0"
+        },
+        "selinux": {
+          "category": "c0.c1023",
+          "domain": "sshd_t",
+          "level": "s0-s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "2370",
+        "exe": "/usr/sbin/sshd"
+      },
+      "data": {
+        "id": "1000",
+        "op": "login",
+        "terminal": "/dev/pts/1"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "authentication"
+          ],
+          "type": [
+            "end"
+          ]
+        },
+        "user": {
+          "id": "1000",
+          "effective": {
+            "id": "1000"
+          },
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    },
+    "warnings": [
+      "failed to set object secondary using keys=[addr hostname] because they were not found"
+    ]
+  },
+  {
+    "test_name": "changed-system-time",
+    "event": {
+      "@timestamp": "2017-04-21T18:15:41.391Z",
+      "sequence": 20246,
+      "category": "audit-rule",
+      "record_type": "syscall",
+      "result": "success",
+      "session": "unset",
+      "tags": [
+        "time-change"
+      ],
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "38"
+        },
+        "action": "changed-system-time",
+        "object": {
+          "type": "system"
+        },
+        "how": "/usr/sbin/ntpd"
+      },
+      "user": {
+        "ids": {
+          "auid": "unset",
+          "egid": "38",
+          "euid": "38",
+          "fsgid": "38",
+          "fsuid": "38",
+          "gid": "38",
+          "sgid": "38",
+          "suid": "38",
+          "uid": "38"
+        },
+        "selinux": {
+          "domain": "ntpd_t",
+          "level": "s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "1075",
+        "ppid": "1",
+        "name": "ntpd",
+        "exe": "/usr/sbin/ntpd"
+      },
+      "data": {
+        "a0": "7f71508da920",
+        "a1": "1",
+        "a2": "0",
+        "a3": "7f715258624c",
+        "arch": "x86_64",
+        "exit": "0",
+        "items": "0",
+        "syscall": "adjtimex",
+        "tty": "(none)"
+      },
+      "ecs": {
+        "event": {
+          "category": [
+            "host"
+          ],
+          "type": [
+            "change"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "make-device",
+    "event": {
+      "@timestamp": "2017-04-21T18:53:19.05Z",
+      "sequence": 20294,
+      "category": "audit-rule",
+      "record_type": "syscall",
+      "result": "success",
+      "session": "unset",
+      "tags": [
+        "specialfiles"
+      ],
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "0"
+        },
+        "action": "make-device",
+        "object": {
+          "type": "file",
+          "primary": "/run/systemd/sessions/"
+        },
+        "how": "/usr/lib/systemd/systemd-logind;58f98c85 (deleted)"
+      },
+      "user": {
+        "ids": {
+          "auid": "unset",
+          "egid": "0",
+          "euid": "0",
+          "fsgid": "0",
+          "fsuid": "0",
+          "gid": "0",
+          "sgid": "0",
+          "suid": "0",
+          "uid": "0"
+        },
+        "selinux": {
+          "domain": "systemd_logind_t",
+          "level": "s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "326",
+        "ppid": "1",
+        "name": "systemd-logind",
+        "exe": "/usr/lib/systemd/systemd-logind;58f98c85 (deleted)",
+        "cwd": "/"
+      },
+      "file": {
+        "path": "/run/systemd/sessions/",
+        "device": "00:00",
+        "inode": "11378",
+        "mode": "0755",
+        "uid": "0",
+        "gid": "0",
+        "selinux": {
+          "domain": "systemd_logind_sessions_t",
+          "level": "s0",
+          "role": "object_r",
+          "user": "system_u"
+        }
+      },
+      "data": {
+        "a0": "7ff61dde1960",
+        "a1": "1180",
+        "a2": "0",
+        "a3": "2",
+        "arch": "x86_64",
+        "exit": "0",
+        "syscall": "mknod",
+        "tty": "(none)"
+      },
+      "paths": [
+        {
+          "dev": "00:13",
+          "inode": "11378",
+          "item": "0",
+          "mode": "040755",
+          "name": "/run/systemd/sessions/",
+          "obj_domain": "systemd_logind_sessions_t",
+          "obj_level": "s0",
+          "obj_role": "object_r",
+          "obj_user": "system_u",
+          "objtype": "PARENT",
+          "ogid": "0",
+          "ouid": "0",
+          "rdev": "00:00"
+        },
+        {
+          "dev": "00:13",
+          "inode": "98040",
+          "item": "1",
+          "mode": "010600",
+          "name": "/run/systemd/sessions/23.ref",
+          "obj_domain": "systemd_logind_sessions_t",
+          "obj_level": "s0",
+          "obj_role": "object_r",
+          "obj_user": "system_u",
+          "objtype": "CREATE",
+          "ogid": "0",
+          "ouid": "0",
+          "rdev": "00:00"
+        }
+      ],
+      "ecs": {
+        "event": {
+          "category": [
+            "file"
+          ],
+          "type": [
+            "creation"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  },
+  {
+    "test_name": "mount syscall",
+    "event": {
+      "@timestamp": "2017-04-25T14:01:01.69Z",
+      "sequence": 48922,
+      "category": "audit-rule",
+      "record_type": "syscall",
+      "result": "success",
+      "session": "unset",
+      "tags": [
+        "mount"
+      ],
+      "summary": {
+        "actor": {
+          "primary": "unset",
+          "secondary": "0"
+        },
+        "action": "mounted",
+        "object": {
+          "type": "file",
+          "primary": "/run/user/0"
+        },
+        "how": "/usr/lib/systemd/systemd-logind;58f98c85 (deleted)"
+      },
+      "user": {
+        "ids": {
+          "auid": "unset",
+          "egid": "0",
+          "euid": "0",
+          "fsgid": "0",
+          "fsuid": "0",
+          "gid": "0",
+          "sgid": "0",
+          "suid": "0",
+          "uid": "0"
+        },
+        "selinux": {
+          "domain": "systemd_logind_t",
+          "level": "s0",
+          "role": "system_r",
+          "user": "system_u"
+        }
+      },
+      "process": {
+        "pid": "326",
+        "ppid": "1",
+        "name": "systemd-logind",
+        "exe": "/usr/lib/systemd/systemd-logind;58f98c85 (deleted)",
+        "cwd": "/"
+      },
+      "file": {
+        "path": "/run/user/0",
+        "device": "00:00",
+        "inode": "454267",
+        "mode": "0700",
+        "uid": "0",
+        "gid": "0",
+        "selinux": {
+          "domain": "user_tmp_t",
+          "level": "s0",
+          "role": "object_r",
+          "user": "system_u"
+        }
+      },
+      "data": {
+        "a0": "7ff61c0a7270",
+        "a1": "7ff61dddf470",
+        "a2": "7ff61c0a7270",
+        "a3": "6",
+        "arch": "x86_64",
+        "exit": "0",
+        "syscall": "mount",
+        "tty": "(none)"
+      },
+      "paths": [
+        {
+          "item": "0",
+          "name": "/run/user/0",
+          "objtype": "UNKNOWN"
+        },
+        {
+          "dev": "00:13",
+          "inode": "454267",
+          "item": "1",
+          "mode": "040700",
+          "name": "/run/user/0",
+          "obj_domain": "user_tmp_t",
+          "obj_level": "s0",
+          "obj_role": "object_r",
+          "obj_user": "system_u",
+          "objtype": "NORMAL",
+          "ogid": "0",
+          "ouid": "0",
+          "rdev": "00:00"
+        }
+      ],
+      "ecs": {
+        "event": {
+          "category": [
+            "file"
+          ],
+          "type": [
+            "creation"
+          ]
+        },
+        "user": {
+          "effective": {},
+          "target": {},
+          "changes": {}
+        },
+        "group": {}
+      }
+    }
+  }
+]

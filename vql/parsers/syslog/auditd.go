@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/Velocidex/ordereddict"
-	"github.com/elastic/go-libaudit"
-	"github.com/elastic/go-libaudit/aucoalesce"
-	"github.com/elastic/go-libaudit/auparse"
+	"github.com/elastic/go-libaudit/v2"
+	"github.com/elastic/go-libaudit/v2/aucoalesce"
+	"github.com/elastic/go-libaudit/v2/auparse"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
 )
