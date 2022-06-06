@@ -110,7 +110,7 @@ func Build(rule Rule) (WireFormat, error) {
 // auditctl always prints "b64" or "b32" even for architectures other than
 // the current machine. This is misleading, so this code will print the actual
 // architecture.
-func ToCommandLine(wf WireFormat, resolveIds bool) (rule string, err error) {
+func ToCommandLineAddRemove(wf WireFormat, resolveIds bool, addRule bool) (rule string, err error) {
 	ar, err := fromWireFormat(wf)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse wire format: %w", err)
@@ -162,7 +162,13 @@ func ToCommandLine(wf WireFormat, resolveIds bool) (rule string, err error) {
 			}
 		}
 		if !extraFields {
-			arguments := []string{"-w", path, "-p", permission(r.values[permIdx]).String()}
+			addRemove := "-w"
+			if !addRule {
+				addRemove = "-W"
+			}
+
+			arguments := []string{addRemove, path, "-p",
+					      permission(r.values[permIdx]).String()}
 			if len(key) > 0 {
 				arguments = append(arguments, "-k", key)
 			}
@@ -171,11 +177,12 @@ func ToCommandLine(wf WireFormat, resolveIds bool) (rule string, err error) {
 	}
 
 	// Parse rule as syscall type
-
-	arguments := []string{
-		"-a",
-		fmt.Sprintf("%s,%s", act, list),
+	addRemove := "-a"
+	if !addRule {
+		addRemove = "-d"
 	}
+
+	arguments := []string{ addRemove, fmt.Sprintf("%s,%s", act, list), }
 
 	// Parse arch field first, if present
 	// Here there is a significant difference to what auditctl does.
@@ -321,6 +328,10 @@ func ToCommandLine(wf WireFormat, resolveIds bool) (rule string, err error) {
 	}
 
 	return strings.Join(arguments, " "), nil
+}
+
+func ToCommandLine(wf WireFormat, resolveIds bool) (rule string, err error) {
+	return ToCommandLineAddRemove(wf, resolveIds, true)
 }
 
 func addFileWatch(data *ruleData, rule *FileWatchRule) error {

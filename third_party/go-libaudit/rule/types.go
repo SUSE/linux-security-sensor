@@ -26,8 +26,10 @@ type Type int
 const (
 	DeleteAllRuleType      Type = iota + 1 // DeleteAllRule
 	FileWatchRuleType                      // FileWatchRule
+	DeleteFileWatchRuleType                // FileWatchRule
 	AppendSyscallRuleType                  // SyscallRule
 	PrependSyscallRuleType                 // SyscallRule
+	DeleteSyscallRuleType                  // SyscallRule
 )
 
 // Rule is the generic interface that all rule types implement.
