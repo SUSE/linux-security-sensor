@@ -77,6 +77,10 @@ const (
 	PanicOnFailure
 )
 
+var (
+	ErrNoSuchRule = errors.New("no such rule")
+)
+
 // AuditClient is a client for communicating with the Linux kernels audit
 // interface over netlink.
 type AuditClient struct {
@@ -243,12 +247,15 @@ func (c *AuditClient) DeleteRules() (int, error) {
 
 	for i, rule := range rules {
 		if err := c.DeleteRule(rule); err != nil {
-			return 0, fmt.Errorf("failed to delete rule %v of %v: %w", i, len(rules), err)
+			if !errors.Is(err, ErrNoSuchRule) {
+				return 0, fmt.Errorf("failed to delete rule %v of %v: %w", i, len(rules), err)
+			}
 		}
 	}
 
 	return len(rules), nil
 }
+
 
 // DeleteRule deletes the given rule (specified in binary format).
 func (c *AuditClient) DeleteRule(rule []byte) error {
@@ -266,9 +273,20 @@ func (c *AuditClient) DeleteRule(rule []byte) error {
 		return fmt.Errorf("failed sending delete rule request: %w", err)
 	}
 
-	_, err = c.getReply(seq)
+	ack, err := c.getReply(seq)
 	if err != nil {
 		return fmt.Errorf("failed to get ACK to rule delete request: %w", err)
+	}
+
+	if ack.Header.Type != syscall.NLMSG_ERROR {
+		return fmt.Errorf("unexpected ACK to AUDIT_DEL_RULE, got type=%d", ack.Header.Type)
+	}
+
+	if err = ParseNetlinkError(ack.Data); err != nil {
+		if errors.Is(err, syscall.ENOENT) {
+			return ErrNoSuchRule
+		}
+		return fmt.Errorf("error deleting audit rule: %w", err)
 	}
 
 	return nil
