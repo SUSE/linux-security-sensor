@@ -46,11 +46,16 @@ type NetlinkReceiver interface {
 	Receive(nonBlocking bool, p NetlinkParser) ([]syscall.NetlinkMessage, error)
 }
 
+type Pollable interface {
+	GetFD() int
+}
+
 // NetlinkSendReceiver combines the Send and Receive into one interface.
 type NetlinkSendReceiver interface {
 	io.Closer
 	NetlinkSender
 	NetlinkReceiver
+	Pollable
 }
 
 // NetlinkParser parses the raw bytes read from the netlink socket into
@@ -124,6 +129,10 @@ func getPortID(fd int) (uint32, error) {
 	}
 
 	return addr.Pid, nil
+}
+
+func (c *NetlinkClient) GetFD() int {
+	return c.fd
 }
 
 // Send sends a netlink message and returns the sequence number used
