@@ -10,7 +10,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/Velocidex/ordereddict"
 	"github.com/elastic/go-libaudit/v2"
@@ -149,6 +150,8 @@ type AuditWatcherService struct {
 	checkerChannel	chan aucoalesce.Event
 	startupOnce	sync.Once
 	refcount	int64
+
+	epollFd		int
 }
 
 // These can probably be removed but they're useful for
@@ -315,36 +318,17 @@ func (self *AuditWatcherService) shutdown() {
 	self.logger.Info("audit: Shut down audit service")
 }
 
-func (self *AuditWatcherService) startListener() {
-	defer self.wgDec("startListener")
-	defer self.logger.Debug("audit: listener event loop exited")
+func (self *AuditWatcherService) acceptEvents() error {
 
+	// We're in non-blocking mode.  Try to get all of the events we can in one go.
 	for {
-		if self.ctx.Err() != nil {
-			return
-		}
-
 		// We don't have access to the underlying socket to
 		// use syscall.Select() to wait for events.  Practically
 		// speaking, we'd use a relatively short timeout in Select()
 		// to to be able to shut down cleanly.
 		rawEvent, err := self.listenClient.Receive(true)
 		if err != nil {
-			if errors.Is(err, syscall.EAGAIN) ||
-			   errors.Is(err, syscall.EWOULDBLOCK) {
-				   time.Sleep(1 * time.Second)
-				   continue
-			}
-
-			// The socket has been closed.
-			if errors.Is(err, syscall.EBADF) {
-				// There likely won't be any listeners left and the socket
-				// was closed in shutdown
-				self.notifyWatchers(fmt.Sprintf("audit: listener socket closed"))
-				return
-			}
-			self.notifyWatchers(fmt.Sprintf("audit: receive failed: %s", err))
-			continue
+			return err
 		}
 
 		// Messages from 1300-2999 are valid audit messages.
@@ -355,10 +339,80 @@ func (self *AuditWatcherService) startListener() {
 
 		line := fmt.Sprintf("type=%v msg=%v\n", rawEvent.Type, string(rawEvent.Data))
 		auditMsg, err := auparse.ParseLogLine(line)
-		if err == nil {
-			self.reassembler.PushMessage(auditMsg)
+		if err != nil {
+			continue
+		}
+		self.reassembler.PushMessage(auditMsg)
+	}
+}
+
+func (self *AuditWatcherService) listenerEventLoop() {
+	defer self.wgDec("listenerEventLoop")
+	defer unix.Close(self.epollFd)
+	defer self.logger.Debug("audit: listener event loop exited")
+
+	ready := make([]unix.EpollEvent, 2)
+	for {
+		count, err := unix.EpollWait(self.epollFd, ready, 5000)
+		if err != nil {
+			if errors.Is(err, unix.EINTR) {
+				continue
+			}
+			self.logger.Warn("audit: listenerEventLoop exiting after EpollWait returned %v",
+					 err)
+			self.cancel()
+			return
+		}
+
+		if self.ctx.Err() != nil {
+			return
+		}
+
+		if count > 0 {
+			err = self.acceptEvents()
+
+			if err != nil {
+				if errors.Is(err, unix.EAGAIN) ||
+				   errors.Is(err, unix.EWOULDBLOCK) {
+					   continue
+				}
+
+				// The socket has been closed.
+				if errors.Is(err, unix.EBADF) {
+					// There likely won't be any listeners left and the socket
+					// was closed in shutdown
+					self.notifyWatchers("audit: listener socket closed")
+					break
+				}
+				self.notifyWatchers(fmt.Sprintf("audit: receive failed: %s", err))
+				continue
+			}
+
 		}
 	}
+}
+
+func (self *AuditWatcherService) startListener() error {
+	fd, err := unix.EpollCreate1(0)
+	if err != nil {
+		return err
+	}
+
+	self.epollFd = fd
+
+	fd = self.listenClient.Netlink.GetFD()
+	err = unix.EpollCtl(self.epollFd, unix.EPOLL_CTL_ADD, fd,
+			    &unix.EpollEvent{Events: unix.POLLIN | unix.POLLHUP,
+			    Fd: int32(fd)})
+	if err != nil {
+		unix.Close(int(self.epollFd))
+		return err
+	}
+
+	self.wgInc("listenerEventLoop")
+	go self.listenerEventLoop()
+
+	return nil
 }
 
 func (self *AuditWatcherService) startMaintainer() {
@@ -389,8 +443,11 @@ func (self *AuditWatcherService) startEventLoops() {
 	self.wgInc("startRulesChecker")
 	go self.startRulesChecker(gBatchTimeout)
 
-	self.wgInc("startListener")
-	go self.startListener()
+	err := self.startListener()
+	if err != nil {
+		self.logger.Warn("Couldn't start listener: %v", err)
+		self.cancel()
+	}
 }
 
 func (self *AuditWatcherService) connectWatcher(ctx context.Context,
