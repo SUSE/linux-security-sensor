@@ -153,6 +153,7 @@ type AuditWatcherService struct {
 
 	epollFd		int
 	listenSocketBufSize int
+	recvBuf		[]byte
 
 	// Used only for stats reporting
 	totalMessagesAcceptedCounter	int64
@@ -323,6 +324,9 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 
 		logger.Info("audit: creating new service instance")
 
+		bufSize := unix.NLMSG_HDRLEN + libaudit.AuditMessageMaxLength
+		buf := make([]byte, bufSize)
+
 		auditService := &AuditWatcherService{
 			rules:		map[string]*RefcountedAuditWatcherRule{},
 			bannedRules:	map[string]*AuditWatcherRule{},
@@ -330,6 +334,7 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 			logger:		logger,
 			checkerChannel:	make(chan aucoalesce.Event),
 			refcount:	1,
+			recvBuf:	buf,
 		}
 
 		err := auditService.setupWatcherService()
@@ -372,7 +377,7 @@ func (self *AuditWatcherService) acceptEvents() error {
 		// use syscall.Select() to wait for events.  Practically
 		// speaking, we'd use a relatively short timeout in Select()
 		// to to be able to shut down cleanly.
-		rawEvent, err := self.listenClient.Receive(true)
+		rawEvent, err := self.listenClient.Receive(true, self.recvBuf)
 		if err != nil {
 			atomic.AddInt64(&self.totalMessagesAcceptedCounter, count)
 			return err
