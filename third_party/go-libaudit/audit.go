@@ -88,6 +88,7 @@ type AuditClient struct {
 	pendingAcks     []uint32
 	clearPIDOnClose bool
 	closeOnce       sync.Once
+	readBuf	[]byte
 }
 
 // NewMulticastAuditClient creates a new AuditClient that binds to the multicast
@@ -108,9 +109,10 @@ func NewAuditClient(resp io.Writer) (*AuditClient, error) {
 }
 
 func newAuditClient(netlinkGroups uint32, resp io.Writer) (*AuditClient, error) {
-	buf := make([]byte, syscall.NLMSG_HDRLEN+AuditMessageMaxLength)
+	bufSize := syscall.NLMSG_HDRLEN+AuditMessageMaxLength
+	buf := make([]byte, bufSize)
 
-	netlink, err := NewNetlinkClient(syscall.NETLINK_AUDIT, netlinkGroups, buf, resp)
+	netlink, err := NewNetlinkClient(syscall.NETLINK_AUDIT, netlinkGroups, resp)
 	if err != nil {
 		switch {
 		case errors.Is(err, syscall.EINVAL),
@@ -122,7 +124,7 @@ func newAuditClient(netlinkGroups uint32, resp io.Writer) (*AuditClient, error) 
 		}
 	}
 
-	return &AuditClient{Netlink: netlink}, nil
+	return &AuditClient{Netlink: netlink, readBuf: buf}, nil
 }
 
 // GetStatus returns the current status of the kernel's audit subsystem.
@@ -182,7 +184,7 @@ func (c *AuditClient) GetStatusAsync(requireACK bool) (seq uint32, err error) {
 	}
 
 	// Send AUDIT_GET message to the kernel.
-	return c.Netlink.Send(msg)
+	return c.Netlink.Send(msg, c.readBuf)
 }
 
 // GetRules returns a list of audit rules (in binary format).
@@ -196,7 +198,7 @@ func (c *AuditClient) GetRules() ([][]byte, error) {
 	}
 
 	// Send AUDIT_LIST_RULES message to the kernel.
-	seq, err := c.Netlink.Send(msg)
+	seq, err := c.Netlink.Send(msg, c.readBuf)
 	if err != nil {
 		return nil, fmt.Errorf("failed sending request: %w", err)
 	}
@@ -268,7 +270,7 @@ func (c *AuditClient) DeleteRule(rule []byte) error {
 	}
 
 	// Send AUDIT_DEL_RULE message to the kernel.
-	seq, err := c.Netlink.Send(msg)
+	seq, err := c.Netlink.Send(msg, c.readBuf)
 	if err != nil {
 		return fmt.Errorf("failed sending delete rule request: %w", err)
 	}
@@ -303,7 +305,7 @@ func (c *AuditClient) AddRule(rule []byte) error {
 	}
 
 	// Send AUDIT_ADD_RULE message to the kernel.
-	seq, err := c.Netlink.Send(msg)
+	seq, err := c.Netlink.Send(msg, c.readBuf)
 	if err != nil {
 		return fmt.Errorf("failed sending add rule request: %w", err)
 	}
@@ -430,7 +432,7 @@ type RawAuditMessage struct {
 // use the returned message then you should make a copy of the raw data before
 // calling receive again because the raw data is backed by the read buffer.
 func (c *AuditClient) Receive(nonBlocking bool) (*RawAuditMessage, error) {
-	msgs, err := c.Netlink.Receive(nonBlocking, parseNetlinkAuditMessage)
+	msgs, err := c.Netlink.Receive(nonBlocking, parseNetlinkAuditMessage, c.readBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +490,7 @@ func (c *AuditClient) WaitForPendingACKs() error {
 // getReply reads from the netlink socket and find the message with the given
 // sequence number. The caller should inspect the returned message's type,
 // flags, and error code.
-func (c *AuditClient) getReply(seq uint32) (*syscall.NetlinkMessage, error) {
+func (c *AuditClient) getReplyBuf(seq uint32, recvBuf []byte) (*syscall.NetlinkMessage, error) {
 	var msg syscall.NetlinkMessage
 	var msgs []syscall.NetlinkMessage
 	var err error
@@ -496,7 +498,7 @@ func (c *AuditClient) getReply(seq uint32) (*syscall.NetlinkMessage, error) {
 	for receiveMore := true; receiveMore; {
 		// Retry the non-blocking read multiple times until a response is received.
 		for i := 0; i < 10; i++ {
-			msgs, err = c.Netlink.Receive(true, parseNetlinkAuditMessage)
+			msgs, err = c.Netlink.Receive(true, parseNetlinkAuditMessage, recvBuf)
 			if err != nil {
 				switch {
 				case errors.Is(err, syscall.EINTR):
@@ -525,6 +527,10 @@ func (c *AuditClient) getReply(seq uint32) (*syscall.NetlinkMessage, error) {
 	return &msg, nil
 }
 
+func (c *AuditClient) getReply(seq uint32) (*syscall.NetlinkMessage, error) {
+	return c.getReplyBuf(seq, c.readBuf)
+}
+
 func (c *AuditClient) set(status AuditStatus, mode WaitMode) error {
 	msg := syscall.NetlinkMessage{
 		Header: syscall.NlMsghdr{
@@ -534,7 +540,7 @@ func (c *AuditClient) set(status AuditStatus, mode WaitMode) error {
 		Data: status.toWireFormat(),
 	}
 
-	seq, err := c.Netlink.Send(msg)
+	seq, err := c.Netlink.Send(msg, c.readBuf)
 	if err != nil {
 		return fmt.Errorf("failed sending request: %w", err)
 	}
