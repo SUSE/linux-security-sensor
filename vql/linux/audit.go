@@ -154,6 +154,10 @@ type AuditWatcherService struct {
 	epollFd		int
 	listenSocketBufSize int
 
+	// Used only for stats reporting
+	totalMessagesAcceptedCounter	int64
+	totalMessagesDroppedCounter	int64
+	totalRowsPostedCounter		int64
 }
 
 // These can probably be removed but they're useful for
@@ -361,6 +365,7 @@ func (self *AuditWatcherService) shutdown() {
 
 func (self *AuditWatcherService) acceptEvents() error {
 
+	var count int64 = 0
 	// We're in non-blocking mode.  Try to get all of the events we can in one go.
 	for {
 		// We don't have access to the underlying socket to
@@ -369,8 +374,10 @@ func (self *AuditWatcherService) acceptEvents() error {
 		// to to be able to shut down cleanly.
 		rawEvent, err := self.listenClient.Receive(true)
 		if err != nil {
+			atomic.AddInt64(&self.totalMessagesAcceptedCounter, count)
 			return err
 		}
+		count += 1
 
 		// Messages from 1300-2999 are valid audit messages.
 		if rawEvent.Type < auparse.AUDIT_USER_AUTH ||
@@ -442,6 +449,30 @@ func (self *AuditWatcherService) listenerEventLoop() {
 	}
 }
 
+func (self *AuditWatcherService) reportStats() {
+	self.wgDec("reportStats")
+	timeout := time.NewTicker(5 * time.Second)
+	defer timeout.Stop()
+	for {
+		select {
+		case <-self.ctx.Done():
+			return
+		case <- timeout.C:
+			break
+		}
+
+		self.logger.Debug("audit: ******************************** Accepted %d messages from kernel",
+				  atomic.LoadInt64(&self.totalMessagesAcceptedCounter))
+		self.logger.Debug("audit: ******************************** %d messages dropped",
+				  atomic.LoadInt64(&self.totalMessagesDroppedCounter))
+		self.logger.Debug("audit: ******************************** %d rows posted",
+				  atomic.LoadInt64(&self.totalRowsPostedCounter))
+		self.logger.Debug("audit: ******************************** current buf size: %d",
+				  self.listenSocketBufSize)
+
+	}
+}
+
 func (self *AuditWatcherService) startListener() error {
 	fd, err := unix.EpollCreate1(0)
 	if err != nil {
@@ -461,6 +492,9 @@ func (self *AuditWatcherService) startListener() error {
 
 	self.wgInc("listenerEventLoop")
 	go self.listenerEventLoop()
+
+	self.wgInc("reportStats()")
+	go self.reportStats()
 
 	return nil
 }
@@ -544,6 +578,7 @@ func (self *AuditWatcherService) ReassemblyComplete(msgs []*auparse.AuditMessage
 
 func (self *AuditWatcherService) EventsLost(count int) {
 	self.notifyWatchers(fmt.Sprintf("Detected the loss of %v sequences.", count))
+	atomic.AddInt64(&self.totalMessagesDroppedCounter, int64(count))
 }
 
 func (self *AuditWatcherService) addRuleToSubsystem(rule *auditrule.WireFormat) error {
@@ -642,6 +677,8 @@ func (self *AuditWatcherService) disconnectWatchers(watchers []*AuditWatcher) {
 
 func (self *AuditWatcherService) distributeEvent(event *aucoalesce.Event) {
 	watchersToDisconnect := []*AuditWatcher{}
+
+	atomic.AddInt64(&self.totalRowsPostedCounter, 1)
 
 	self.watcherLock.RLock()
 	for _, watcher := range self.watchers {
