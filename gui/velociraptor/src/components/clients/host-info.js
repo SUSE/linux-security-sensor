@@ -65,7 +65,7 @@ class QuarantineDialog extends Component {
             }, this.source.token).then((response) => {
                 runArtifact(
                     client_id,
-                    "Windows.Remediation.Quarantine",
+                    this.state.quarantine_artifact,
                     {MessageBox: this.state.message},
                     ()=>{
                         this.props.onClose();
@@ -259,7 +259,7 @@ class VeloHostInfo extends Component {
                 labels: ["Quarantine"],
             }, this.source.token).then((response) => {runArtifact(
                 client_id,
-                "Windows.Remediation.Quarantine",
+                this.state.quarantine_artifact,
                 {RemovePolicy: "Y"},
                 ()=>{
                     this.updateClientInfo();
