@@ -152,6 +152,8 @@ type AuditWatcherService struct {
 	refcount	int64
 
 	epollFd		int
+	listenSocketBufSize int
+
 }
 
 // These can probably be removed but they're useful for
@@ -242,6 +244,13 @@ func (self *AuditWatcherService) setupWatcherService() error {
 		return err
 	}
 
+	err = self.resetListenSocketBufSize(4 * 1024 * 1024)
+	if err != nil {
+		self.commandClient.Close()
+		self.listenClient.Close()
+		return err
+	}
+
 	self.reassembler, err = libaudit.NewReassembler(5, 2*time.Second, self)
 	if err != nil {
 		self.commandClient.Close()
@@ -253,6 +262,38 @@ func (self *AuditWatcherService) setupWatcherService() error {
 
 	return nil
 }
+
+func (self *AuditWatcherService) resetListenSocketBufSize(bufSize int) error {
+	var err error
+
+	fd := self.listenClient.Netlink.GetFD()
+
+	if bufSize == 0 {
+		bufSize = self.listenSocketBufSize
+		if bufSize == 0 {
+			bufSize, err = unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF)
+			if err != nil {
+				self.logger.Warn("audit: could not get socket receive buffer size: %v", err)
+				return err
+			}
+		}
+
+		bufSize *= 4
+	}
+
+	err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUFFORCE, bufSize)
+	if err != nil {
+		self.logger.Warn("audit: could not set socket receive buffer size: %v", err)
+		return err
+	}
+
+	self.listenSocketBufSize = bufSize
+
+	self.logger.Info("audit: receive buffer size set to %d bytes", bufSize)
+
+	return nil
+}
+
 
 func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherService, error) {
 
@@ -375,6 +416,15 @@ func (self *AuditWatcherService) listenerEventLoop() {
 				if errors.Is(err, unix.EAGAIN) ||
 				   errors.Is(err, unix.EWOULDBLOCK) {
 					   continue
+				}
+
+				if errors.Is(err, unix.ENOBUFS) {
+					err = self.resetListenSocketBufSize(0)
+					if err != nil {
+						msg := fmt.Sprintf("audit: failed to increase listener socket buffer size: %v.  Events may be lost.", err)
+						self.notifyWatchers(msg)
+					}
+					continue
 				}
 
 				// The socket has been closed.
