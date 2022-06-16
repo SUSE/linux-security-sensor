@@ -428,11 +428,12 @@ type RawAuditMessage struct {
 	Data []byte // RawData is backed by the read buffer so make a copy.
 }
 
-// Receive reads an audit message from the netlink socket. If you are going to
-// use the returned message then you should make a copy of the raw data before
-// calling receive again because the raw data is backed by the read buffer.
-func (c *AuditClient) Receive(nonBlocking bool) (*RawAuditMessage, error) {
-	msgs, err := c.Netlink.Receive(nonBlocking, parseNetlinkAuditMessage, c.readBuf)
+// Receive reads an audit message from the netlink socket.
+// The data returned in the message is backed by the receive buffer passed in.  If you are
+// going to use the returned message you'll need to copy the message or otherwise manage
+// the lifetime of the receive buffer before calling Receive again.
+func (c *AuditClient) Receive(nonBlocking bool, recvBuf []byte) (*RawAuditMessage, error) {
+	msgs, err := c.Netlink.Receive(nonBlocking, parseNetlinkAuditMessage, recvBuf)
 	if err != nil {
 		return nil, err
 	}

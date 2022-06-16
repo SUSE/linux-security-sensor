@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/Velocidex/ordereddict"
 	"github.com/elastic/go-libaudit/v2"
 	"github.com/elastic/go-libaudit/v2/aucoalesce"
@@ -92,8 +94,11 @@ func (self AuditPlugin) Call(
 			}
 		}()
 
+		bufSize := unix.NLMSG_HDRLEN + libaudit.AuditMessageMaxLength
+		buf := make([]byte, bufSize)
+
 		for {
-			rawEvent, err := client.Receive(false)
+			rawEvent, err := client.Receive(false, buf)
 			if err != nil {
 				scope.Log("receive failed: %s", err)
 				continue
