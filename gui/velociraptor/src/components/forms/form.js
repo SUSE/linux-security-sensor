@@ -76,18 +76,32 @@ export default class VeloForm extends React.Component {
         // A Date() object that is parsed from value in local time.
         timestamp: null,
         multichoices: undefined,
+        artifact_loading: false,
     }
 
     componentDidMount = () => {
         this.source = axios.CancelToken.source();
-        this.fetchArtifacts(this.props.param.artifact_type);
+        this.maybeFetchArtifacts(this.props.param.artifact_type);
+    }
+
+    componentDidUpdate = (prevProps, prevState, rootNode) => {
+        this.maybeFetchArtifacts(this.props.param.artifact_type);
     }
 
     componentWillUnmount() {
         this.source.cancel();
     }
 
-    fetchArtifacts(artifact_type) {
+    maybeFetchArtifacts(artifact_type) {
+        if (!artifact_type || !this.props.param ||
+            this.props.param.type !== "artifactset") {
+            return;
+        }
+
+        // Only fetch the list once.
+        if (this.state.multichoices !== undefined) {
+            return;
+        }
 
         // Cancel any in flight calls.
         this.source.cancel();
@@ -98,23 +112,19 @@ export default class VeloForm extends React.Component {
         api.post("v1/GetArtifacts",
                 {
                     search_term: "...",
-                    // This might be too many to fetch at once but we
-                    // are still fast enough for now.
-                    fields: {
-                        name: true,
-                        type: true,
-                        description: true,
-                    },
-
                     type: artifact_type,
 
+                    // No field type: We want the list of sources too
+
+                    // This might be too many to fetch at once but we
+                    // are still fast enough for now.
                     number_of_results: 1000,
                 },
 
                 this.source.token).then((response) => {
                     if (response.cancel) return;
 
-                    let artifacts = {}
+                    let artifacts = {};
                     let items = response.data.items || [];
                     let data = parseCSV(this.props.value);
                     let checkedArtifacts = _.map(data.data, function(item, idx) {
@@ -122,13 +132,46 @@ export default class VeloForm extends React.Component {
                     });
 
                     for (let i=0; i < items.length; i++) {
-                        var desc = items[i];
-                        artifacts[desc.name] = {
-                            'description' : desc.description,
-                            'enabled' : false,
-                        };
-                        if (checkedArtifacts.indexOf(desc.name) !== -1) {
-                            artifacts[desc.name].enabled = true;
+                        let desc = items[i];
+
+                        let sources = desc.sources || [];
+                        let selectable_names = [];
+                        let descriptions = {};
+                        let unnamed_source = false;
+
+                        // Gather the list of possible sources so the user
+                        // can select them individually.  If there is only
+                        // one source, it may not be named or have a separate
+                        // description.
+                        for (let j=0; j < sources.length; j++) {
+                            if (sources[j].name) {
+                                let name = desc.name + "/" + sources[j].name;
+
+                                selectable_names.push(name);
+                                if (sources[j].description) {
+                                    descriptions[name] = sources[j].description;
+                                } else {
+                                    descriptions[name] = desc.description;
+                                }
+                            } else {
+                                unnamed_source = true;
+                            }
+                        }
+
+                        if (unnamed_source) {
+                            selectable_names.push(desc.name);
+                            descriptions[desc.name] = desc.description;
+                        }
+
+                        for (let j=0; j < selectable_names.length; j++) {
+                            let name = selectable_names[j];
+                            artifacts[name] = {
+                                'description' : descriptions[name],
+                                'enabled' : false,
+                            };
+                            if (checkedArtifacts.indexOf(name) !== -1) {
+                                artifacts[name].enabled = true;
+                            }
                         }
                     };
 
@@ -137,6 +180,7 @@ export default class VeloForm extends React.Component {
 
                     this.setState({
                         multichoices: artifacts,
+                        artifact_loading: false,
                         unavailableArtifacts: unavailableArtifacts,
                     });
                 });
@@ -427,15 +471,20 @@ export default class VeloForm extends React.Component {
             );
         case "artifactset":
             // No artifacts means we haven't loaded yet.  If there are truly no artifacts, we've got bigger problems.
-            if (this.state.multichoices === undefined) {
+            if (this.state.multichoices === undefined ||
+                this.state.artifact_loading) {
               return <></>;
             }
             if (Object.keys(this.state.multichoices).length === 0) {
                 return (
                   <Form.Group as={Row}>
-                    <Alert variant="danger">Warning: No artifacts found for type {this.props.param.artifact_type}.</Alert>
+                    <Alert variant="danger">
+                      Warning: No artifacts found for type {
+                          this.props.param.artifact_type
+                      }.
+                    </Alert>
                   </Form.Group>
-                )
+                );
             }
             return (
                 <Form.Group as={Row}>
@@ -452,6 +501,7 @@ export default class VeloForm extends React.Component {
                       { _.map(Object.keys(this.state.multichoices), (key, idx) => {
                         return (
                             <OverlayTrigger
+                              key={key}
                               delay={{show: 250, hide: 400}}
                               overlay={(props)=>renderToolTip(props, this.state.multichoices[key])}>
                               <div>
