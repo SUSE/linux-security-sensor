@@ -19,5 +19,6 @@ package plugins
 
 import (
 	_ "www.velocidex.com/golang/velociraptor/vql/linux"
+	_ "www.velocidex.com/golang/velociraptor/vql/linux/audit"
 	_ "www.velocidex.com/golang/velociraptor/vql/linux/sdjournal"
 )

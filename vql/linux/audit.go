@@ -1,47 +1,21 @@
-// +build linux
-
 package linux
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/Velocidex/ordereddict"
-	"github.com/elastic/go-libaudit/v2"
-	"github.com/elastic/go-libaudit/v2/aucoalesce"
-	"github.com/elastic/go-libaudit/v2/auparse"
 	"www.velocidex.com/golang/velociraptor/acls"
+	"www.velocidex.com/golang/velociraptor/artifacts"
+	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
+	audit "www.velocidex.com/golang/velociraptor/vql/linux/audit"
 	"www.velocidex.com/golang/vfilter"
+	"www.velocidex.com/golang/vfilter/arg_parser"
 )
 
-type streamHandler struct {
-	ctx         context.Context
-	scope       vfilter.Scope
-	output_chan chan vfilter.Row
-}
-
-func (self *streamHandler) ReassemblyComplete(msgs []*auparse.AuditMessage) {
-	self.outputMultipleMessages(msgs)
-}
-
-func (self *streamHandler) EventsLost(count int) {
-	// This is not a useful message - there is nothing we can do about it
-	//self.scope.Log("Detected the loss of %v sequences.", count)
-}
-
-func (self *streamHandler) outputMultipleMessages(msgs []*auparse.AuditMessage) {
-	event, err := aucoalesce.CoalesceMessages(msgs)
-	if err != nil {
-		return
-	}
-
-	// Convert the events to dicts so they can be accessed easier.
-	dict := vfilter.RowToDict(self.ctx, self.scope, event)
-	dict.SetCaseInsensitive()
-	self.output_chan <- dict
+type _AuditPluginArgs struct {
+	Rules []string `vfilter:"optional,field=rules,doc=List of rules"`
 }
 
 type AuditPlugin struct{}
@@ -68,55 +42,56 @@ func (self AuditPlugin) Call(
 			return
 		}
 
-		client, err := libaudit.NewMulticastAuditClient(nil)
+		arg := _AuditPluginArgs{}
+		err = arg_parser.ExtractArgsWithContext(ctx, scope, args, &arg)
 		if err != nil {
-			scope.Log("audit: %v", err)
+			scope.Log("audit: %s", err)
 			return
 		}
-		defer client.Close()
 
-		reassembler, err := libaudit.NewReassembler(5, 2*time.Second,
-			&streamHandler{ctx, scope, output_chan})
-		if err != nil {
-			scope.Log("audit: %v", err)
+		client_config_obj, ok := artifacts.GetConfig(scope)
+		if !ok {
+			scope.Log("audit: unable to get config from scope %v", scope)
 			return
 		}
-		defer reassembler.Close()
 
-		// Start goroutine to periodically purge timed-out events.
-		go func() {
-			t := time.NewTicker(500 * time.Millisecond)
-			defer t.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
+		config_obj := config_proto.Config{Client: client_config_obj}
+		auditService, err := audit.GetAuditService(&config_obj)
+		if err != nil {
+			scope.Log("audit: Could not get audit service: %v", err)
+			return
+		}
 
-				case <-t.C:
-					if reassembler.Maintain() != nil {
-						return
-					}
-				}
-			}
-		}()
+		subscriber, err := auditService.Subscribe(arg.Rules)
+		if err != nil {
+			scope.Log("audit: Could not subscribe to audit service: %v", err)
+			return
+		}
+
+		defer scope.Log("audit: Unsubscribed to audit service")
+		defer auditService.Unsubscribe(subscriber)
+		scope.Log("audit: Subscribed to audit service")
 
 		for {
-			rawEvent, err := client.Receive(false)
-			if err != nil {
-				scope.Log("receive failed: %s", err)
-				continue
-			}
+			select {
+			case <-ctx.Done():
+				return
+			case msg, ok := <-subscriber.LogEvents():
+				if !ok {
+					scope.Log("audit: audit service disconnected unexpectedly")
+					return
+				}
+				scope.Log(msg)
+			case event, ok := <-subscriber.Events():
+				if !ok {
+					scope.Log("audit: audit service disconnected unexpectedly")
+					return
+				}
 
-			// Messages from 1300-2999 are valid audit messages.
-			if rawEvent.Type < auparse.AUDIT_USER_AUTH ||
-				rawEvent.Type > auparse.AUDIT_LAST_USER_MSG2 {
-				continue
-			}
-
-			line := fmt.Sprintf("type=%v msg=%v\n", rawEvent.Type, string(rawEvent.Data))
-			auditMsg, err := auparse.ParseLogLine(line)
-			if err == nil {
-				reassembler.PushMessage(auditMsg)
+				// Convert the events to dicts so they can be accessed easier.
+				dict := vfilter.RowToDict(ctx, scope, event)
+				dict.SetCaseInsensitive()
+				output_chan <- dict
 			}
 		}
 	}()

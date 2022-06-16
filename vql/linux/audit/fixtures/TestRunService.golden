@@ -1,0 +1,2739 @@
+[
+  {
+    "@timestamp": "2023-10-11T15:09:30.351Z",
+    "sequence": 62591,
+    "category": "unknown",
+    "record_type": "event_listener",
+    "result": "success",
+    "session": "27",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "object": {},
+      "how": "/home/jeffm/nl"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "0",
+        "euid": "0",
+        "fsgid": "0",
+        "fsuid": "0",
+        "gid": "0",
+        "sgid": "0",
+        "suid": "0",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4025",
+      "ppid": "4024",
+      "title": "./nl",
+      "name": "nl",
+      "exe": "/home/jeffm/nl"
+    },
+    "data": {
+      "a0": "3",
+      "a1": "c0000a400c",
+      "a2": "c",
+      "a3": "0",
+      "arch": "x86_64",
+      "auid": "1000",
+      "exit": "0",
+      "nl-mcgrp": "1",
+      "op": "connect",
+      "result": "success",
+      "ses": "27",
+      "socket_family": "netlink",
+      "socket_saddr": "100000000000000001000000",
+      "subj_user": "=unconfined",
+      "syscall": "bind",
+      "tty": "pts1",
+      "uid": "0"
+    },
+    "ecs": {
+      "event": {},
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.071Z",
+    "sequence": 62592,
+    "category": "user-login",
+    "record_type": "user_end",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "ended-session",
+      "object": {
+        "type": "user-session",
+        "primary": "/dev/pts/5"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "id": "1000",
+      "op": "login",
+      "terminal": "/dev/pts/5"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "session"
+        ],
+        "type": [
+          "end"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "id": "1000"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.071Z",
+    "sequence": 62593,
+    "category": "user-login",
+    "record_type": "user_logout",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "logged-out",
+      "object": {
+        "type": "user-session",
+        "primary": "/dev/pts/5"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "id": "1000",
+      "op": "login",
+      "terminal": "/dev/pts/5"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "end"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "id": "1000"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.071Z",
+    "sequence": 62594,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "suid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "direction": "both",
+      "kind": "session",
+      "laddr": "192.168.112.223",
+      "lport": "22",
+      "op": "destroy",
+      "rport": "43450",
+      "spid": "3933"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.071Z",
+    "sequence": 62595,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "primary": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "suid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "fp": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13",
+      "kind": "server",
+      "op": "destroy",
+      "spid": "3933"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.075Z",
+    "sequence": 62596,
+    "category": "user-login",
+    "record_type": "user_end",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "jeffm"
+      },
+      "action": "ended-session",
+      "object": {
+        "type": "user-session",
+        "primary": "ssh",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "acct": "jeffm",
+      "addr": "192.168.111.21",
+      "grantors": "pam_loginuid,pam_systemd,pam_limits,pam_unix,pam_umask,pam_env,pam_lastlog,pam_keyinit",
+      "hostname": "192.168.111.21",
+      "op": "PAM:session_close",
+      "terminal": "ssh"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "session"
+        ],
+        "type": [
+          "end"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.075Z",
+    "sequence": 62597,
+    "category": "user-login",
+    "record_type": "cred_disp",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "jeffm"
+      },
+      "action": "disposed-credentials",
+      "object": {
+        "type": "user-session",
+        "primary": "ssh",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "acct": "jeffm",
+      "addr": "192.168.111.21",
+      "grantors": "pam_env,pam_unix",
+      "hostname": "192.168.111.21",
+      "op": "PAM:setcred",
+      "terminal": "ssh"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.075Z",
+    "sequence": 62598,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "28",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "primary": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "suid": "0",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "3930",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "fp": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13",
+      "kind": "server",
+      "op": "destroy",
+      "spid": "3930"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.931Z",
+    "sequence": 62599,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "unset",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "0"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/sbin/sshd"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "egid": "0",
+        "euid": "0",
+        "fsgid": "0",
+        "fsuid": "0",
+        "gid": "0",
+        "sgid": "0",
+        "suid": "0",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "ppid": "1786",
+      "title": "/usr/sbin/sshd -D -R",
+      "name": "sshd",
+      "exe": "/usr/sbin/sshd",
+      "cwd": "/",
+      "args": [
+        "/usr/sbin/sshd",
+        "-D",
+        "-R"
+      ]
+    },
+    "file": {
+      "path": "/usr/sbin/sshd",
+      "device": "00:00",
+      "inode": "51090",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "5644701b7bc0",
+      "a1": "5644701de5d0",
+      "a2": "5644701b7c00",
+      "a3": "8",
+      "arch": "x86_64",
+      "argc": "3",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "(none)"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "51090",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/sbin/sshd",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.943Z",
+    "sequence": 62600,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "primary": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "suid": "0",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4033",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "fp": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13",
+      "kind": "server",
+      "op": "destroy",
+      "spid": "4033"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.943Z",
+    "sequence": 62601,
+    "category": "crypto",
+    "record_type": "crypto_session",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "0"
+      },
+      "action": "started-crypto-session",
+      "object": {
+        "type": "user-session",
+        "primary": "192.168.111.21",
+        "secondary": "37166"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "suid": "489",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "cipher": "chacha20-poly1305@openssh.com",
+      "direction": "from-server",
+      "ksize": "512",
+      "laddr": "192.168.112.223",
+      "lport": "22",
+      "mac": "\u003cimplicit\u003e",
+      "op": "start",
+      "pfs": "curve25519-sha256",
+      "rport": "37166",
+      "spid": "4033"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.943Z",
+    "sequence": 62602,
+    "category": "crypto",
+    "record_type": "crypto_session",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "0"
+      },
+      "action": "started-crypto-session",
+      "object": {
+        "type": "user-session",
+        "primary": "192.168.111.21",
+        "secondary": "37166"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "suid": "489",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "cipher": "chacha20-poly1305@openssh.com",
+      "direction": "from-client",
+      "ksize": "512",
+      "laddr": "192.168.112.223",
+      "lport": "22",
+      "mac": "\u003cimplicit\u003e",
+      "op": "start",
+      "pfs": "curve25519-sha256",
+      "rport": "37166",
+      "spid": "4033"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.991Z",
+    "sequence": 62603,
+    "category": "user-login",
+    "record_type": "user_auth",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "jeffm"
+      },
+      "action": "authenticated",
+      "object": {
+        "type": "user-session",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "acct": "jeffm",
+      "addr": "192.168.111.21",
+      "grantors": "auth-key",
+      "op": "pubkey_auth"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "id": "unset",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.991Z",
+    "sequence": 62604,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "primary": "SHA256:13:92:ba:a0:3f:8e:3b:ca:90:76:6b:f8:0b:5d:9e:69:f8:ad:9f:06:c2:0f:d9:ca:51:2c:8f:80:8d:5c:8a:9a",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "fp": "SHA256:13:92:ba:a0:3f:8e:3b:ca:90:76:6b:f8:0b:5d:9e:69:f8:ad:9f:06:c2:0f:d9:ca:51:2c:8f:80:8d:5c:8a:9a",
+      "kind": "auth-key",
+      "op": "negotiate"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.991Z",
+    "sequence": 62605,
+    "category": "user-login",
+    "record_type": "user_acct",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "jeffm"
+      },
+      "action": "was-authorized",
+      "object": {
+        "type": "user-session",
+        "primary": "ssh",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "acct": "jeffm",
+      "addr": "192.168.111.21",
+      "grantors": "pam_unix",
+      "hostname": "192.168.111.21",
+      "op": "PAM:accounting",
+      "terminal": "ssh"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "id": "unset",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.995Z",
+    "sequence": 62606,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "suid": "489",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "direction": "both",
+      "kind": "session",
+      "laddr": "192.168.112.223",
+      "lport": "22",
+      "op": "destroy",
+      "rport": "37166",
+      "spid": "4033"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.995Z",
+    "sequence": 62607,
+    "category": "user-login",
+    "record_type": "cred_acq",
+    "result": "success",
+    "session": "unset",
+    "summary": {
+      "actor": {
+        "primary": "unset",
+        "secondary": "jeffm"
+      },
+      "action": "acquired-credentials",
+      "object": {
+        "type": "user-session",
+        "primary": "ssh",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "unset",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "acct": "jeffm",
+      "addr": "192.168.111.21",
+      "grantors": "pam_env,pam_unix",
+      "hostname": "192.168.111.21",
+      "op": "PAM:setcred",
+      "terminal": "ssh"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "id": "unset",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:33.995Z",
+    "sequence": 62608,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "action": "wrote-to-file",
+      "object": {
+        "type": "file"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "0",
+        "euid": "0",
+        "fsgid": "0",
+        "fsuid": "0",
+        "gid": "0",
+        "sgid": "0",
+        "suid": "0",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "ppid": "1786",
+      "title": "/usr/sbin/sshd -D -R",
+      "name": "sshd",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "a0": "5",
+      "a1": "7ffe926e7c10",
+      "a2": "4",
+      "a3": "7f91b651a468",
+      "arch": "x86_64",
+      "exit": "4",
+      "syscall": "write",
+      "tty": "(none)"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "file"
+        ],
+        "type": [
+          "change"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.007Z",
+    "sequence": 62609,
+    "category": "user-login",
+    "record_type": "user_start",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "jeffm"
+      },
+      "action": "started-session",
+      "object": {
+        "type": "user-session",
+        "primary": "ssh",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "acct": "jeffm",
+      "grantors": "pam_loginuid,pam_systemd,pam_limits,pam_unix,pam_umask,pam_env,pam_lastlog,pam_keyinit",
+      "hostname": "192.168.111.21",
+      "op": "PAM:session_open",
+      "terminal": "ssh"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "session"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.007Z",
+    "sequence": 62610,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "primary": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "suid": "0",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4034",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "fp": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13",
+      "kind": "server",
+      "op": "destroy",
+      "spid": "4034"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.007Z",
+    "sequence": 62611,
+    "category": "user-login",
+    "record_type": "cred_acq",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "jeffm"
+      },
+      "action": "acquired-credentials",
+      "object": {
+        "type": "user-session",
+        "primary": "ssh",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4034",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "acct": "jeffm",
+      "addr": "192.168.111.21",
+      "grantors": "pam_env,pam_unix",
+      "hostname": "192.168.111.21",
+      "op": "PAM:setcred",
+      "terminal": "ssh"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "name": "jeffm"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.019Z",
+    "sequence": 62612,
+    "category": "user-login",
+    "record_type": "user_login",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "logged-in",
+      "object": {
+        "type": "user-session",
+        "primary": "/dev/pts/5",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "id": "1000",
+      "op": "login",
+      "terminal": "/dev/pts/5"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "id": "1000"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.023Z",
+    "sequence": 62613,
+    "category": "user-login",
+    "record_type": "user_start",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "started-session",
+      "object": {
+        "type": "user-session",
+        "primary": "/dev/pts/5",
+        "secondary": "192.168.111.21"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "source": {
+      "ip": "192.168.111.21"
+    },
+    "network": {
+      "direction": "ingress"
+    },
+    "data": {
+      "id": "1000",
+      "op": "login",
+      "terminal": "/dev/pts/5"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "session"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "id": "1000",
+        "effective": {
+          "id": "1000"
+        },
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.023Z",
+    "sequence": 62614,
+    "category": "crypto",
+    "record_type": "crypto_key_user",
+    "result": "success",
+    "session": "30",
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "0"
+      },
+      "action": "negotiated-crypto-key",
+      "object": {
+        "type": "user-session",
+        "primary": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13"
+      },
+      "how": "/usr/sbin/sshd"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "suid": "1000",
+        "uid": "0"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4032",
+      "exe": "/usr/sbin/sshd"
+    },
+    "data": {
+      "fp": "SHA256:da:6b:ba:da:5d:80:74:99:1a:c9:05:b8:12:6e:48:08:b9:60:51:22:e2:16:3e:a0:6c:c0:59:1a:4b:98:3b:13",
+      "kind": "server",
+      "op": "destroy",
+      "spid": "4035"
+    },
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.023Z",
+    "sequence": 62615,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/bin/bash"
+      },
+      "how": "bash"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4035",
+      "ppid": "4034",
+      "title": "-bash",
+      "name": "bash",
+      "exe": "/usr/bin/bash",
+      "cwd": "/home/jeffm",
+      "args": [
+        "-bash"
+      ]
+    },
+    "file": {
+      "path": "/bin/bash",
+      "device": "00:00",
+      "inode": "15595",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "559d03dca6a0",
+      "a1": "7ffe926e6ed0",
+      "a2": "559d03dcfc20",
+      "a3": "8",
+      "arch": "x86_64",
+      "argc": "1",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "15595",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/bin/bash",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.031Z",
+    "sequence": 62616,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/readlink"
+      },
+      "how": "/usr/bin/readlink"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4037",
+      "ppid": "4036",
+      "title": "readlink /proc/4035/exe",
+      "name": "readlink",
+      "exe": "/usr/bin/readlink",
+      "cwd": "/home/jeffm",
+      "args": [
+        "readlink",
+        "/proc/4035/exe"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/readlink",
+      "device": "00:00",
+      "inode": "16729",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c1376bcc0",
+      "a1": "564c1376ce40",
+      "a2": "564c137462c0",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "2",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "16729",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/readlink",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.039Z",
+    "sequence": 62617,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/tty"
+      },
+      "how": "/usr/bin/tty"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4039",
+      "ppid": "4038",
+      "title": "tty",
+      "name": "tty",
+      "exe": "/usr/bin/tty",
+      "cwd": "/home/jeffm",
+      "args": [
+        "tty"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/tty",
+      "device": "00:00",
+      "inode": "16760",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c1376adb0",
+      "a1": "564c1376a8d0",
+      "a2": "564c137462c0",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "1",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "16760",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/tty",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.047Z",
+    "sequence": 62618,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/uname"
+      },
+      "how": "/usr/bin/uname"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4041",
+      "ppid": "4040",
+      "title": "uname -m",
+      "name": "uname",
+      "exe": "/usr/bin/uname",
+      "cwd": "/home/jeffm",
+      "args": [
+        "uname",
+        "-m"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/uname",
+      "device": "00:00",
+      "inode": "16761",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c1376cda0",
+      "a1": "564c1376d870",
+      "a2": "564c137462c0",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "2",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "16761",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/uname",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.055Z",
+    "sequence": 62619,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/bin/uname"
+      },
+      "how": "/usr/bin/uname"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4043",
+      "ppid": "4042",
+      "title": "/bin/uname -n",
+      "name": "uname",
+      "exe": "/usr/bin/uname",
+      "cwd": "/home/jeffm",
+      "args": [
+        "/bin/uname",
+        "-n"
+      ]
+    },
+    "file": {
+      "path": "/bin/uname",
+      "device": "00:00",
+      "inode": "16761",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c13769680",
+      "a1": "564c13769910",
+      "a2": "564c1376d620",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "2",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "16761",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/bin/uname",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.063Z",
+    "sequence": 62620,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/bin/uname"
+      },
+      "how": "/usr/bin/uname"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4045",
+      "ppid": "4044",
+      "title": "/bin/uname -m",
+      "name": "uname",
+      "exe": "/usr/bin/uname",
+      "cwd": "/home/jeffm",
+      "args": [
+        "/bin/uname",
+        "-m"
+      ]
+    },
+    "file": {
+      "path": "/bin/uname",
+      "device": "00:00",
+      "inode": "16761",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c137698d0",
+      "a1": "564c13769790",
+      "a2": "564c1376d620",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "2",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "16761",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/bin/uname",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.075Z",
+    "sequence": 62621,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/manpath"
+      },
+      "how": "/usr/bin/manpath"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4047",
+      "ppid": "4046",
+      "title": "/usr/bin/manpath -q",
+      "name": "manpath",
+      "exe": "/usr/bin/manpath",
+      "cwd": "/home/jeffm",
+      "args": [
+        "/usr/bin/manpath",
+        "-q"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/manpath",
+      "device": "00:00",
+      "inode": "61514",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c13769330",
+      "a1": "564c137692f0",
+      "a2": "564c1376e540",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "2",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "61514",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/manpath",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.127Z",
+    "sequence": 62622,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/sed"
+      },
+      "how": "/usr/bin/sed"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4057",
+      "ppid": "4055",
+      "title": "sed -r s@/*:|([^\\\\]):@\\1\\n@g;H;x;s@/\\n@\\n@",
+      "name": "sed",
+      "exe": "/usr/bin/sed",
+      "cwd": "/home/jeffm",
+      "args": [
+        "sed",
+        "-r",
+        "s@/*:|([^\\\\]):@\\1\\n@g;H;x;s@/\\n@\\n@"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/sed",
+      "device": "00:00",
+      "inode": "24576",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c13779790",
+      "a1": "564c13779550",
+      "a2": "564c137775f0",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "3",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "24576",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/sed",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.139Z",
+    "sequence": 62623,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/sed"
+      },
+      "how": "/usr/bin/sed"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4061",
+      "ppid": "4059",
+      "title": "sed -r s@/*:|([^\\\\]):@\\1\\n@g;H;x;s@/\\n@\\n@",
+      "name": "sed",
+      "exe": "/usr/bin/sed",
+      "cwd": "/home/jeffm",
+      "args": [
+        "sed",
+        "-r",
+        "s@/*:|([^\\\\]):@\\1\\n@g;H;x;s@/\\n@\\n@"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/sed",
+      "device": "00:00",
+      "inode": "24576",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c137795f0",
+      "a1": "564c137793d0",
+      "a2": "564c137775f0",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "3",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "24576",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/sed",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  },
+  {
+    "@timestamp": "2023-10-11T15:09:34.147Z",
+    "sequence": 62624,
+    "category": "audit-rule",
+    "record_type": "syscall",
+    "result": "success",
+    "session": "30",
+    "tags": [
+      "vrr_procmon"
+    ],
+    "summary": {
+      "actor": {
+        "primary": "1000",
+        "secondary": "1000"
+      },
+      "action": "executed",
+      "object": {
+        "type": "file",
+        "primary": "/usr/bin/dircolors"
+      },
+      "how": "/usr/bin/dircolors"
+    },
+    "user": {
+      "ids": {
+        "auid": "1000",
+        "egid": "100",
+        "euid": "1000",
+        "fsgid": "100",
+        "fsuid": "1000",
+        "gid": "100",
+        "sgid": "100",
+        "suid": "1000",
+        "uid": "1000"
+      },
+      "selinux": {
+        "user": "=unconfined"
+      }
+    },
+    "process": {
+      "pid": "4063",
+      "ppid": "4062",
+      "title": "/usr/bin/dircolors -b /etc/DIR_COLORS",
+      "name": "dircolors",
+      "exe": "/usr/bin/dircolors",
+      "cwd": "/home/jeffm",
+      "args": [
+        "/usr/bin/dircolors",
+        "-b",
+        "/etc/DIR_COLORS"
+      ]
+    },
+    "file": {
+      "path": "/usr/bin/dircolors",
+      "device": "00:00",
+      "inode": "16688",
+      "mode": "0755",
+      "uid": "0",
+      "gid": "0"
+    },
+    "data": {
+      "a0": "564c13777c30",
+      "a1": "564c13777d30",
+      "a2": "564c13778e10",
+      "a3": "7fc092de3468",
+      "arch": "x86_64",
+      "argc": "3",
+      "exit": "0",
+      "syscall": "execve",
+      "tty": "pts5"
+    },
+    "paths": [
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "16688",
+        "item": "0",
+        "mode": "0100755",
+        "name": "/usr/bin/dircolors",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      },
+      {
+        "cap_fe": "0",
+        "cap_fi": "0",
+        "cap_fp": "0",
+        "cap_frootid": "0",
+        "cap_fver": "0",
+        "dev": "00:32",
+        "inode": "7189",
+        "item": "1",
+        "mode": "0100755",
+        "name": "/lib64/ld-linux-x86-64.so.2",
+        "nametype": "NORMAL",
+        "ogid": "0",
+        "ouid": "0",
+        "rdev": "00:00"
+      }
+    ],
+    "ecs": {
+      "event": {
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ]
+      },
+      "user": {
+        "effective": {},
+        "target": {},
+        "changes": {}
+      },
+      "group": {}
+    }
+  }
+]
