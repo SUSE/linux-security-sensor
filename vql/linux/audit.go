@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/go-libaudit/v2/auparse"
 	auditrule "github.com/elastic/go-libaudit/v2/rule"
 	"github.com/elastic/go-libaudit/v2/rule/flags"
+	"github.com/scryner/lfreequeue"
 	"www.velocidex.com/golang/velociraptor/acls"
 	"www.velocidex.com/golang/velociraptor/artifacts"
 	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
@@ -157,12 +158,19 @@ type AuditWatcherService struct {
 
 	epollFd		int
 	listenSocketBufSize int
-	recvBuf		[]byte
+
+	eventQueue	*lfreequeue.Queue
+	bufPool		sync.Pool
 
 	// Used only for stats reporting
-	totalMessagesAcceptedCounter	int64
+	totalMessagesReceivedCounter	int64
+	totalMessagesDiscardedCounter	int64
 	totalMessagesDroppedCounter	int64
+	totalMessagesPostedCounter	int64
 	totalRowsPostedCounter		int64
+	totalReceiveLoopCounter		int64
+	totalOutstandingBufferCounter	int64
+	currentMessagesQueuedCounter	int64
 }
 
 // These can probably be removed but they're useful for
@@ -329,7 +337,11 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 		logger.Info("audit: creating new service instance")
 
 		bufSize := unix.NLMSG_HDRLEN + libaudit.AuditMessageMaxLength
-		buf := make([]byte, bufSize)
+		pool := sync.Pool {
+			New: func() interface{} {
+				return &AuditMessageBuf{ Data: make([]byte, bufSize) }
+			},
+		}
 
 		auditService := &AuditWatcherService{
 			rules:		map[string]*RefcountedAuditWatcherRule{},
@@ -338,7 +350,8 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 			logger:		logger,
 			checkerChannel:	make(chan aucoalesce.Event),
 			refcount:	1,
-			recvBuf:	buf,
+			eventQueue:	lfreequeue.NewQueue(),
+			bufPool:	pool,
 		}
 
 		err := auditService.setupWatcherService()
@@ -372,34 +385,85 @@ func (self *AuditWatcherService) shutdown() {
 	self.logger.Info("audit: Shut down audit service")
 }
 
-func (self *AuditWatcherService) acceptEvents() error {
+type AuditMessageBuf struct {
+	Message	*libaudit.RawAuditMessage
+	Data	[]byte
+}
 
-	var count int64 = 0
+func (self *AuditWatcherService) acceptEvents() error {
+	defer atomic.AddInt64(&self.totalReceiveLoopCounter, 1)
+
+	var receivedCount int64 = 0
+	var discardedCount int64 = 0
+	var queuedCount int64 = 0
+
+	queueDepth := atomic.LoadInt64(&self.currentMessagesQueuedCounter)
+
 	// We're in non-blocking mode.  Try to get all of the events we can in one go.
 	for {
+		recvBuf := self.bufPool.Get().(*AuditMessageBuf)
+
 		// We don't have access to the underlying socket to
-		// use syscall.Select() to wait for events.  Practically
+		// use unix.Select() to wait for events.  Practically
 		// speaking, we'd use a relatively short timeout in Select()
 		// to to be able to shut down cleanly.
-		rawEvent, err := self.listenClient.Receive(true, self.recvBuf)
+		rawEvent, err := self.listenClient.Receive(true, recvBuf.Data)
 		if err != nil {
-			atomic.AddInt64(&self.totalMessagesAcceptedCounter, count)
+			self.bufPool.Put(recvBuf)
+			atomic.AddInt64(&self.currentMessagesQueuedCounter, queuedCount)
+			atomic.AddInt64(&self.totalMessagesReceivedCounter, receivedCount)
+			atomic.AddInt64(&self.totalMessagesDiscardedCounter, discardedCount)
+			atomic.AddInt64(&self.totalOutstandingBufferCounter, receivedCount)
 			return err
 		}
-		count += 1
+
+		receivedCount += 1
 
 		// Messages from 1300-2999 are valid audit messages.
 		if rawEvent.Type < auparse.AUDIT_USER_AUTH ||
 			rawEvent.Type > auparse.AUDIT_LAST_USER_MSG2 {
+			self.bufPool.Put(recvBuf)
+			discardedCount += 1
 			continue
 		}
 
-		line := fmt.Sprintf("type=%v msg=%v\n", rawEvent.Type, string(rawEvent.Data))
-		auditMsg, err := auparse.ParseLogLine(line)
-		if err != nil {
-			continue
+		recvBuf.Message = rawEvent
+		self.eventQueue.Enqueue(recvBuf)
+
+		queuedCount += 1
+
+		if queueDepth + queuedCount > 10000 {
+			self.logger.Debug("too many events in flight: %v", queueDepth + queuedCount)
 		}
-		self.reassembler.PushMessage(auditMsg)
+	}
+}
+
+func (self *AuditWatcherService) startEventQueue() {
+	defer self.wgDec("startEventQueue")
+	watchIterator := self.eventQueue.NewWatchIterator()
+	iter := watchIterator.Iter()
+	defer watchIterator.Close()
+
+	for {
+		select {
+		case <-self.ctx.Done():
+			return
+		case item := <-iter:
+			atomic.AddInt64(&self.currentMessagesQueuedCounter, -1)
+			recvBuf := item.(*AuditMessageBuf)
+			rawEvent := recvBuf.Message
+			line := fmt.Sprintf("type=%v msg=%v\n",
+					    rawEvent.Type, string(rawEvent.Data))
+
+			self.bufPool.Put(recvBuf)
+
+			auditMsg, err := auparse.ParseLogLine(line)
+			if err != nil {
+				continue
+			}
+			self.reassembler.PushMessage(auditMsg)
+			atomic.AddInt64(&self.totalMessagesPostedCounter, 1)
+		}
 	}
 }
 
@@ -462,6 +526,14 @@ func (self *AuditWatcherService) reportStats() {
 	self.wgDec("reportStats")
 	timeout := time.NewTicker(5 * time.Second)
 	defer timeout.Stop()
+
+	lastReceived := int64(0)
+	lastDiscarded := int64(0)
+	lastDropped := int64(0)
+	lastQueued := int64(0)
+	lastPosted := int64(0)
+	lastMessagesPosted := int64(0)
+
 	for {
 		select {
 		case <-self.ctx.Done():
@@ -470,15 +542,42 @@ func (self *AuditWatcherService) reportStats() {
 			break
 		}
 
-		self.logger.Debug("audit: ******************************** Accepted %d messages from kernel",
-				  atomic.LoadInt64(&self.totalMessagesAcceptedCounter))
-		self.logger.Debug("audit: ******************************** %d messages dropped",
-				  atomic.LoadInt64(&self.totalMessagesDroppedCounter))
-		self.logger.Debug("audit: ******************************** %d rows posted",
-				  atomic.LoadInt64(&self.totalRowsPostedCounter))
+		received := atomic.LoadInt64(&self.totalMessagesReceivedCounter)
+		discarded := atomic.LoadInt64(&self.totalMessagesDiscardedCounter)
+		dropped := atomic.LoadInt64(&self.totalMessagesDroppedCounter)
+		posted := atomic.LoadInt64(&self.totalRowsPostedCounter)
+		messagesPosted := atomic.LoadInt64(&self.totalMessagesPostedCounter)
+		queued := atomic.LoadInt64(&self.currentMessagesQueuedCounter)
+		loops := atomic.LoadInt64(&self.totalReceiveLoopCounter)
+
+		self.logger.Debug("audit: ******************************** Received %d messages (%d rows) from kernel (diff %d (%d rows)) (averaging %d messages per loop over %d loops)",
+		                  received, received / 6, received - lastReceived,
+		                  (received - lastReceived) / 6, received / loops, loops)
+		self.logger.Debug("audit: ******************************** Discarded %d messages from kernel (diff %d)",
+				  discarded, discarded - lastDiscarded)
+
+		self.logger.Debug("audit: ******************************** %d messages dropped (diff %d)",
+		                  dropped, dropped - lastDropped)
+		self.logger.Debug("audit: ******************************** %d messages posted (diff %d) (delta %v)",
+		                  messagesPosted, messagesPosted - lastMessagesPosted,
+				  received - dropped - messagesPosted - queued - discarded)
+		self.logger.Debug("audit: ******************************** %d rows posted (diff %d)",
+		                  posted, posted - lastPosted)
+
+		self.logger.Debug("audit: ******************************** %d messages still queued (%d rows) (diff %d (%d rows))",
+		                  queued, queued/6, queued - lastQueued, (queued - lastQueued) / 6)
+
 		self.logger.Debug("audit: ******************************** current buf size: %d",
 				  self.listenSocketBufSize)
+		self.logger.Debug("audit: ******************************** current buffer count: %d",
+				  self.totalOutstandingBufferCounter)
 
+		lastReceived = received
+		lastDiscarded = discarded
+		lastDropped = dropped
+		lastPosted = posted
+		lastQueued = queued
+		lastMessagesPosted = messagesPosted
 	}
 }
 
@@ -535,6 +634,9 @@ func (self *AuditWatcherService) startEventLoops() {
 
 	self.wgInc("startRulesChecker")
 	go self.startRulesChecker(gBatchTimeout)
+
+	self.wgInc("startEventQueue")
+	go self.startEventQueue()
 
 	err := self.startListener()
 	if err != nil {

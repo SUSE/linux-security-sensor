@@ -125,6 +125,7 @@ require (
 	github.com/Velocidex/ordereddict v0.0.0-20220428153415-da46091cd216
 	github.com/elastic/go-libaudit/v2 v2.0.0-00010101000000-000000000000
 	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/scryner/lfreequeue v0.0.0-20121212074822-473f33702129
 	github.com/shirou/gopsutil/v3 v3.21.11
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	www.velocidex.com/golang/vtypes v0.0.0-20220107071957-49947f744c34
