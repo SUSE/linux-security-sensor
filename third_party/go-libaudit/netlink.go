@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sync/atomic"
 	"syscall"
 	"unsafe"
@@ -35,7 +34,7 @@ import (
 // NetlinkSender sends a netlink message and returns the sequence number used
 // in the message and an error if it occurred.
 type NetlinkSender interface {
-	Send(msg syscall.NetlinkMessage) (uint32, error)
+	Send(msg syscall.NetlinkMessage, sendBuf []byte) (uint32, error)
 }
 
 // NetlinkReceiver receives data from the netlink socket and uses the provided
@@ -43,7 +42,7 @@ type NetlinkSender interface {
 // syscall.ParseNetlinkMessage should be used. If nonBlocking is true then
 // instead of blocking when no data is available, EWOULDBLOCK is returned.
 type NetlinkReceiver interface {
-	Receive(nonBlocking bool, p NetlinkParser) ([]syscall.NetlinkMessage, error)
+	Receive(nonBlocking bool, p NetlinkParser, recvBuf []byte) ([]syscall.NetlinkMessage, error)
 }
 
 type Pollable interface {
@@ -81,7 +80,7 @@ type NetlinkClient struct {
 // (this is useful for debugging).
 //
 // The returned NetlinkClient must be closed with Close() when finished.
-func NewNetlinkClient(proto int, groups uint32, readBuf []byte, resp io.Writer) (*NetlinkClient, error) {
+func NewNetlinkClient(proto int, groups uint32, resp io.Writer) (*NetlinkClient, error) {
 	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, proto)
 	if err != nil {
 		return nil, err
@@ -99,17 +98,11 @@ func NewNetlinkClient(proto int, groups uint32, readBuf []byte, resp io.Writer) 
 		return nil, err
 	}
 
-	if len(readBuf) == 0 {
-		// Default size used in libnl.
-		readBuf = make([]byte, os.Getpagesize())
-	}
-
 	return &NetlinkClient{
 		fd:         s,
 		src:        src,
 		dest:       &syscall.SockaddrNetlink{},
 		pid:        pid,
-		readBuf:    readBuf,
 		respWriter: resp,
 	}, nil
 }
@@ -138,27 +131,35 @@ func (c *NetlinkClient) GetFD() int {
 // Send sends a netlink message and returns the sequence number used
 // in the message and an error if it occurred. If the PID is not set then
 // the value will be populated automatically (recommended).
-func (c *NetlinkClient) Send(msg syscall.NetlinkMessage) (uint32, error) {
+func (c *NetlinkClient) Send(msg syscall.NetlinkMessage, sendBuf []byte) (uint32, error) {
 	if msg.Header.Pid == 0 {
 		msg.Header.Pid = c.pid
 	}
 
 	msg.Header.Seq = atomic.AddUint32(&c.seq, 1)
 	to := &syscall.SockaddrNetlink{}
-	return msg.Header.Seq, syscall.Sendto(c.fd, serialize(msg), 0, to)
+	messageData, err := serialize(msg, sendBuf)
+	if err != nil {
+		return 0, err
+	}
+	return msg.Header.Seq, syscall.Sendto(c.fd, messageData, 0, to)
 }
 
-func serialize(msg syscall.NetlinkMessage) []byte {
-	msg.Header.Len = uint32(syscall.SizeofNlMsghdr + len(msg.Data))
-	b := make([]byte, msg.Header.Len)
-	*(*syscall.NlMsghdr)(unsafe.Pointer(&b[0])) = msg.Header
-	copy(b[syscall.SizeofNlMsghdr:], msg.Data)
-	return b
+func serialize(msg syscall.NetlinkMessage, sendBuf []byte) ([]byte, error) {
+	bufSize := syscall.SizeofNlMsghdr + len(msg.Data)
+	if bufSize > len(sendBuf) {
+		return nil, fmt.Errorf("Buffer size insufficient (%d < %d)", bufSize, len(sendBuf))
+	}
+	msg.Header.Len = uint32(bufSize)
+
+	*(*syscall.NlMsghdr)(unsafe.Pointer(&sendBuf[0])) = msg.Header
+	copy(sendBuf[syscall.SizeofNlMsghdr:], msg.Data)
+	return sendBuf[:msg.Header.Len], nil
 }
 
 // Receive receives data from the netlink socket and uses the provided
 // parser to convert the raw bytes to NetlinkMessages. See NetlinkReceiver docs.
-func (c *NetlinkClient) Receive(nonBlocking bool, p NetlinkParser) ([]syscall.NetlinkMessage, error) {
+func (c *NetlinkClient) Receive(nonBlocking bool, p NetlinkParser, recvBuf []byte) ([]syscall.NetlinkMessage, error) {
 	var flags int
 	if nonBlocking {
 		flags |= syscall.MSG_DONTWAIT
@@ -166,7 +167,7 @@ func (c *NetlinkClient) Receive(nonBlocking bool, p NetlinkParser) ([]syscall.Ne
 
 	// XXX (akroh): A possible enhancement is to use the MSG_PEEK flag to
 	// check the message size and increase the buffer size to handle it all.
-	nr, from, err := syscall.Recvfrom(c.fd, c.readBuf, flags)
+	nr, from, err := syscall.Recvfrom(c.fd, recvBuf, flags)
 	if err != nil {
 		// EAGAIN or EWOULDBLOCK will be returned for non-blocking reads where
 		// the read would normally have blocked.
@@ -181,7 +182,7 @@ func (c *NetlinkClient) Receive(nonBlocking bool, p NetlinkParser) ([]syscall.Ne
 		return nil, errors.New("message received was not from the kernel")
 	}
 
-	buf := c.readBuf[:nr]
+	buf := recvBuf[:nr]
 
 	// Dump raw data for inspection purposes.
 	if c.respWriter != nil {
