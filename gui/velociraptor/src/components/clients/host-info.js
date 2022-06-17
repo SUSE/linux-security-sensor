@@ -252,6 +252,8 @@ class VeloHostInfo extends Component {
                 loading: true,
             });
 
+	    let quarantine_artifact = quarantine_artifacts[this.props.client.os_info.system];
+
             // Add the quarantine label to this host.
             api.post("v1/LabelClients", {
                 client_ids: [client_id],
@@ -259,7 +261,7 @@ class VeloHostInfo extends Component {
                 labels: ["Quarantine"],
             }, this.source.token).then((response) => {runArtifact(
                 client_id,
-                this.state.quarantine_artifact,
+                quarantine_artifact,
                 {RemovePolicy: "Y"},
                 ()=>{
                     this.updateClientInfo();
