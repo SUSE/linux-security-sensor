@@ -144,10 +144,12 @@ type AuditWatcherService struct {
 	nextWatcherId	int
 
 	listenClient	*libaudit.AuditClient
+	// Once up and running, protected by rulesLock
 	commandClient	*libaudit.AuditClient
 	reassembler	*libaudit.Reassembler
 
 	wg		sync.WaitGroup
+	serviceWg	sync.WaitGroup
 	wgCounter	int64
 	ctx		context.Context
 	cancel		func()
@@ -218,7 +220,8 @@ func (self *AuditWatcherService) Put() {
 	// global reference.
 	if atomic.CompareAndSwapInt64(&self.refcount, 1, 0) {
 		gService = nil
-		self.shutdown()
+		// Doesn't need wgInc - it is owned by serviceWg
+		go self.shutdown()
 	}
 }
 
@@ -334,7 +337,7 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 				return svc, nil
 			}
 
-			svc.wg.Wait()
+			svc.serviceWg.Wait()
 		}
 
 		// One at a time, please
@@ -369,6 +372,7 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 		if err != nil {
 			auditService = nil
 		} else {
+			auditService.serviceWg.Add(1)
 			gService = auditService
 		}
 
@@ -381,6 +385,8 @@ func (self *AuditWatcherService) shutdown() {
 	// Signal to listener goroutine to exit
 	self.cancel()
 
+	self.wg.Wait()
+
 	self.reassembler.Close()
 	self.listenClient.Close()
 	self.commandClient.Close()
@@ -389,11 +395,8 @@ func (self *AuditWatcherService) shutdown() {
 	self.listenClient = nil
 	self.commandClient = nil
 
-	// Don't wait here since disconnectWatchers maintains a wg ref.  It'll wait
-	// forever.  The listener loop will likely shutdown last and potentially after
-	// a new instance of the service is started up but it's fine since nothing is
-	// listening to the old one anymore.
 	self.logger.Info("audit: Shut down audit service")
+	self.serviceWg.Done()
 }
 
 type AuditMessageBuf struct {
@@ -1002,13 +1005,11 @@ func (self AuditPlugin) Call(
 			return
 		}
 
-		cancel, err := auditService.connectWatcher(ctx, watcher)
+		_, err = auditService.connectWatcher(ctx, watcher)
 		if err != nil {
 			scope.Log("audit: failed to connect watcher to audit service: %v", err)
 		}
 
-		defer auditService.disconnectWatcher(watcher)
-		defer cancel()
 
 		scope.Log("audit: Registered audit watcher")
 		defer scope.Log("audit: Unregistered audit watcher")
