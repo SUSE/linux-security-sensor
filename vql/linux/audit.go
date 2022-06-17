@@ -35,6 +35,7 @@ var (
 	// Timeout for batching audit configuration events
 	gBatchTimeout = 1000 * time.Millisecond
 	debugGoRoutines = false
+	gMinimumSocketBufSize = 512 * 1024
 )
 
 var gBannedRules = []string{
@@ -261,11 +262,21 @@ func (self *AuditWatcherService) setupWatcherService() error {
 		return err
 	}
 
-	err = self.resetListenSocketBufSize(4 * 1024 * 1024)
+	fd := self.listenClient.Netlink.GetFD()
+
+	self.listenSocketBufSize, err = unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF)
 	if err != nil {
-		self.commandClient.Close()
-		self.listenClient.Close()
+		self.logger.Warn("audit: could not get socket receive buffer size: %v", err)
 		return err
+	}
+
+	if self.listenSocketBufSize < gMinimumSocketBufSize {
+		err = self.resetListenSocketBufSize(gMinimumSocketBufSize)
+		if err != nil {
+			self.commandClient.Close()
+			self.listenClient.Close()
+			return err
+		}
 	}
 
 	self.reassembler, err = libaudit.NewReassembler(5, 2*time.Second, self)
