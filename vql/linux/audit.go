@@ -325,6 +325,12 @@ func (self *AuditWatcherService) resetListenSocketBufSize(bufSize int) error {
 	return nil
 }
 
+func newStoppedTimer() *time.Timer {
+	timer := time.NewTimer(0)
+	<- timer.C
+
+	return timer
+}
 
 func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherService, error) {
 
@@ -922,12 +928,7 @@ func (self *AuditWatcherService) startRulesChecker(timeout time.Duration) {
 
 	count := 0
 
-	batchTimeout := time.NewTimer(timeout)
-	defer batchTimeout.Stop()
-
-	if !batchTimeout.Stop() {
-		<- batchTimeout.C
-	}
+	batchTimeout := newStoppedTimer()
 
 	for {
 		select {
