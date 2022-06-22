@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 
@@ -406,8 +407,9 @@ func (self *AuditWatcherService) shutdown() {
 }
 
 type AuditMessageBuf struct {
-	Message	*libaudit.RawAuditMessage
-	Data	[]byte
+	AuditMessage	auparse.AuditMessage
+	Message		libaudit.RawAuditMessage
+	Data		[]byte
 }
 
 func (self *AuditWatcherService) acceptEvents() error {
@@ -427,7 +429,7 @@ func (self *AuditWatcherService) acceptEvents() error {
 		// use unix.Select() to wait for events.  Practically
 		// speaking, we'd use a relatively short timeout in Select()
 		// to to be able to shut down cleanly.
-		rawEvent, err := self.listenClient.Receive(true, recvBuf.Data)
+		err := self.ReceiveMessageBuf(recvBuf)
 		if err != nil {
 			self.bufPool.Put(recvBuf)
 			atomic.AddInt64(&self.currentMessagesQueuedCounter, queuedCount)
@@ -439,6 +441,8 @@ func (self *AuditWatcherService) acceptEvents() error {
 
 		receivedCount += 1
 
+		rawEvent := recvBuf.Message
+
 		// Messages from 1300-2999 are valid audit messages.
 		if rawEvent.Type < auparse.AUDIT_USER_AUTH ||
 			rawEvent.Type > auparse.AUDIT_LAST_USER_MSG2 {
@@ -447,7 +451,6 @@ func (self *AuditWatcherService) acceptEvents() error {
 			continue
 		}
 
-		recvBuf.Message = rawEvent
 		self.eventQueue.Enqueue(recvBuf)
 
 		queuedCount += 1
@@ -471,18 +474,28 @@ func (self *AuditWatcherService) startEventQueue() {
 		case item := <-iter:
 			atomic.AddInt64(&self.currentMessagesQueuedCounter, -1)
 			recvBuf := item.(*AuditMessageBuf)
-			rawEvent := recvBuf.Message
-			line := fmt.Sprintf("type=%v msg=%v\n",
-					    rawEvent.Type, string(rawEvent.Data))
 
-			self.bufPool.Put(recvBuf)
-
-			auditMsg, err := auparse.ParseLogLine(line)
+			err := auparse.ParseBytes(recvBuf.Message.Type, recvBuf.Message.Data,
+						  &recvBuf.AuditMessage)
 			if err != nil {
+				self.logger.Debug("Failed to parse message: %v", err)
+				atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
+				self.bufPool.Put(recvBuf)
 				continue
 			}
-			self.reassembler.PushMessage(auditMsg)
+
+			// Allows the ReassemblyComplete callback to free the buffer
+			recvBuf.AuditMessage.Owner = recvBuf
+
+			self.reassembler.PushMessage(&recvBuf.AuditMessage)
 			atomic.AddInt64(&self.totalMessagesPostedCounter, 1)
+
+			// These record types aren't included in the complete callback
+			// but they still need to be pushed
+			if recvBuf.AuditMessage.RecordType == auparse.AUDIT_EOE {
+				atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
+				self.bufPool.Put(recvBuf)
+			}
 		}
 	}
 }
@@ -697,6 +710,12 @@ func (self *AuditWatcherService) ReassemblyComplete(msgs []*auparse.AuditMessage
 		self.logger.Debug("audit: failed to coalesce message: %v", err)
 		return
 	}
+
+	// Free the buffer for reuse
+	for _, msg := range msgs {
+		self.bufPool.Put(msg.Owner)
+	}
+	atomic.AddInt64(&self.totalOutstandingBufferCounter, -int64(len(msgs)))
 
 	// If the configuration has changed, kick off a scan to make sure our rules
 	// are still in place
@@ -945,6 +964,41 @@ func (self *AuditWatcherService) startRulesChecker(timeout time.Duration) {
 			count += 1
 		}
 	}
+}
+
+func (self *AuditWatcherService) ReceiveMessageBuf(msgBuf *AuditMessageBuf) error {
+	if len(msgBuf.Data) < unix.NLMSG_HDRLEN {
+		return unix.EINVAL
+	}
+
+	flags := unix.MSG_DONTWAIT
+
+	fd := self.listenClient.Netlink.GetFD()
+
+	// XXX (akroh): A possible enhancement is to use the MSG_PEEK flag to
+	// check the message size and increase the buffer size to handle it all.
+	nr, from, err := unix.Recvfrom(fd, msgBuf.Data, flags)
+	if err != nil {
+		// EAGAIN or EWOULDBLOCK will be returned for non-blocking reads where
+		// the read would normally have blocked.
+		return err
+	}
+	if nr < unix.NLMSG_HDRLEN {
+		return fmt.Errorf("not enough bytes (%v) received to form a netlink header", nr)
+	}
+	fromNetlink, ok := from.(*unix.SockaddrNetlink)
+	if !ok || fromNetlink.Pid != 0 {
+		// Spoofed packet received on audit netlink socket.
+		return errors.New("message received was not from the kernel")
+	}
+
+	buf := msgBuf.Data[:nr]
+
+	header := *(*unix.NlMsghdr)(unsafe.Pointer(&msgBuf.Data[0]))
+	msgBuf.Message.Type   = auparse.AuditMessageType(header.Type)
+	msgBuf.Message.Data   = buf[unix.NLMSG_HDRLEN:]
+
+	return nil
 }
 
 type _AuditPluginArgs struct {
