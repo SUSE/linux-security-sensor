@@ -522,36 +522,37 @@ func (self *AuditWatcherService) listenerEventLoop() {
 			return
 		}
 
-		if count > 0 {
-			err = self.acceptEvents()
+		if count == 0 {
+			continue
+		}
 
-			if err != nil {
-				if errors.Is(err, unix.EAGAIN) ||
-				   errors.Is(err, unix.EWOULDBLOCK) {
-					   continue
-				}
-
-				if errors.Is(err, unix.ENOBUFS) {
-					err = self.resetListenSocketBufSize(0)
-					if err != nil {
-						msg := fmt.Sprintf("audit: failed to increase listener socket buffer size: %v.  Events may be lost.", err)
-						self.notifyWatchers(msg)
-					}
-					continue
-				}
-
-				// The socket has been closed.
-				if errors.Is(err, unix.EBADF) {
-					// There likely won't be any listeners left and the socket
-					// was closed in shutdown
-					self.notifyWatchers("audit: listener socket closed")
-					break
-				}
-				self.notifyWatchers(fmt.Sprintf("audit: receive failed: %s", err))
+		err = self.acceptEvents()
+		if err != nil {
+			if errors.Is(err, unix.EAGAIN) ||
+			   errors.Is(err, unix.EWOULDBLOCK) {
 				continue
 			}
 
+			if errors.Is(err, unix.ENOBUFS) {
+				err = self.resetListenSocketBufSize(0)
+				if err != nil {
+					msg := fmt.Sprintf("audit: failed to increase listener socket buffer size: %v.  Events may be lost.", err)
+					self.notifyWatchers(msg)
+				}
+				continue
+			}
+
+			// The socket has been closed.
+			if errors.Is(err, unix.EBADF) {
+				// There likely won't be any listeners left and the socket
+				// was closed in shutdown
+				self.notifyWatchers("audit: listener socket closed")
+				break
+			}
+			self.notifyWatchers(fmt.Sprintf("audit: receive failed: %s", err))
+			continue
 		}
+
 	}
 }
 
