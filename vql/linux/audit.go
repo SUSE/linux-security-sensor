@@ -55,6 +55,8 @@ type AuditWatcher struct {
 	scope		vfilter.Scope
 	rules		map[string]*AuditWatcherRule
 	auditService	*AuditWatcherService
+	pendingDisconnect	bool
+	disconnecting	int64
 }
 
 func parseRule(rule string) (*AuditWatcherRule, error) {
@@ -118,7 +120,9 @@ func (self *AuditWatcher) deleteRules() {
 }
 
 func (self *AuditWatcher) disconnect() {
-	if len(self.rules) > 0 {
+	// Disconnects can be initiated by distributeEvent and by channel shutdown.
+	// We only want to do this once.
+	if atomic.CompareAndSwapInt64(&self.disconnecting, 0, 1) {
 		self.deleteRules()
 	}
 }
@@ -689,7 +693,10 @@ func (self *AuditWatcherService) distributeEvent(event *aucoalesce.Event) {
 	for _, watcher := range self.watchers {
 		select {
 		case <- watcher.ctx.Done():
-			watchersToDisconnect = append(watchersToDisconnect, watcher)
+			if !watcher.pendingDisconnect {
+				watchersToDisconnect = append(watchersToDisconnect, watcher)
+				watcher.pendingDisconnect = true
+			}
 		case watcher.eventChannel <- *event:
 		}
 	}
