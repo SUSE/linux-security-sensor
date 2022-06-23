@@ -463,41 +463,44 @@ func (self *AuditWatcherService) acceptEvents() error {
 
 func (self *AuditWatcherService) startEventQueue() {
 	defer self.wgDec("startEventQueue")
-	watchIterator := self.eventQueue.NewWatchIterator()
-	iter := watchIterator.Iter()
-	defer watchIterator.Close()
 
-	for {
-		select {
-		case <-self.ctx.Done():
-			return
-		case item := <-iter:
-			atomic.AddInt64(&self.currentMessagesQueuedCounter, -1)
-			recvBuf := item.(*AuditMessageBuf)
+	events := atomic.LoadInt64(&self.currentMessagesQueuedCounter)
+	count := int64(0)
 
-			err := auparse.ParseBytes(recvBuf.Message.Type, recvBuf.Message.Data,
-						  &recvBuf.AuditMessage)
-			if err != nil {
-				self.logger.Debug("Failed to parse message: %v", err)
-				atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
-				self.bufPool.Put(recvBuf)
-				continue
-			}
+	for count < events {
+		item, _ := self.eventQueue.Dequeue()
+		if item == nil {
+			break
+		}
 
-			// Allows the ReassemblyComplete callback to free the buffer
-			recvBuf.AuditMessage.Owner = recvBuf
+		count += 1
 
-			self.reassembler.PushMessage(&recvBuf.AuditMessage)
-			atomic.AddInt64(&self.totalMessagesPostedCounter, 1)
+		recvBuf := item.(*AuditMessageBuf)
 
-			// These record types aren't included in the complete callback
-			// but they still need to be pushed
-			if recvBuf.AuditMessage.RecordType == auparse.AUDIT_EOE {
-				atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
-				self.bufPool.Put(recvBuf)
-			}
+		err := auparse.ParseBytes(recvBuf.Message.Type, recvBuf.Message.Data,
+					  &recvBuf.AuditMessage)
+		if err != nil {
+			self.logger.Debug("Failed to parse message: %v", err)
+			atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
+			self.bufPool.Put(recvBuf)
+			continue
+		}
+
+		// Allows the ReassemblyComplete callback to free the buffer
+		recvBuf.AuditMessage.Owner = recvBuf
+
+		self.reassembler.PushMessage(&recvBuf.AuditMessage)
+		atomic.AddInt64(&self.totalMessagesPostedCounter, 1)
+
+		// These record types aren't included in the complete callback
+		// but they still need to be pushed
+		if recvBuf.AuditMessage.RecordType == auparse.AUDIT_EOE {
+			atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
+			self.bufPool.Put(recvBuf)
 		}
 	}
+
+	atomic.AddInt64(&self.currentMessagesQueuedCounter, -count)
 }
 
 func (self *AuditWatcherService) listenerEventLoop() {
