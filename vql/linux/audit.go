@@ -37,6 +37,7 @@ var (
 	gBatchTimeout = 1000 * time.Millisecond
 	debugGoRoutines = false
 	gMinimumSocketBufSize = 512 * 1024
+	gMaxMessageQueueDepth = int64(2500)
 )
 
 var gBannedRules = []string{
@@ -164,6 +165,8 @@ type AuditWatcherService struct {
 	listenSocketBufSize int
 
 	eventQueue	*lfreequeue.Queue
+	queueFlushTimer	*time.Timer
+	queueFlushMutex	sync.Mutex
 	bufPool		sync.Pool
 
 	// Used only for stats reporting
@@ -375,6 +378,8 @@ func getAuditWatcherService(config_obj *config_proto.Config) (*AuditWatcherServi
 			bufPool:	pool,
 		}
 
+		auditService.queueFlushTimer = newStoppedTimer()
+
 		err := auditService.setupWatcherService()
 		if err != nil {
 			auditService = nil
@@ -419,6 +424,8 @@ func (self *AuditWatcherService) acceptEvents() error {
 	var discardedCount int64 = 0
 	var queuedCount int64 = 0
 
+	defer self.queueFlushTimer.Reset(500 * time.Millisecond)
+
 	queueDepth := atomic.LoadInt64(&self.currentMessagesQueuedCounter)
 
 	// We're in non-blocking mode.  Try to get all of the events we can in one go.
@@ -451,20 +458,33 @@ func (self *AuditWatcherService) acceptEvents() error {
 			continue
 		}
 
-		self.eventQueue.Enqueue(recvBuf)
+		if queueDepth + queuedCount >= gMaxMessageQueueDepth {
+			atomic.AddInt64(&self.currentMessagesQueuedCounter, queuedCount)
+			queuedCount = 0
+			self.flushEventQueue()
+			queueDepth = atomic.LoadInt64(&self.currentMessagesQueuedCounter)
+		}
 
+		self.eventQueue.Enqueue(recvBuf)
 		queuedCount += 1
 
-		if queueDepth + queuedCount > 10000 {
-			self.logger.Debug("too many events in flight: %v", queueDepth + queuedCount)
+		if (queuedCount % 500) == 0 {
+			self.logger.Debug("Reset timer")
+			self.queueFlushTimer.Reset(500 * time.Millisecond)
 		}
 	}
 }
 
-func (self *AuditWatcherService) startEventQueue() {
-	defer self.wgDec("startEventQueue")
-
+func (self *AuditWatcherService) flushEventQueue() {
+	self.queueFlushMutex.Lock()
+	defer self.queueFlushMutex.Unlock()
 	events := atomic.LoadInt64(&self.currentMessagesQueuedCounter)
+	if events == 0 {
+		return
+	}
+	self.logger.Debug("draining %v events from queue", events)
+	then := time.Now()
+
 	count := int64(0)
 
 	for count < events {
@@ -501,6 +521,26 @@ func (self *AuditWatcherService) startEventQueue() {
 	}
 
 	atomic.AddInt64(&self.currentMessagesQueuedCounter, -count)
+	elapsed := time.Now().Sub(then)
+	self.logger.Debug("drained %v events from queue in %v", count, elapsed)
+}
+
+// Ensure that no events sit in the queue for more than 500ms
+func (self *AuditWatcherService) startEventQueueMaintainer() {
+	defer self.wgDec("startEventQueueMaintainer")
+
+	timeout := time.NewTicker(500 * time.Millisecond)
+	defer timeout.Stop()
+
+	for {
+		select {
+		case <-self.ctx.Done():
+			return
+		case <-self.queueFlushTimer.C:
+			self.logger.Debug("Timer fired")
+			self.flushEventQueue()
+		}
+	}
 }
 
 func (self *AuditWatcherService) listenerEventLoop() {
@@ -586,6 +626,9 @@ func (self *AuditWatcherService) reportStats() {
 		messagesPosted := atomic.LoadInt64(&self.totalMessagesPostedCounter)
 		queued := atomic.LoadInt64(&self.currentMessagesQueuedCounter)
 		loops := atomic.LoadInt64(&self.totalReceiveLoopCounter)
+		if loops == 0 {
+			loops = 1
+		}
 
 		self.logger.Debug("audit: ******************************** Received %d messages (%d rows) from kernel (diff %d (%d rows)) (averaging %d messages per loop over %d loops)",
 		                  received, received / 6, received - lastReceived,
@@ -672,8 +715,8 @@ func (self *AuditWatcherService) startEventLoops() {
 	self.wgInc("startRulesChecker")
 	go self.startRulesChecker(gBatchTimeout)
 
-	self.wgInc("startEventQueue")
-	go self.startEventQueue()
+	self.wgInc("startEventQueueMaintainer")
+	go self.startEventQueueMaintainer()
 
 	err := self.startListener()
 	if err != nil {
