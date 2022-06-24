@@ -138,23 +138,23 @@ func (c *NetlinkClient) Send(msg syscall.NetlinkMessage, sendBuf []byte) (uint32
 
 	msg.Header.Seq = atomic.AddUint32(&c.seq, 1)
 	to := &syscall.SockaddrNetlink{}
-	err := serialize(msg, sendBuf)
+	messageData, err := serialize(msg, sendBuf)
 	if err != nil {
 		return 0, err
 	}
-	return msg.Header.Seq, syscall.Sendto(c.fd, sendBuf, 0, to)
+	return msg.Header.Seq, syscall.Sendto(c.fd, messageData, 0, to)
 }
 
-func serialize(msg syscall.NetlinkMessage, sendBuf []byte) error {
+func serialize(msg syscall.NetlinkMessage, sendBuf []byte) ([]byte, error) {
 	bufSize := syscall.SizeofNlMsghdr + len(msg.Data)
 	if bufSize > len(sendBuf) {
-		return fmt.Errorf("Buffer size insufficient (%d < %d)", bufSize, len(sendBuf))
+		return nil, fmt.Errorf("Buffer size insufficient (%d < %d)", bufSize, len(sendBuf))
 	}
 	msg.Header.Len = uint32(bufSize)
 
 	*(*syscall.NlMsghdr)(unsafe.Pointer(&sendBuf[0])) = msg.Header
 	copy(sendBuf[syscall.SizeofNlMsghdr:], msg.Data)
-	return nil
+	return sendBuf[:msg.Header.Len], nil
 }
 
 // Receive receives data from the netlink socket and uses the provided
