@@ -36,6 +36,7 @@ var (
 	// Timeout for batching audit configuration events
 	gBatchTimeout = 1000 * time.Millisecond
 	debugGoRoutines = false
+	gDebugPrintingEnabled = false
 	gMinimumSocketBufSize = 512 * 1024
 	gMaxMessageQueueDepth = int64(2500)
 )
@@ -199,6 +200,13 @@ func (self *AuditWatcherService) wgDec(description string) {
 	}
 	self.wg.Done()
 }
+
+func (self *AuditWatcherService) Debug(format string, v ...interface{}) {
+	if gDebugPrintingEnabled {
+		self.logger.Debug(format, v...)
+	}
+}
+
 
 // Only allow a reference if the refcount is already elevated
 func (self *AuditWatcherService) Get() bool {
@@ -469,7 +477,6 @@ func (self *AuditWatcherService) acceptEvents() error {
 		queuedCount += 1
 
 		if (queuedCount % 500) == 0 {
-			self.logger.Debug("Reset timer")
 			self.queueFlushTimer.Reset(500 * time.Millisecond)
 		}
 	}
@@ -482,7 +489,7 @@ func (self *AuditWatcherService) flushEventQueue() {
 	if events == 0 {
 		return
 	}
-	self.logger.Debug("draining %v events from queue", events)
+	self.Debug("draining %v events from queue", events)
 	then := time.Now()
 
 	count := int64(0)
@@ -500,7 +507,7 @@ func (self *AuditWatcherService) flushEventQueue() {
 		err := auparse.ParseBytes(recvBuf.Message.Type, recvBuf.Message.Data,
 					  &recvBuf.AuditMessage)
 		if err != nil {
-			self.logger.Debug("Failed to parse message: %v", err)
+			self.Debug("Failed to parse message: %v", err)
 			atomic.AddInt64(&self.totalOutstandingBufferCounter, -1)
 			self.bufPool.Put(recvBuf)
 			continue
@@ -522,7 +529,7 @@ func (self *AuditWatcherService) flushEventQueue() {
 
 	atomic.AddInt64(&self.currentMessagesQueuedCounter, -count)
 	elapsed := time.Now().Sub(then)
-	self.logger.Debug("drained %v events from queue in %v", count, elapsed)
+	self.Debug("drained %v events from queue in %v", count, elapsed)
 }
 
 // Ensure that no events sit in the queue for more than 500ms
@@ -537,7 +544,7 @@ func (self *AuditWatcherService) startEventQueueMaintainer() {
 		case <-self.ctx.Done():
 			return
 		case <-self.queueFlushTimer.C:
-			self.logger.Debug("Timer fired")
+			self.Debug("Timer fired")
 			self.flushEventQueue()
 		}
 	}
@@ -546,7 +553,7 @@ func (self *AuditWatcherService) startEventQueueMaintainer() {
 func (self *AuditWatcherService) listenerEventLoop() {
 	defer self.wgDec("listenerEventLoop")
 	defer unix.Close(self.epollFd)
-	defer self.logger.Debug("audit: listener event loop exited")
+	defer self.Debug("audit: listener event loop exited")
 
 	ready := make([]unix.EpollEvent, 2)
 	for {
@@ -681,8 +688,10 @@ func (self *AuditWatcherService) startListener() error {
 	self.wgInc("listenerEventLoop")
 	go self.listenerEventLoop()
 
-	self.wgInc("reportStats()")
-	go self.reportStats()
+	if gDebugPrintingEnabled {
+		self.wgInc("reportStats()")
+		go self.reportStats()
+	}
 
 	return nil
 }
@@ -691,7 +700,7 @@ func (self *AuditWatcherService) startMaintainer() {
 	t := time.NewTicker(500 * time.Millisecond)
 	defer t.Stop()
 	defer self.wgDec("startMaintainer")
-	defer self.logger.Debug("audit: reassembler maintainer exited")
+	defer self.Debug("audit: reassembler maintainer exited")
 
 	for {
 		select {
@@ -754,7 +763,7 @@ func (self *AuditWatcherService) connectWatcher(ctx context.Context,
 func (self *AuditWatcherService) ReassemblyComplete(msgs []*auparse.AuditMessage) {
 	event, err := aucoalesce.CoalesceMessages(msgs)
 	if err != nil {
-		self.logger.Debug("audit: failed to coalesce message: %v", err)
+		self.logger.Info("audit: failed to coalesce message: %v", err)
 		return
 	}
 
@@ -963,7 +972,7 @@ func (self *AuditWatcherService) checkRules() error {
 	}
 
 	if missing > 0 {
-		self.logger.Debug("audit: replaced %d missing rules", missing)
+		self.Debug("audit: replaced %d missing rules", missing)
 	}
 
 	for text, rule := range self.bannedRules {
@@ -990,7 +999,7 @@ func (self *AuditWatcherService) checkRules() error {
 // end up checking the rules for _every_ event, which is just wasteful.
 func (self *AuditWatcherService) startRulesChecker(timeout time.Duration) {
 	defer self.wgDec("startRulesChecker")
-	defer self.logger.Debug("audit: rules checker exited")
+	defer self.Debug("audit: rules checker exited")
 
 	count := 0
 
