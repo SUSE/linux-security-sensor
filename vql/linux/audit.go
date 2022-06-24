@@ -536,9 +536,6 @@ func (self *AuditWatcherService) flushEventQueue() {
 func (self *AuditWatcherService) startEventQueueMaintainer() {
 	defer self.wgDec("startEventQueueMaintainer")
 
-	timeout := time.NewTicker(500 * time.Millisecond)
-	defer timeout.Stop()
-
 	for {
 		select {
 		case <-self.ctx.Done():
