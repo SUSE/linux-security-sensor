@@ -14,11 +14,11 @@ import (
 	"bufio"
 	"github.com/fsnotify/fsnotify"
 	"log"
-	"time"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
-	"unsafe"
+	"time"
 )
 
 type Action int
@@ -30,10 +30,10 @@ const (
 
 type CronEvent struct {
 	Timestamp string
-	File   string
-	Cmd    string
-	User   string
-	Action string
+	File      string
+	Cmd       string
+	User      string
+	Action    string
 }
 
 func (a Action) String() string {
@@ -81,7 +81,7 @@ func (snooper *CronSnooper) emit_event(cmd, user, file string, action Action) {
 	// non-blocking send, consumer of CronSnooper better use sufficiently large
 	// buffered channel
 	select {
-		case snooper.result_chan <- CronEvent{Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"), Cmd: cmd, User: user, Action: action.String(),
+	case snooper.result_chan <- CronEvent{Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"), Cmd: cmd, User: user, Action: action.String(),
 		File: file}:
 
 	default:
@@ -110,14 +110,9 @@ func (snooper *CronSnooper) is_user_cron_event(event fsnotify.Event) bool {
 	if strings.HasPrefix(event.Name, snooper.cron_spool_path) &&
 		event.Op&(fsnotify.Remove|fsnotify.Rename|fsnotify.Write|
 			fsnotify.Create) > 0 {
-		filebase := filepath.Base(event.Name)
-		filebase_c := C.CString(filebase)
-		defer C.free(unsafe.Pointer(filebase_c))
-		cpw := C.getpwnam(filebase_c)
-
-		if cpw == nil {
-			return false
-		} else {
+		uname := filepath.Base(event.Name)
+		_, err := user.Lookup(uname)
+		if err == nil {
 			return true
 		}
 	}
