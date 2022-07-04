@@ -283,8 +283,6 @@ func (snooper *CronSnooper) parse_system_cron_file(path string) error {
 			continue
 		}
 
-		// TODO: Probably could optimise how we get the command instead of doing
-		// split + join
 		if special_cron_string(split_line) {
 			user = string(split_line[1])
 			cmd = strings.Join(split_line[2:], " ")

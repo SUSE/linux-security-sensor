@@ -14,7 +14,7 @@ import (
 )
 
 type CronsnoopArgs struct {
-	SpoolPath string `vfilter:"required,field=spool_dir,doc=Spool directory where user cron files are located"`
+	SpoolPath   string   `vfilter:"required,field=spool_dir,doc=Spool directory where user cron files are located"`
 	SystemPaths []string `vfilter:"required,field=system_dirs,doc=Directories to be watched where system cron files are located"`
 }
 
@@ -33,12 +33,11 @@ func (self CronsnoopPlugin) Call(
 
 	output_chan := make(chan vfilter.Row)
 	arg := &CronsnoopArgs{}
-    err := arg_parser.ExtractArgsWithContext(ctx, scope, args, arg)
+	err := arg_parser.ExtractArgsWithContext(ctx, scope, args, arg)
 
 	if err != nil {
 		scope.Log("cronsnoop: %s", err.Error())
 	}
-
 
 	go func() {
 		defer close(output_chan)
@@ -49,7 +48,7 @@ func (self CronsnoopPlugin) Call(
 			return
 		}
 
-		// Make the chan large enough so that cron snooper doesn't block, waiting 
+		// Make the chan large enough so that cron snooper doesn't block, waiting
 		// for the channel too be consumed
 		eventChan := make(chan CronEvent, 1000)
 		snooper, err := NewCronSnooperWithChan(arg.SpoolPath, arg.SystemPaths, eventChan)
@@ -68,7 +67,7 @@ func (self CronsnoopPlugin) Call(
 			case event, ok := <-eventChan:
 				if !ok {
 					scope.Log("cronsnoop: Couldn't receive from event chan, dying")
-					return;
+					return
 				}
 
 				output_chan <- event
