@@ -1,0 +1,42 @@
+name: Linux.Events.ProcessStatuses
+description: |
+  This artifact collects new processes created by non-root users from
+  the Linux kernel audit events.
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+sources:
+  - query: |
+
+     LET proc_stat_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
+
+     LET proc_exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Process.PID) AS Pid,
+           atoi(string=Process.PPID) AS Ppid,
+           Process.PPID AS PPID,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           Process.Title AS CmdLine,
+           Process.Exe AS Exe,
+           Process.CWD AS CWD,
+           hash(path=Process.Exe) AS Hash
+       FROM audit(rules=proc_stat_rules)
+       WHERE "vrr_procmon" in Tags 
+           AND atoi(string=Summary.Actor.Primary) != -1 
+           AND atoi(string=Summary.Actor.Secondary) != 0
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, Pid, Ppid, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State,CmdLine,
+              CWD, Exe AS ImagePath, Hash.SHA256 AS Hash_Sha256, Hash.SHA1 AS Hash_Sha1
+       FROM proc_exec_log
