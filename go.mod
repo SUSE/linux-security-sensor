@@ -41,14 +41,13 @@ require (
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-elasticsearch/v7 v7.3.0 // indirect
-	github.com/elastic/go-libaudit v0.4.0
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1
 	github.com/google/rpmpack v0.0.0-20210518075352-dc539ef4f2ea
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -124,7 +123,9 @@ require (
 require (
 	github.com/Velocidex/file-rotatelogs v0.0.0-20211221020724-d12e4dae4e11
 	github.com/Velocidex/ordereddict v0.0.0-20220428153415-da46091cd216
+	github.com/elastic/go-libaudit/v2 v2.0.0-00010101000000-000000000000
 	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/scryner/lfreequeue v0.0.0-20121212074822-473f33702129
 	github.com/shirou/gopsutil/v3 v3.21.11
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	www.velocidex.com/golang/vtypes v0.0.0-20220107071957-49947f744c34
@@ -190,6 +191,8 @@ require (
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
@@ -235,3 +238,5 @@ replace github.com/russross/blackfriday/v2 => github.com/Velocidex/blackfriday/v
 go 1.17
 
 replace github.com/alecthomas/chroma => github.com/Velocidex/chroma v0.6.8-0.20200418131129-82edc291369c
+
+replace github.com/elastic/go-libaudit/v2 => ./third_party/go-libaudit

@@ -1,0 +1,36 @@
+name: Linux.Events.ExecutableFiles
+description: |
+  This artifact collects Every new executable file in /tmp or login
+  directory from the Linux kernel.
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+sources:
+
+  - query: |
+     LET exec_bit_rules = ("-a always,exit -F arch=b64 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b64 -S fchmod -F a1&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmod -F a1&73 -k vrr_exec_bit_addition")
+
+     LET exec_bit_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           File.path AS FileName,
+           join(array=[Process.CWD, File.path], sep='/') AS FilePath,
+           hash(path=join(array=[Process.CWD, File.path], sep='/')) AS Hash
+       FROM audit(rules=exec_bit_rules)
+       WHERE "vrr_exec_bit_addition" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State, FileName, FilePath, Hash.SHA256 AS Hash_Sha256,
+              Hash.SHA1 AS Hash_Sha1
+     FROM exec_bit_log

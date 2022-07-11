@@ -1,0 +1,55 @@
+[
+  {
+    "@timestamp": "2017-04-22T21:25:01.818Z",
+    "record_type": "user_login",
+    "sequence": 19955,
+    "raw_msg": "audit(1492896301.818:19955): pid=12635 uid=0 auid=4294967295 ses=4294967295 msg='op=login acct=28696E76616C6964207573657229 exe=\"/usr/sbin/sshd\" hostname=? addr=179.38.151.221 terminal=sshd res=failed'",
+    "data": {
+      "acct": "(invalid user)",
+      "addr": "179.38.151.221",
+      "auid": "unset",
+      "exe": "/usr/sbin/sshd",
+      "op": "login",
+      "pid": "12635",
+      "result": "fail",
+      "ses": "unset",
+      "terminal": "sshd",
+      "uid": "0"
+    }
+  },
+  {
+    "@timestamp": "2017-04-21T21:39:57.778Z",
+    "record_type": "user_login",
+    "sequence": 12651,
+    "raw_msg": "audit(1492810797.778:12651): pid=11396 uid=0 auid=1001 ses=36 msg='op=login id=1001 exe=\"/usr/sbin/sshd\" hostname=72.83.230.100 addr=72.83.230.100 terminal=/dev/pts/1 res=success'",
+    "data": {
+      "addr": "72.83.230.100",
+      "auid": "1001",
+      "exe": "/usr/sbin/sshd",
+      "hostname": "72.83.230.100",
+      "id": "1001",
+      "op": "login",
+      "pid": "11396",
+      "result": "success",
+      "ses": "36",
+      "terminal": "/dev/pts/1",
+      "uid": "0"
+    }
+  },
+  {
+    "@timestamp": "2018-04-25T13:28:53.08Z",
+    "record_type": "avc",
+    "sequence": 61207,
+    "raw_msg": "audit(1524662933.080:61207): apparmor=\"DENIED\" operation=\"ptrace\" profile=\"docker-default\" pid=5571 comm=\"metricbeat\" requested_mask=\"trace\" denied_mask=\"trace\" peer=\"unconfined\"",
+    "data": {
+      "apparmor": "DENIED",
+      "comm": "metricbeat",
+      "denied_mask": "trace",
+      "operation": "ptrace",
+      "peer": "unconfined",
+      "pid": "5571",
+      "profile": "docker-default",
+      "requested_mask": "trace"
+    }
+  }
+]
