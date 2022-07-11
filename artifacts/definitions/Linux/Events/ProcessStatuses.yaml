@@ -13,7 +13,7 @@ required_permissions:
 sources:
   - query: |
 
-     LET proc_stat_rules = ("-a always,exit -F arch=b64 -S execve -F euid!=0 -F auid!=-1 -k vrr_proexec", "-a always,exit -F arch=b32 -S execve -F euid!=0 -F auid!=-1 -k vrr_proexec")
+     LET proc_stat_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
 
      LET proc_exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
            atoi(string=Process.PID) AS Pid,
@@ -26,7 +26,9 @@ sources:
            Process.CWD AS CWD,
            hash(path=Process.Exe) AS Hash
        FROM audit(rules=proc_stat_rules)
-       WHERE "vrr_proexec" in Tags
+       WHERE "vrr_procmon" in Tags 
+           AND atoi(string=Summary.Actor.Primary) != -1 
+           AND atoi(string=Summary.Actor.Secondary) != 0
 
      // Cache Uid -> Username mapping.
      LET usrs <= SELECT User, atoi(string=Uid) AS Uid
