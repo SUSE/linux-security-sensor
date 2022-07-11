@@ -19,18 +19,22 @@ sources:
            atoi(string=Summary.Actor.Primary) AS UserId,
            Result AS State,
            File.path AS FileName,
-           join(array=[Process.CWD, File.path], sep='/') AS FilePath,
-           hash(path=join(array=[Process.CWD, File.path], sep='/')) AS Hash
+           { SELECT * FROM if(condition=dirname(path=File.path)=~'^.+',then=File.path,else=join(array=[Process.CWD, File.path], sep='/')) } AS FilePath
        FROM audit(rules=new_file_rules)
-       WHERE "vrr_etc_update" in Tags
+       WHERE "vrr_etc_update" in Tags AND Result = 'success' AND File != null AND Type != 'config_change'
 
      // Cache Uid -> Username mapping.
      LET usrs <= SELECT User, atoi(string=Uid) AS Uid
        FROM Artifact.Linux.Sys.Users()
 
+     LET hash_log = SELECT Time, UserId,
+           { SELECT User from usrs WHERE Uid = UserId} AS User,
+           State, FileName, FilePath,
+           hash(path=FilePath, hashselect=['SHA1', 'SHA256']) AS Hash
+       FROM new_file_log
+
      // Enrich the original artifact with more data.
-     SELECT Time, UserId,
-              { SELECT User from usrs WHERE Uid = UserId} AS User,
-              State, FileName, FilePath, Hash.SHA256 AS Hash_Sha256,
-              Hash.SHA1 AS Hash_Sha1
-     FROM new_file_log
+     SELECT Time, UserId, User,
+            State, FileName, FilePath, 
+            Hash.SHA256 AS Hash_SHA256, Hash.SHA1 AS Hash_SHA1
+     FROM hash_log
