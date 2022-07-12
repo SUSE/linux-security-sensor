@@ -26,8 +26,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 //go:generate sh -c "go run mk_audit_msg_types.go && gofmt -s -w zaudit_msg_types.go"
@@ -449,7 +447,7 @@ func setSignalName(data map[string]*field) error {
 		return fmt.Errorf("failed to parse sig: %w", err)
 	}
 
-	if signalName := unix.SignalName(syscall.Signal(signalNum)); signalName != "" {
+	if signalName := getSignalName(syscall.Signal(signalNum)); signalName != "" {
 		field.Set(signalName)
 	}
 	return nil
