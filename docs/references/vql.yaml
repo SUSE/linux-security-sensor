@@ -979,6 +979,11 @@
     required: true
   metadata:
     permissions: PREPARE_RESULTS
+- name: cronsnoop
+  description: Snoops changes to cron files
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
 - name: crypto_rc4
   description: Apply rc4 to the string and key.
   type: Function
