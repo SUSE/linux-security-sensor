@@ -132,6 +132,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/elastic/go-libaudit/v2 v2.3.1-0.20221118223002-d56d27cfa498
 	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/glaslos/tlsh v0.2.0
 	github.com/go-errors/errors v1.4.2
 	github.com/go-json-experiment/json v0.0.0-20250910080747-cc2cfa0554c3
