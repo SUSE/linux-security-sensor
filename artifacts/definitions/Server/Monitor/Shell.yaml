@@ -17,7 +17,8 @@ description: |
 type: SERVER_EVENT
 
 sources:
-  - query: |
+  - precondition: SELECT OS From info() where OS = 'windows'
+    query: |
       -- Watch for shell flow completions.
       LET collections = SELECT Flow
          FROM watch_monitoring(artifact="System.Flow.Completion")
@@ -39,6 +40,28 @@ sources:
                  artifact=Flow.artifacts_with_results[0])
       })
 
+  - precondition: SELECT OS From info() where OS = 'linux'
+    query: |
+      -- Watch for shell flow completions.
+      LET collections = SELECT Flow
+         FROM watch_monitoring(artifact="System.Flow.Completion")
+         WHERE Flow.artifacts_with_results =~ "Linux.Sys.BashShell"
+
+      -- Dump the command and the results.
+      SELECT * FROM foreach(row=collections,
+      query={
+         SELECT Flow.session_id AS FlowId,
+             Flow.client_id AS ClientId,
+             client_info(client_id=Flow.client_id).os_info.fqdn AS Hostname,
+             timestamp(epoch=Flow.create_time / 1000000) AS Created,
+             timestamp(epoch=Flow.active_time / 1000000) AS LastActive,
+             Flow.request.specs[0].parameters.env[0].value AS Command,
+             Flow.request.creator as CommandIssuedByUser,
+             Stdout, Stderr FROM source(
+                 client_id=Flow.client_id,
+                 flow_id=Flow.session_id,
+                 artifact=Flow.artifacts_with_results[0])
+      })
 
 # Reports can be MONITORING_DAILY, CLIENT
 reports:
