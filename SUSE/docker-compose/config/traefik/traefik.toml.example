@@ -1,0 +1,37 @@
+debug = true
+
+logLevel = "info"
+defaultEntryPoints = ["https","http"]
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+    [entryPoints.http.redirect]
+    entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+  [entryPoints.https.tls]
+
+[retry]
+
+[docker]
+endpoint = "unix:///var/run/docker.sock"
+domain = "$DOMAIN"
+watch = true
+exposedByDefault = false
+
+[acme]
+email = "$EMAILADDRESS"
+storage = "acme.json"
+entryPoint = "https"
+OnHostRule = true
+caServer = "https://$CAFQDN/acme/$DOMAIN/directory"
+acmeLogging = true
+
+[acme.httpChallenge]
+entryPoint = "http"
+delayBeforeCheck = 10
+
+[acme.tlsChallenge]
+entryPoint = "https"
+delayBeforeCheck = 10
