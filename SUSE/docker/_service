@@ -1,0 +1,20 @@
+<services>
+	<service mode="buildtime" name="kiwi_metainfo_helper"/>
+	<service mode="buildtime" name="replace_using_package_version">
+		<param name="file">Dockerfile</param>
+		<param name="regex">%PKG_VERSION%</param>
+		<param name="parse-version">patch</param>
+		<!-- Fill with the main package of the container.
+		     It determines the version of the container image. -->
+		<param name="package">velociraptor</param>
+	</service>
+	<service mode="buildtime" name="replace_using_package_version">
+		<param name="file">Dockerfile</param>
+		<param name="regex">%GIT_OFFSET%</param>
+		<param name="parse-version">offset</param>
+		<!-- Fill with the main package of the container.
+		     It determines the version of the container image. -->
+		<param name="package">velociraptor</param>
+	</service>
+	<service mode="buildtime" name="docker_label_helper"/>
+</services>
