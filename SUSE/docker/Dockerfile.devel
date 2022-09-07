@@ -1,0 +1,25 @@
+FROM opensuse/leap:15.4
+
+VOLUME /data
+VOLUME /logs
+VOLUME /config
+
+# API
+EXPOSE 8801
+
+# GUI
+EXPOSE 8889
+
+# Frontend
+EXPOSE 8000
+
+# Monitoring
+EXPOSE 8003
+
+COPY entry-point.sh generate-config.sh /
+COPY init-config.json /etc/velociraptor/
+RUN chmod a+x /entry-point.sh /generate-config.sh
+RUN zypper -q --non-interactive install catatonit && zypper clean -a
+COPY velociraptor-v0.6.4-2-linux-amd64 /usr/bin/velociraptor
+
+CMD ["/usr/bin/catatonit", "--", "/entry-point.sh" ]
