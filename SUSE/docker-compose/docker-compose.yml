@@ -1,0 +1,78 @@
+---
+version: '3'
+
+volumes:
+  traefik-certs:
+  client-data:
+
+services:
+  traefik:
+    image: traefik:v2.8
+    container_name: traefik
+    hostname: traefik
+    command:
+      - "--log.level=DEBUG"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.caserver=${ACME_SERVER}"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/certs/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/certs
+      - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
+    restart: unless-stopped
+  sensor-frontend:
+    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    hostname: sensor-frontend
+    container_name: sensor-frontend
+    user: "1000:100"
+    ports:
+      - "8000:8000" # Frontend
+      # - "8003:8003" # Monitoring
+      # - "8001:8001" # gRPC endpoint (used for replication in multi-frontend environments)
+      # - "8889:8889" # GUI - proxied by traefik
+    volumes:
+      - ./config/velociraptor:/config
+      - ./data/velociraptor:/data
+      - ./logs/velociraptor:/logs
+      - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.frontend.rule: "Host(`${SENSOR_GUI_HOSTNAME}`)"
+      traefik.http.routers.frontend.entrypoints: web
+      traefik.http.routers.frontend.middlewares: https_redirect
+      traefik.http.routers.frontendtls.rule: "Host(`${SENSOR_GUI_HOSTNAME}`)"
+      traefik.http.routers.frontendtls.entrypoints: websecure
+      traefik.http.routers.frontendtls.tls: true
+      traefik.http.routers.frontendtls.tls.certresolver: myresolver
+      traefik.http.middlewares.https_redirect.redirectscheme.scheme: https
+      traefik.http.middlewares.https_redirect.redirectscheme.permanent: true
+      traefik.http.services.frontend.loadbalancer.server.port: 8889
+      traefik.http.services.frontend.loadbalancer.passhostheader: true
+    restart:
+      unless-stopped
+  sensor-client:
+    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    hostname: sensor-client
+    container_name: sensor-client
+    user: root
+    command: /usr/bin/velociraptor client --config /config/client.conf -v
+    depends_on:
+      - sensor-frontend
+    volumes:
+      - ./config/velociraptor:/config:ro
+      - client-data:/var/lib/velociraptor-client
+    restart:
+      unless-stopped
+
+networks:
+  default:
