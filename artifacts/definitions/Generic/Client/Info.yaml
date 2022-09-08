@@ -33,6 +33,17 @@ sources:
                Interfaces.MAC AS MACAddresses
         FROM info()
 
+  - name: LinuxInfo
+    description: Linux specific information about the host
+    precondition: SELECT OS From info() where OS = 'linux'
+    query: |
+      SELECT
+      { SELECT * FROM linux_info() } AS `Computer Info`,
+      { SELECT Name, MACAddress, Up, PointToPoint,
+               join(array=IPAddresses, sep=', ') AS IPAddresses
+               FROM linux_net() } AS `Network Info`
+      FROM scope()
+
   - name: WindowsInfo
     description: Windows specific information about the host
     precondition: SELECT OS From info() where OS = 'windows'
