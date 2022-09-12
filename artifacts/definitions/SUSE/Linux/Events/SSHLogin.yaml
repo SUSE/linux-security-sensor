@@ -46,7 +46,7 @@ sources:
     query: |
       LET success_login = SELECT REALTIME_TIMESTAMP, _PID, MESSAGE, _SYSTEMD_UNIT, grok(grok=SSHGrok, data=MESSAGE) AS Event
         FROM watch_journal()
-        WHERE _SYSTEMD_UNIT = SSHSystemdUnit AND Event.event = "Accepted"
+        WHERE _TRANSPORT != 'kernel' AND _SYSTEMD_UNIT = SSHSystemdUnit AND Event.event = "Accepted"
       SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
                Event.user AS User,
                Event.method AS Method,
