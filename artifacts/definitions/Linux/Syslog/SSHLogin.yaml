@@ -57,7 +57,7 @@ sources:
           }, query={
             SELECT REALTIME_TIMESTAMP, _SYSTEMD_UNIT, grok(grok=SSHGrok, data=MESSAGE) AS Event
             FROM scan_journal()
-            WHERE Event.method AND _SYSTEMD_UNIT = systemdUnit
+            WHERE Event.method AND _TRANSPORT != 'kernel' AND _SYSTEMD_UNIT = systemdUnit
           })
 
 reports:
