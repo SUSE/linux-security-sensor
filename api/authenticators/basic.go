@@ -27,7 +27,7 @@ func (self *BasicAuthenticator) AddHandlers(mux *http.ServeMux) error {
 
 func (self *BasicAuthenticator) AddLogoff(mux *http.ServeMux) error {
 	base := self.config_obj.GUI.BasePath
-	mux.Handle(base+"/logoff", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle(base+"/logoff.html", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, _, ok := r.BasicAuth()
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
