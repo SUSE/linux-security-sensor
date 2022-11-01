@@ -53,6 +53,18 @@ func init() {
 		       "Path to YaML file containing configuration")
 }
 
+func saramaBackoff(retries, maxRetries int) time.Duration {
+	seconds := 1
+	for i := 0; i < retries; i += 1 {
+		seconds *= 2
+	}
+	if seconds > 30 {
+		seconds = 30
+	}
+
+	return time.Duration(seconds) * time.Second
+}
+
 func main() {
 	flag.Parse()
 
@@ -123,6 +135,9 @@ func main() {
 	}
 
 	saramaConfig := sarama.NewConfig()
+	saramaConfig.ClientID = "Kafka-Humio-Gateway"
+	saramaConfig.Metadata.Retry.Max = 15
+	saramaConfig.Metadata.Retry.BackoffFunc = saramaBackoff
 	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs + 500) * time.Millisecond
 	saramaConfig.Consumer.MaxProcessingTime = maxTime
 
