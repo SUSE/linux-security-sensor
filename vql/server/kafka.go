@@ -17,14 +17,33 @@ import (
 	"www.velocidex.com/golang/velociraptor/artifacts"
 	"www.velocidex.com/golang/velociraptor/crypto"
 	"www.velocidex.com/golang/velociraptor/json"
+	"www.velocidex.com/golang/velociraptor/logging"
 	"www.velocidex.com/golang/velociraptor/services"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	vfilter "www.velocidex.com/golang/vfilter"
 	"www.velocidex.com/golang/vfilter/arg_parser"
 )
 
+type saramaLogger struct{
+	logger *logging.LogContext
+}
+
+func (self *saramaLogger) Print(v ...interface{}) {
+	self.logger.Info("kafka: %s", v...)
+}
+
+func (self *saramaLogger) Printf(format string, v ...interface{}) {
+	self.logger.Info("kafka: " + format, v...)
+}
+
+func (self *saramaLogger) Println(v ...interface{}) {
+	self.logger.Info("kafka: %s\n", v...)
+}
+
 var (
 	defaultRetries int = 15
+	gSaramaMutex sync.Mutex
+	gSaramaLogger *saramaLogger
 )
 
 type _KafkaPluginArgs struct {
