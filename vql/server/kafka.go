@@ -23,6 +23,10 @@ import (
 	"www.velocidex.com/golang/vfilter/arg_parser"
 )
 
+var (
+	defaultRetries int = 15
+)
+
 type _KafkaPluginArgs struct {
 	Query              vfilter.StoredQuery `vfilter:"required,field=query,doc=Source for rows to upload."`
 	Addresses          []string            `vfilter:"required,field=addresses,doc=A list of Kafka nodes to use."`
@@ -68,6 +72,19 @@ func newProducer(arg *_KafkaPluginArgs, scope vfilter.Scope) (sarama.AsyncProduc
 		config.Net.TLS.Enable = true
 	}
 
+	config.Metadata.Retry.Max = arg.Retries
+	config.Metadata.Retry.BackoffFunc = func (retries, maxRetries int) time.Duration {
+		seconds := 1
+		for i := 0; i < retries; i += 1 {
+			seconds *= 2
+		}
+		if seconds > 30 {
+			seconds = 30
+		}
+
+		return time.Duration(seconds) * time.Second
+	}
+
 	producer, err := sarama.NewAsyncProducer(arg.Addresses, config)
 	if err != nil {
 		return nil, err
@@ -93,6 +110,7 @@ func (self _KafkaPlugin) Call(ctx context.Context,
 		arg := _KafkaPluginArgs{
 			Threads: 1,
 			Partition: -1,
+			Retries: defaultRetries,
 		}
 		err = arg_parser.ExtractArgsWithContext(ctx, scope, args, &arg)
 		if err != nil {
