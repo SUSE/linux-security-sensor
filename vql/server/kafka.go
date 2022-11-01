@@ -41,6 +41,9 @@ type _KafkaPlugin struct{}
 func newProducer(arg *_KafkaPluginArgs, scope vfilter.Scope) (sarama.AsyncProducer, error) {
 
 	config := sarama.NewConfig()
+
+	config.ClientID = "Velociraptor-Kafka-Plugin"
+
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Retry.Max = 2
