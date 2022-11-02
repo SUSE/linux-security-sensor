@@ -5,13 +5,14 @@ package linux
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 const (
-	fName       = "test.cron"
-	tmpfilepath = "test-spool-dir/alksfjgi9"
+	testFileName = "test.cron"
+	nonUserString = "alksfjgi9"
 )
 
 func assertUserExists(user string, s *CronSnooper, t *testing.T) {
@@ -72,50 +73,47 @@ func assertCronEvent(e CronEvent, cmd, user, path string, a Action, t *testing.T
 	}
 }
 
-func createFile(content []string) {
-	if f, err := os.Create(fName); err == nil {
-		for _, v := range content {
-			f.WriteString(v + "\n")
-		}
-
-		f.Close()
+func writeFileContents(fName string, content []string, t *testing.T) {
+	f, err := os.Create(fName)
+	if err != nil {
+		t.Fatal("Failed to create ", fName, ": ", err)
 	}
+
+	for _, v := range content {
+		f.WriteString(v + "\n")
+	}
+
+	f.Close()
 }
 
-func createFile2(filename string, content []string) {
-	if f, err := os.Create(filename); err == nil {
-		for _, v := range content {
-			f.WriteString(v + "\n")
-		}
+func createNamedFile(tempdir string, filename string, content []string, t *testing.T) string {
+	fName := filepath.Join(tempdir, filename)
 
-		f.Close()
-	}
-}
+	writeFileContents(fName, content, t)
 
-func createDir(dir string) {
-	os.RemoveAll(dir)
-	os.Mkdir(dir, 0755)
+	return fName
 }
 
 // Basic test to ensure addition works
 func TestCronAdd(t *testing.T) {
+	tempdir := t.TempDir()
 
 	var cmd []string
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
 	data := []string{"*/5 * * * * echo \"command1\"",
 		"*/5 * * * * echo \"command2\""}
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_user_cron_file(fName)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
-	assertUserExists(fName, s, t)
-	assertUserCmdCount(fName, 2, s, t)
+	assertUserExists(testFileName, s, t)
+	assertUserCmdCount(testFileName, 2, s, t)
 	cmds := s.user_cron_registry[fName]
 
 	for _, v := range data {
@@ -132,20 +130,21 @@ func TestCronAdd(t *testing.T) {
 		t.Fatal("Unexpected number of events:", len(c), "expected: 2")
 	}
 
-	assertCronEvent(<-c, cmd[0], fName, fName, Added, t)
-	assertCronEvent(<-c, cmd[1], fName, fName, Added, t)
+	assertCronEvent(<-c, cmd[0], testFileName, fName, Added, t)
+	assertCronEvent(<-c, cmd[1], testFileName, fName, Added, t)
 
 }
 
 // Ensure deleting a single command for a user works
 func TestCronDeleteSingleJob(t *testing.T) {
+	tempdir := t.TempDir()
 
 	data := []string{"*/5 * * * * echo \"command1\"",
 		"*/5 * * * * echo \"command2\""}
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_user_cron_file(fName)
 	if err != nil {
@@ -153,17 +152,17 @@ func TestCronDeleteSingleJob(t *testing.T) {
 	}
 
 	data2 := []string{"*/5 * * * * echo \"command1\""}
-	createFile(data2)
+	writeFileContents(fName, data2, t)
 
 	err = s.parse_user_cron_file(fName)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
-	assertUserExists(fName, s, t)
-	assertUserCmdCount(fName, 1, s, t)
+	assertUserExists(testFileName, s, t)
+	assertUserCmdCount(testFileName, 1, s, t)
 
-	cmds := s.user_cron_registry[fName]
+	cmds := s.user_cron_registry[testFileName]
 	cmd := strings.Join(strings.Split(data[0], " ")[5:], " ")
 
 	if cmd != cmds[0] {
@@ -178,50 +177,58 @@ func TestCronDeleteSingleJob(t *testing.T) {
 	<-c
 	<-c
 
-	assertCronEvent(<-c, "echo \"command2\"", fName, fName, Deleted, t)
+	assertCronEvent(<-c, "echo \"command2\"", testFileName, fName, Deleted, t)
 }
 
 // Deleting the last command for an entry in the cron registry
 // shall delete the entry itself. Also test that all events are fine.
 func TestCronDeleteAllCommands(t *testing.T) {
+	tempdir := t.TempDir()
 	data := []string{"*/5 * * * * echo \"command1\"",
 		"*/5 * * * * echo \"command2\""}
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("./", nil, c)
+
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
 	defer s.Close()
 	s.WatchCrons()
 
-	createFile2("./root", data)
+	fName := createNamedFile(tempdir, "root", data, t)
 
 	//Ignore add events
+	t.Log("Waiting for event 1")
 	<-c
+	t.Log("Waiting for event 2")
 	<-c
 
-	os.Remove("root")
+	t.Log("Removing file")
+	os.Remove(fName)
 
-	assertCronEvent(<-c, "echo \"command1\"", "root", "./root", Deleted, t)
-	assertCronEvent(<-c, "echo \"command2\"", "root", "./root", Deleted, t)
+	t.Log("Waiting for event 3")
+	assertCronEvent(<-c, "echo \"command1\"", "root", fName, Deleted, t)
+	t.Log("Waiting for event 4")
+	assertCronEvent(<-c, "echo \"command2\"", "root", fName, Deleted, t)
 }
 
 // Test that comment lines are ignored
 func TestIgnoreCommentLines(t *testing.T) {
+	tempdir := t.TempDir()
 	data := []string{"*/5 * * * * echo \"command1\"",
 		"#this shall be ignored"}
 
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
-	createFile(data)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_user_cron_file(fName)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
-	assertUserExists(fName, s, t)
-	assertUserCmdCount(fName, 1, s, t)
+	assertUserExists(testFileName, s, t)
+	assertUserCmdCount(testFileName, 1, s, t)
 
-	cmds := s.user_cron_registry[fName]
+	cmds := s.user_cron_registry[testFileName]
 	cmd := strings.Join(strings.Split(data[0], " ")[5:], " ")
 
 	if cmd != cmds[0] {
@@ -232,28 +239,28 @@ func TestIgnoreCommentLines(t *testing.T) {
 		t.Fatal("Unexpected number of events generated", len(c))
 	}
 
-	assertCronEvent(<-c, "echo \"command1\"", fName, fName, Added, t)
+	assertCronEvent(<-c, "echo \"command1\"", testFileName, fName, Added, t)
 }
 
 // Test that comment lines are ignored
 func TestIgnoreTabSpace(t *testing.T) {
-	os.Remove(fName)
+	tempdir := t.TempDir()
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
 	data := []string{" */5 * * * * echo \"command1\""}
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_user_cron_file(fName)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
-	assertUserExists(fName, s, t)
-	assertUserCmdCount(fName, 1, s, t)
+	assertUserExists(testFileName, s, t)
+	assertUserCmdCount(testFileName, 1, s, t)
 
-	cmds := s.user_cron_registry[fName]
+	cmds := s.user_cron_registry[testFileName]
 	cmd := strings.Join(strings.Split(data[0], " ")[6:], " ")
 
 	if cmd != cmds[0] {
@@ -264,30 +271,29 @@ func TestIgnoreTabSpace(t *testing.T) {
 		t.Fatal("Unexpected number of events generated", len(c))
 	}
 
-	assertCronEvent(<-c, "echo \"command1\"", fName, fName, Added, t)
+	assertCronEvent(<-c, "echo \"command1\"", testFileName, fName, Added, t)
 }
 
 // Verify support for lines which have their time fields replaced by a special
 // keyword
 func TestSpecialStringHandling(t *testing.T) {
-	os.Remove(fName)
-
+	tempdir := t.TempDir()
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
 	data := []string{"@yearly echo \"command1\""}
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_user_cron_file(fName)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
-	assertUserExists(fName, s, t)
-	assertUserCmdCount(fName, 1, s, t)
+	assertUserExists(testFileName, s, t)
+	assertUserCmdCount(testFileName, 1, s, t)
 
-	cmds := s.user_cron_registry[fName]
+	cmds := s.user_cron_registry[testFileName]
 	cmd := strings.Join(strings.Split(data[0], " ")[1:], " ")
 
 	if cmd != cmds[0] {
@@ -298,19 +304,20 @@ func TestSpecialStringHandling(t *testing.T) {
 		t.Fatal("Unexpected number of events generated", len(c))
 	}
 
-	assertCronEvent(<-c, "echo \"command1\"", fName, fName, Added, t)
+	assertCronEvent(<-c, "echo \"command1\"", testFileName, fName, Added, t)
 }
 
 // ========================================================================
 
 func TestMultiUserCronAdd(t *testing.T) {
+	tempdir := t.TempDir()
 
 	data := []string{"*/5 * * * * user1 echo \"command1\"",
 		"*/5 * * * * user2 echo \"command2\""}
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_system_cron_file(fName)
 	if err != nil {
@@ -344,12 +351,13 @@ func TestMultiUserCronAdd(t *testing.T) {
 }
 
 func TestMultiUserCommentIgnore(t *testing.T) {
+	tempdir := t.TempDir()
 
 	data := []string{"*/5 * * * * user1 echo \"command1\"",
 		"#*/5 * * * * user3 echo \"command2\""}
 	s, _ := NewCronSnooper("", nil)
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_system_cron_file(fName)
 	if err != nil {
@@ -360,13 +368,13 @@ func TestMultiUserCommentIgnore(t *testing.T) {
 }
 
 func TestMultiUserSpecialStringHandling(t *testing.T) {
-	os.Remove(fName)
+	tempdir := t.TempDir()
 
 	data := []string{"@yearly user3 echo \"command1\""}
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_system_cron_file(fName)
 	if err != nil {
@@ -391,13 +399,14 @@ func TestMultiUserSpecialStringHandling(t *testing.T) {
 }
 
 func TestMultiUserCronDelete(t *testing.T) {
+	tempdir := t.TempDir()
 
 	data := []string{"*/5 * * * * user1 echo \"command1\"",
 		"*/5 * * * * user2 echo \"command2\""}
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_system_cron_file(fName)
 	if err != nil {
@@ -409,7 +418,7 @@ func TestMultiUserCronDelete(t *testing.T) {
 	<-c
 
 	data = []string{"*/5 * * * * user1 echo \"command1\""}
-	createFile(data)
+	writeFileContents(fName, data, t)
 
 	err = s.parse_system_cron_file(fName)
 	if err != nil {
@@ -427,14 +436,15 @@ func TestMultiUserCronDelete(t *testing.T) {
 }
 
 func TestMultiUserPartialCronDelete(t *testing.T) {
+	tempdir := t.TempDir()
 
 	data := []string{"*/5 * * * * user1 echo \"command1\"",
 		"*/5 * * * * user2 echo \"command2\"",
 		"*/5 * * * * user2 echo \"command3\""}
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 
-	createFile(data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
 
 	err := s.parse_system_cron_file(fName)
 	if err != nil {
@@ -449,7 +459,7 @@ func TestMultiUserPartialCronDelete(t *testing.T) {
 	// we need to delete 1 command of a user and leave 1 command for the user
 	data = []string{"*/5 * * * * user1 echo \"command1\"",
 		"*/5 * * * * user2 echo \"command3\""}
-	createFile(data)
+	writeFileContents(fName, data, t)
 
 	err = s.parse_system_cron_file(fName)
 	if err != nil {
@@ -467,40 +477,41 @@ func TestMultiUserPartialCronDelete(t *testing.T) {
 }
 
 func TestMultiUserCronDeleteAcrossFiles(t *testing.T) {
+	tempdir := t.TempDir()
 
-	const other_file = "other-file"
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", nil, c)
+	s, _ := NewCronSnooperWithChan(tempdir, nil, c)
 	data := []string{"*/5 * * * * user1 echo \"command1\""}
 	data2 := []string{"*/5 * * * * user2 echo \"command1\""}
 
+
 	// create entries for the same user in 2 different files
-	createFile2(fName, data)
-	createFile2(other_file, data)
+	fName := createNamedFile(tempdir, testFileName, data, t)
+	other_file := createNamedFile(tempdir, "other-file", data, t)
 
 	err := s.parse_system_cron_file(fName)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
-	err = s.parse_system_cron_file("other-file")
+	err = s.parse_system_cron_file(other_file)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
 	//ensure they exist
 	assertMUserExists("user1", fName, s, t)
-	assertMUserExists("user1", "other-file", s, t)
+	assertMUserExists("user1", other_file, s, t)
 
 	// now delete one of the entries in the files
-	createFile2(other_file, data2)
-	err = s.parse_system_cron_file("other-file")
+	writeFileContents(other_file, data2, t)
+	err = s.parse_system_cron_file(other_file)
 	if err != nil {
 		t.Fatal("Error when parsing file", err)
 	}
 
 	assertMUserExists("user1", fName, s, t)
-	assertMUserDoesntExist("user1", "other-file", s, t)
+	assertMUserDoesntExist("user1", other_file, s, t)
 
 	// skip events for user creation
 	<-c
@@ -511,35 +522,47 @@ func TestMultiUserCronDeleteAcrossFiles(t *testing.T) {
 		t.Fatal("Unexpected number of events generated", len(c))
 	}
 
-	assertCronEvent(<-c, "echo \"command1\"", "user1", "other-file", Deleted, t)
+	assertCronEvent(<-c, "echo \"command1\"", "user1", other_file, Deleted, t)
+}
+
+func createSpoolDir(t *testing.T) string {
+	tempdir := t.TempDir()
+
+	spoolDir := filepath.Join(tempdir, "test-spool-dir")
+
+	err := os.Mkdir(spoolDir, 0755)
+	if err != nil {
+		t.Fatalf("Could not create dir %s: %v", spoolDir, err)
+	}
+
+	return spoolDir
 }
 
 func TestSpoolUserCreation(t *testing.T) {
-
-	createDir("./test-spool-dir")
+	spoolDir := createSpoolDir(t)
 
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("test-spool-dir/", nil, c)
+	s, _ := NewCronSnooperWithChan(spoolDir, nil, c)
 	data := []string{"*/5 * * * * echo \"command1\""}
 
 	defer s.Close()
 	s.WatchCrons()
 
-	createFile2("./test-spool-dir/root", data)
-	assertCronEvent(<-c, "echo \"command1\"", "root", "test-spool-dir/root", Added, t)
+	userFile := createNamedFile(spoolDir, "root", data, t)
+	assertCronEvent(<-c, "echo \"command1\"", "root", userFile, Added, t)
 }
 
 func TestIgnoreNonSystemSpoolFile(t *testing.T) {
-	createDir("./test-spool-dir")
+	spoolDir := createSpoolDir(t)
 
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("test-spool-dir/", nil, c)
+	s, _ := NewCronSnooperWithChan(spoolDir, nil, c)
 	data := []string{"*/5 * * * * user1 echo \"command1\""}
 
 	defer s.Close()
 	s.WatchCrons()
 
-	createFile2(tmpfilepath, data)
+	_ = createNamedFile(spoolDir, nonUserString, data, t)
 
 	if len(c) != 0 {
 		t.Fatal("Non-user spool file not ignored")
@@ -547,27 +570,25 @@ func TestIgnoreNonSystemSpoolFile(t *testing.T) {
 }
 
 func TestSystemCronFile(t *testing.T) {
-
-	createDir("./test-spool-dir")
+	spoolDir := createSpoolDir(t)
 
 	c := make(chan CronEvent, 10)
-	s, _ := NewCronSnooperWithChan("", []string{"test-spool-dir/"}, c)
+	s, _ := NewCronSnooperWithChan("", []string{spoolDir}, c)
 
 	data := []string{"*/5 * * * * user1 echo \"command1\""}
 
 	defer s.Close()
 	s.WatchCrons()
 
-	createFile2(tmpfilepath, data)
+	nonUserFile := createNamedFile(spoolDir, nonUserString, data, t)
 
-	assertCronEvent(<-c, "echo \"command1\"", "user1", tmpfilepath, Added, t)
+	assertCronEvent(<-c, "echo \"command1\"", "user1", nonUserFile, Added, t)
 
-	os.Remove(tmpfilepath)
+	os.Remove(nonUserFile)
 
-	assertCronEvent(<-c, "echo \"command1\"", "user1", tmpfilepath, Deleted, t)
+	assertCronEvent(<-c, "echo \"command1\"", "user1", nonUserFile, Deleted, t)
 }
 
 func TestMain(m *testing.M) {
 	m.Run()
-	os.Remove(fName)
 }
