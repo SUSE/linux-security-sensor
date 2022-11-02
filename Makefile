@@ -77,6 +77,7 @@ $(LIBBPFGO_DIR): always-check
 
 $(LIBBPF_LIB): $(LIBBPFGO_DIR)
 	make -C $(LIBBPFGO_DIR) libbpfgo-static
+	make -C $(LIBBPFGO_DIR)/selftest/build
 
 %.bpf.o: %.bpf.c $(LIBBPF_LIB)
 	$(CLANG) $(CFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH)	      \
