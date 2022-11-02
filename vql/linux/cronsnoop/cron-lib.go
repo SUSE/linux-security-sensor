@@ -12,13 +12,14 @@ import "C"
 
 import (
 	"bufio"
-	"github.com/fsnotify/fsnotify"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type Action int
