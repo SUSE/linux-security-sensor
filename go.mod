@@ -30,7 +30,8 @@ require (
 	github.com/alecthomas/chroma v0.7.2
 	github.com/alecthomas/participle v0.7.1
 	github.com/alexmullins/zip v0.0.0-20180717182244-4affb64b04d0
-	github.com/aquasecurity/libbpfgo v0.2.3-libbpf-0.6.1
+	github.com/aquasecurity/libbpfgo v0.4.4-libbpf-1.0.1
+	github.com/aquasecurity/libbpfgo/helpers v0.4.4-libbpf-1.0.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/aws/aws-sdk-go v1.40.6
 	github.com/clbanning/mxj v1.8.4
@@ -125,6 +126,7 @@ require (
 	github.com/Velocidex/ordereddict v0.0.0-20220428153415-da46091cd216
 	github.com/elastic/go-libaudit/v2 v2.0.0-00010101000000-000000000000
 	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/fsnotify/fsnotify v1.5.4
 	github.com/scryner/lfreequeue v0.0.0-20121212074822-473f33702129
 	github.com/shirou/gopsutil/v3 v3.21.11
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
@@ -151,7 +153,6 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -241,3 +242,5 @@ go 1.17
 replace github.com/alecthomas/chroma => github.com/Velocidex/chroma v0.6.8-0.20200418131129-82edc291369c
 
 replace github.com/elastic/go-libaudit/v2 => ./third_party/go-libaudit
+replace github.com/aquasecurity/libbpfgo => ./third_party/libbpfgo
+replace github.com/aquasecurity/libbpfgo/helpers => ./third_party/libbpfgo/helpers

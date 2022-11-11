@@ -6,8 +6,8 @@ package bpflib
 import (
 	"fmt"
 	"os"
-	bpf "www.velocidex.com/golang/velociraptor/third_party/libbpfgo"
-	"www.velocidex.com/golang/velociraptor/third_party/libbpfgo/helpers"
+	bpf "github.com/aquasecurity/libbpfgo"
+	"github.com/aquasecurity/libbpfgo/helpers"
 )
 
 func LoadBpfModule(name string, bpfCode []byte) (*bpf.Module, error) {

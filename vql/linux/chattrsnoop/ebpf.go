@@ -6,7 +6,7 @@ package linux
 import (
 	_ "embed"
 
-	bpf "www.velocidex.com/golang/velociraptor/third_party/libbpfgo"
+	bpf "github.com/aquasecurity/libbpfgo"
 	"www.velocidex.com/golang/velociraptor/vql/linux/bpflib"
 )
 
