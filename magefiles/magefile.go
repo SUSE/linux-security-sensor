@@ -155,7 +155,6 @@ func (self *Builder) Env() map[string]string {
 	if self.cc != "" {
 		env["CC"] = self.cc
 	}
-	fmt.Printf("Build Environment: %v\n", json.MustMarshalString(env))
 	return env
 }
 
@@ -169,7 +168,7 @@ func (self Builder) Run() error {
 		return err
 	}
 
-	basic_flags := "-w -s "
+	basic_flags := "-w -s " 
 	if self.debug_build {
 		basic_flags = ""
 	}
@@ -178,6 +177,25 @@ func (self Builder) Run() error {
 	if self.sumo {
 		tags += " sumo "
 	}
+
+	env := self.Env()
+
+	bpf := NewBPFBuildEnv()
+	bpfTags, bpfEnv, err := bpf.PrepareModules(self.arch, self.goos)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range bpfEnv {
+		_, ok := env[k]
+		if ok {
+			env[k] += " " + v
+		} else {
+			env[k] = v
+		}
+	}
+
+	tags += bpfTags
 
 	args := []string{
 		"build",
@@ -189,7 +207,9 @@ func (self Builder) Run() error {
 	args = append(args, self.extra_flags...)
 	args = append(args, "./bin/")
 
-	return sh.RunWith(self.Env(), mg.GoCmd(), args...)
+	fmt.Printf("Build Environment: %v\n", json.MustMarshalString(env))
+
+	return sh.RunWith(env, mg.GoCmd(), args...)
 }
 
 func Auto() error {
@@ -512,6 +532,8 @@ func DarwinBase() error {
 }
 
 func Clean() error {
+	bpf := NewBPFBuildEnv()
+	bpf.Clean()
 	for _, target := range assets {
 		go_target := filepath.Join(filepath.Dir(target), "ab0x.go")
 		err := sh.Rm(go_target)
