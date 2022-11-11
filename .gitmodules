@@ -1,3 +1,6 @@
 [submodule ".github/vale"]
 	path = .github/vale
 	url = https://github.com/Velocidex/velociraptor-vale
+[submodule "third_party/libbpfgo"]
+	path = third_party/libbpfgo
+	url = https://github.com/aquasecurity/libbpfgo
