@@ -15,10 +15,8 @@ LIBBPFGO_DIR := $(abspath third_party/libbpfgo)
 LIBBPF_DIR := $(LIBBPFGO_DIR)/libbpf
 LIBBPF_OUTPUT := $(LIBBPFGO_DIR)/output
 LIBBPF_LIB := $(LIBBPF_OUTPUT)/libbpf.a
-GOFLAGS += CGO_CFLAGS="-I$(LIBBPF_OUTPUT)"
-GOFLAGS += CGO_LDFLAGS="$(LIBBPF_LIB)"
 GIT := git
-EXTRA_TAGS += linuxbpf
+EXTRA_TAGS += linuxbpf libbpfgo_full_static
 else
 $(error Cannot build BPF objects without clang installed.  Install clang or build with BUILD_LIBBPFGO=0.)
 endif
@@ -70,13 +68,9 @@ BPF_MODULES := vql/linux/tcpsnoop/tcpsnoop.bpf.o \
 $(LIBBPFGO_DIR): always-check
 	echo "INFO: updating submodule 'libbpfgo'"
 	$(GIT) submodule update --init --recursive $@
-	# Fake that it's an internal module
-	rm -f $@/go.mod
-	sed -e 's;"github.com/aquasecurity;"www.velocidex.com/golang/velociraptor/third_party;' -i $@/libbpfgo.go
-	sed -e '/LDFLAGS/s/-lelf/-l:libelf.a/' -i $@/libbpfgo.go
 
 $(LIBBPF_LIB): $(LIBBPFGO_DIR)
-	make -C $(LIBBPFGO_DIR) libbpfgo-static
+	make -C $(LIBBPFGO_DIR) libbpfgo-full-static
 	make -C $(LIBBPFGO_DIR)/selftest/build
 
 %.bpf.o: %.bpf.c $(LIBBPF_LIB)

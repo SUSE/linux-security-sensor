@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"golang.org/x/sys/unix"
 
-	bpf "www.velocidex.com/golang/velociraptor/third_party/libbpfgo"
+	bpf "github.com/aquasecurity/libbpfgo"
 	"www.velocidex.com/golang/velociraptor/vql/linux/bpflib"
 )
 
