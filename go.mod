@@ -115,6 +115,8 @@ require (
 	github.com/Velocidex/grok v0.0.1
 	github.com/Velocidex/ordereddict v0.0.0-20230909174157-2aa49cc5d11d
 	github.com/andybalholm/brotli v1.0.4
+	github.com/aquasecurity/libbpfgo v0.0.0-00010101000000-000000000000
+	github.com/aquasecurity/libbpfgo/helpers v0.0.0-00010101000000-000000000000
 	github.com/clayscode/Go-Splunk-HTTP/splunk/v2 v2.0.1-0.20221027171526-76a36be4fa02
 	github.com/coreos/go-oidc/v3 v3.4.0
 	github.com/evanphx/json-patch/v5 v5.6.0
@@ -246,3 +248,8 @@ go 1.18
 replace github.com/alecthomas/chroma => github.com/Velocidex/chroma v0.6.8-0.20200418131129-82edc291369c
 
 replace github.com/go-errors/errors => github.com/Velocidex/errors v0.0.0-20221019164655-9ace6bf61e26
+
+// We'll always need the local version since we're building the C code.
+replace github.com/aquasecurity/libbpfgo => ./third_party/libbpfgo
+
+replace github.com/aquasecurity/libbpfgo/helpers => ./third_party/libbpfgo/helpers

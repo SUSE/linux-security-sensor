@@ -25,7 +25,7 @@ jobs:
       run: |
         go get -v -t -d ./...
         sudo apt-get update
-        sudo apt-get install libsystemd-dev clang-12 llvm libelf-dev git linux-tools-common make
+        sudo apt-get install libsystemd-dev clang-12 llvm libelf-dev git make libzstd-dev
 
     - name: Build GUI-less binary
       run: |

@@ -15,8 +15,10 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - name: Check out code into the Go module directory
+    - name: Check out code and submodules into the Go module directory
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
     - uses: actions/setup-go@v3
       with:
@@ -28,7 +30,7 @@ jobs:
       run: |
         go get -v -t -d ./...
         sudo apt-get update
-        sudo apt-get install mingw-w64-x86-64-dev gcc-mingw-w64-x86-64 gcc-mingw-w64 gcc-aarch64-linux-gnu libsystemd-dev
+        sudo apt-get install mingw-w64-x86-64-dev gcc-mingw-w64-x86-64 gcc-mingw-w64 gcc-aarch64-linux-gnu libsystemd-dev clang-12 llvm libelf-dev git make libzstd-dev
 
     - name: Use Node.js v16
       uses: actions/setup-node@v3
@@ -59,9 +61,14 @@ jobs:
       # Uncomment the architectures you want here. NOTE: DarwinBase
       # does not include yara or modules with C compilers needed.
       run: |
-        mkdir ./output/
+        mkdir -p ./output/ ./third_party/libbpfgo/output
         export PATH=$PATH:~/go/bin/
         go run make.go -v UpdateDependentTools
+        go run make.go -v Linux
+        BUILD_BPF_PLUGINS=0 go run make.go -v Linux
+        go run make.go -v Linux
+        cp vql/linux/bpf/vmlinux_h/x86_64-vmlinux.h third_party/libbpfgo/output/vmlinux.h
+        BUILD_BPF_PLUGINS=1 go run make.go -v Linux
         go run make.go -v Linux
         go run make.go -v LinuxArm64
         go run make.go -v Windows
