@@ -1,0 +1,51 @@
+# Only trigger when a PR is committed.
+name: Linux
+on: [pull_request]
+
+jobs:
+  build:
+    name: Test
+    # We used to build on ubuntu-18.04 but that is now deprecated by
+    # GitHub. Earlier distributions will have to use the musl build.
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Check out code and submodules into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '^1.19'
+
+    - run: go version
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+        sudo apt-get install libsystemd-dev clang-12 llvm libelf-dev git linux-tools-common make
+
+    - name: Build GUI-less binary
+      run: |
+        mkdir ./output/
+        export PATH=$PATH:~/go/bin/
+        make linux_bare
+
+    - name: Run built-in testcases
+      run:
+        echo "Running built-in tests."
+        go test -race -v --tags server_vql ./...
+
+    - name: Test Golden Generic
+      if: always()
+      run: |
+        echo "Running OS generic tests."
+
+        output/velociraptor* -v golden artifacts/testdata/server/testcases/ --env srcDir=`pwd` --config artifacts/testdata/windows/test.config.yaml
+
+    - name: StoreBinaries
+      uses: actions/upload-artifact@v1
+      with:
+        name: Binaries.zip
+        path: output
