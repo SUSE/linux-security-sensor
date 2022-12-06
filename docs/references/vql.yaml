@@ -9281,6 +9281,22 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: rpm
+  description: Query the installed packages on a Linux system using RPMs
+  type: Plugin
+  args:
+  - name: paths
+    type: string
+    description: 'Paths to search for rpm database (default: /var/lib/rpm)'
+    repeated: true
+  - name: tags
+    type: string
+    description: 'List of tags to retreive for each package (default: Name,Summary,Version,Release,InstallTime,PublicKey,PublicKeyName)'
+    repeated: true
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: rpm_create
   description: Create a deployable RPM package for client or server.
   type: Plugin
