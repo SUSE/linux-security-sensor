@@ -5128,6 +5128,33 @@
   - name: string
     type: string
   category: parsers
+- name: rpm
+  description: |
+    List installed RPM packages.
+
+    This plugin enumerates all of the RPM packages listed on the system.
+
+    By default the following tags will be returned: "Name", "Summary",
+    "Version", "Release", "InstallTime", "PublicKey", and "PublicKeyName".
+
+    The list of tags may be specified using the tags parameter.  Valid tags
+    may be found using the 'rpm --querytags' command at a shell prompt.
+
+    If the RPM database is located in a nonstandard location, the path to
+    the directory containing the database file can be specified using the
+    paths parameter.  It will default to using "/var/lib/rpm"
+  type: Plugin
+  args:
+  - name: paths
+    type: string
+    description: 'Paths to search for rpm database (default: /var/lib/rpm)'
+    repeated: true
+  - name: tags
+    type: string
+    description: 'List of tags to retreive for each package (default: Name,Summary,Version,Release,InstallTime,PublicKey,PublicKeyName)'
+    repeated: true
+  metadata:
+    permissions: MACHINE_STATE
 - name: sample
   description: |
     Executes 'query' and samples every n'th row.

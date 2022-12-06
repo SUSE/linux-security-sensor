@@ -45,6 +45,13 @@ jobs:
 
         output/velociraptor* -v golden artifacts/testdata/server/testcases/ --env srcDir=`pwd` --config artifacts/testdata/windows/test.config.yaml
 
+    - name: Test Golden Linux
+      if: always()
+      run: |
+        echo "Running Linux tests."
+
+        output/velociraptor* -v golden artifacts/testdata/linux/ --env srcDir=`pwd` --config artifacts/testdata/windows/test.config.yaml
+
     - name: StoreBinaries
       uses: actions/upload-artifact@v1
       with:

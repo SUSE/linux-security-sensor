@@ -1,0 +1,274 @@
+SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'summary', 'installtime']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "summary": "Zstandard compression tools",
+  "installtime": "2022-06-28T14:00:41Z"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'summary', 'installtime']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "summary": "Zstandard compression tools",
+  "installtime": "2022-06-28T14:00:41Z"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['NaMe', 'SuMmArY', 'InStAlLtImE']) WHERE name = 'zstd'[]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['NaMe', 'SuMmArY', 'InStAlLtImE']) WHERE NaMe = 'zstd'[
+ {
+  "NaMe": "zstd",
+  "SuMmArY": "Zstandard compression tools",
+  "InStAlLtImE": "2022-06-28T14:00:41Z"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'pgp']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "installtime": "2022-06-28T14:00:41Z",
+  "pgp": "RSA/SHA256, Sat May  7 20:46:12 2022, Key ID 70af9e8139db7c82"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'pgp']) WHERE name = 'go1.18'[
+ {
+  "name": "go1.18",
+  "installtime": "2022-11-02T23:24:39Z",
+  "pgp": ""
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PGP']) WHERE PGP = ''[
+ {
+  "name": "go1.18-race",
+  "PGP": ""
+ },
+ {
+  "name": "go1.18-doc",
+  "PGP": ""
+ },
+ {
+  "name": "go1.18",
+  "PGP": ""
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKey']) WHERE PublicKey = ''[
+ {
+  "name": "go1.18-race",
+  "PublicKey": ""
+ },
+ {
+  "name": "go1.18-doc",
+  "PublicKey": ""
+ },
+ {
+  "name": "go1.18",
+  "PublicKey": ""
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKey']) WHERE PublicKey = 'EB3E94ADBE1229CF'[]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKeyName']) WHERE PublicKeyName = ''[
+ {
+  "name": "go1.18-race",
+  "PublicKeyName": ""
+ },
+ {
+  "name": "go1.18-doc",
+  "PublicKeyName": ""
+ },
+ {
+  "name": "go1.18",
+  "PublicKeyName": ""
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKeyName']) WHERE PublicKeyName =~ 'OBS Project'[
+ {
+  "name": "python3-pyelftools",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "criu",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "mpt-status",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "hicolor-icon-theme-branding-openSUSE",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "python3-docker-pycreds",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "metamail",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "libsource-highlight4",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "llvm13-vim-plugins",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "site-config",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "crash-python-gdb",
+  "PublicKeyName": "gpg(home:jeff_mahoney OBS Project \u003chome:jeff_mahoney@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "python3-docker-compose",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "libLLVM13",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "clang13",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "parallel-printer-support",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "lifecycle-data-openSUSE",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "yast2-alternatives",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "nano-lang",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "tnftp",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "rng-tools",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "velociraptor-client",
+  "PublicKeyName": "gpg(home:jeff_mahoney OBS Project \u003chome:jeff_mahoney@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "llvm13",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "distribution-logos-openSUSE-Leap",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "openssh-askpass",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "python3-cached-property",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "clang-tools",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "nano",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "adobe-sourcesanspro-fonts",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "python3-texttable",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "libclang-cpp13",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "bpftool",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "python3-dockerpty",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "libclang13",
+  "PublicKeyName": "gpg(openSUSE:Backports OBS Project \u003copenSUSE:Backports@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "fileb0x",
+  "PublicKeyName": "gpg(home:jeff_mahoney OBS Project \u003chome:jeff_mahoney@build.opensuse.org\u003e)"
+ },
+ {
+  "name": "gdb",
+  "PublicKeyName": "gpg(home:jeff_mahoney OBS Project \u003chome:jeff_mahoney@build.opensuse.org\u003e)"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'publickey']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "installtime": "2022-06-28T14:00:41Z",
+  "publickey": "70AF9E8139DB7C82"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'publickeyname']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "installtime": "2022-06-28T14:00:41Z",
+  "publickeyname": "gpg(SuSE Package Signing Key \u003cbuild@suse.de\u003e)"
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'size']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "size": 2371672
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'filemodes']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "filemodes": [
+   33261,
+   41471,
+   33261,
+   41471,
+   33261,
+   33261,
+   41471,
+   16877,
+   33188,
+   33188,
+   16877,
+   33188,
+   33188,
+   33188,
+   41471,
+   33188,
+   41471,
+   33188,
+   33188
+  ]
+ }
+]SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'basenames']) WHERE name = 'zstd'[
+ {
+  "name": "zstd",
+  "basenames": [
+   "pzstd",
+   "unzstd",
+   "zstd",
+   "zstdcat",
+   "zstdgrep",
+   "zstdless",
+   "zstdmt",
+   "zstd",
+   "CHANGELOG",
+   "README.md",
+   "zstd",
+   "COPYING",
+   "LICENSE",
+   "pzstd.1.gz",
+   "unzstd.1.gz",
+   "zstd.1.gz",
+   "zstdcat.1.gz",
+   "zstdgrep.1.gz",
+   "zstdless.1.gz"
+  ]
+ }
+]
