@@ -48,6 +48,7 @@ require (
 	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/jeffmahoney/go-rpmdb v0.0.0-20221206190147-d916ed974102
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/juju/ratelimit v1.0.1
@@ -56,7 +57,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mattn/go-pointer v0.0.0-20180825124634-49522c3f3791
-	github.com/mattn/go-sqlite3 v1.14.10
+	github.com/mattn/go-sqlite3 v1.14.12
 	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/panicwrap v1.0.0
@@ -108,6 +109,7 @@ require (
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/ProtonMail/gopenpgp/v2 v2.4.10
 	github.com/Shopify/sarama v1.37.2
 	github.com/Velocidex/file-rotatelogs v0.0.0-20211221020724-d12e4dae4e11
 	github.com/Velocidex/ordereddict v0.0.0-20221110130714-6a7cb85851cd
@@ -138,6 +140,8 @@ require (
 	cloud.google.com/go/iam v0.4.0 // indirect
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20220822140716-1678d6eb0cbe // indirect
+	github.com/ProtonMail/go-mime v0.0.0-20220302105931-303f85f7fe0f // indirect
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
@@ -148,6 +152,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cavaliergopher/cpio v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/crewjam/httperr v0.2.0 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
@@ -176,6 +181,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/knqyf263/go-rpmdb v0.0.0-20221030135625-4082a22221ce // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/lestrrat-go/strftime v1.0.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -192,6 +198,7 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/russellhaering/goxmldsig v1.2.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
@@ -206,10 +213,21 @@ require (
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/term v0.0.0-20221017184919-83659145692c // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	lukechampine.com/uint128 v1.1.1 // indirect
+	modernc.org/cc/v3 v3.36.0 // indirect
+	modernc.org/ccgo/v3 v3.16.6 // indirect
+	modernc.org/libc v1.16.7 // indirect
+	modernc.org/mathutil v1.4.1 // indirect
+	modernc.org/memory v1.1.1 // indirect
+	modernc.org/opt v0.1.1 // indirect
+	modernc.org/sqlite v1.17.3 // indirect
+	modernc.org/strutil v1.1.1 // indirect
+	modernc.org/token v1.0.0 // indirect
 	www.velocidex.com/golang/binparsergen v0.1.1-0.20220107080050-ae6122c5ed14 // indirect
 )
 

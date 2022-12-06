@@ -1,0 +1,84 @@
+# This will really only test ndb format databases but we're not trying to test
+# the underlying module.
+Queries:
+  # Test default tags
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'summary', 'installtime']) WHERE name = 'zstd'
+
+  # Test specified tags
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'summary', 'installtime']) WHERE name = 'zstd'
+
+  # Test case-insensitive tag names are represented in output (1)
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['NaMe', 'SuMmArY', 'InStAlLtImE']) WHERE name = 'zstd'
+
+  # Test case-insensitive tag names are represented in output (2)
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['NaMe', 'SuMmArY', 'InStAlLtImE']) WHERE NaMe = 'zstd'
+
+
+  # Test that PGP works without related fields
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'installtime', 'pgp']) WHERE name = 'zstd'
+
+  # Test that PGP works on package without signature
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'installtime', 'pgp']) WHERE name = 'go1.18'
+
+  # Test that searching for empty PGP works
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'PGP']) WHERE PGP = ''
+
+  # Test that searching for empty PublicKey works
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'PublicKey']) WHERE PublicKey = ''
+
+  # Test that searching for specified PublicKey works
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'PublicKey']) WHERE PublicKey = 'EB3E94ADBE1229CF'
+
+  # Test that searching for empty PublicKeyName works
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'PublicKeyName']) WHERE PublicKeyName = ''
+
+  # Test that searching for specified PublicKeyName works
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'PublicKeyName']) WHERE PublicKeyName =~ 'OBS Project'
+
+
+  # Test that PublicKey works without related fields
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'installtime', 'publickey']) WHERE name = 'zstd'
+
+  # Test that PublicKeyName works without related fields
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'installtime', 'publickeyname']) WHERE name = 'zstd'
+
+  # Test integer tags
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'size']) WHERE name = 'zstd'
+
+  # Test integer array tags
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'filemodes']) WHERE name = 'zstd'
+
+  # Test string array tags
+  - SELECT * FROM rpm(
+        paths=[srcDir + "/artifacts/testdata/files/"],
+        tags=['name', 'basenames']) WHERE name = 'zstd'
