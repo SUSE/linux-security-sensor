@@ -17,10 +17,33 @@ import (
 	"www.velocidex.com/golang/velociraptor/artifacts"
 	"www.velocidex.com/golang/velociraptor/crypto"
 	"www.velocidex.com/golang/velociraptor/json"
+	"www.velocidex.com/golang/velociraptor/logging"
 	"www.velocidex.com/golang/velociraptor/services"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	vfilter "www.velocidex.com/golang/vfilter"
 	"www.velocidex.com/golang/vfilter/arg_parser"
+)
+
+type saramaLogger struct{
+	logger *logging.LogContext
+}
+
+func (self *saramaLogger) Print(v ...interface{}) {
+	self.logger.Info("kafka: %s", v...)
+}
+
+func (self *saramaLogger) Printf(format string, v ...interface{}) {
+	self.logger.Info("kafka: " + format, v...)
+}
+
+func (self *saramaLogger) Println(v ...interface{}) {
+	self.logger.Info("kafka: %s\n", v...)
+}
+
+var (
+	defaultRetries int = 15
+	gSaramaMutex sync.Mutex
+	gSaramaLogger *saramaLogger
 )
 
 type _KafkaPluginArgs struct {
@@ -41,6 +64,9 @@ type _KafkaPlugin struct{}
 func newProducer(arg *_KafkaPluginArgs, scope vfilter.Scope) (sarama.AsyncProducer, error) {
 
 	config := sarama.NewConfig()
+
+	config.ClientID = "Velociraptor-Kafka-Plugin"
+
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Retry.Max = 2
@@ -63,6 +89,19 @@ func newProducer(arg *_KafkaPluginArgs, scope vfilter.Scope) (sarama.AsyncProduc
 		}
 		config.Net.TLS.Config = &tls.Config{RootCAs: CA_Pool}
 		config.Net.TLS.Enable = true
+	}
+
+	config.Metadata.Retry.Max = arg.Retries
+	config.Metadata.Retry.BackoffFunc = func (retries, maxRetries int) time.Duration {
+		seconds := 1
+		for i := 0; i < retries; i += 1 {
+			seconds *= 2
+		}
+		if seconds > 30 {
+			seconds = 30
+		}
+
+		return time.Duration(seconds) * time.Second
 	}
 
 	producer, err := sarama.NewAsyncProducer(arg.Addresses, config)
@@ -90,6 +129,7 @@ func (self _KafkaPlugin) Call(ctx context.Context,
 		arg := _KafkaPluginArgs{
 			Threads: 1,
 			Partition: -1,
+			Retries: defaultRetries,
 		}
 		err = arg_parser.ExtractArgsWithContext(ctx, scope, args, &arg)
 		if err != nil {

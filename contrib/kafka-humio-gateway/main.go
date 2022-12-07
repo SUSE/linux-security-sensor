@@ -26,6 +26,7 @@ import (
 )
 
 var (
+	debug = false
 	verbose  = false
 	configFile string
 	defaultConsumerGroup = "velociraptor-consumer"
@@ -49,8 +50,21 @@ type TransportConfig struct {
 
 func init() {
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
+	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.StringVar(&configFile, "config", "config.yml",
 		       "Path to YaML file containing configuration")
+}
+
+func saramaBackoff(retries, maxRetries int) time.Duration {
+	seconds := 1
+	for i := 0; i < retries; i += 1 {
+		seconds *= 2
+	}
+	if seconds > 30 {
+		seconds = 30
+	}
+
+	return time.Duration(seconds) * time.Second
 }
 
 func main() {
@@ -123,6 +137,9 @@ func main() {
 	}
 
 	saramaConfig := sarama.NewConfig()
+	saramaConfig.ClientID = "Kafka-Humio-Gateway"
+	saramaConfig.Metadata.Retry.Max = 15
+	saramaConfig.Metadata.Retry.BackoffFunc = saramaBackoff
 	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs + 500) * time.Millisecond
 	saramaConfig.Consumer.MaxProcessingTime = maxTime
 
@@ -233,7 +250,7 @@ type HumioSubmission struct {
 // successful, the messages are marked cleared.
 func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSession, payload []byte,
 					      messages []*sarama.ConsumerMessage) error {
-	if verbose {
+	if debug {
 		log.Printf("POSTing data: [%s]", payload)
 	}
 
@@ -347,7 +364,7 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 			ticker.Reset(tickerTimeout)
 		}
 	}
-	if verbose {
+	if debug {
 		log.Printf("sendEvents exiting")
 	}
 }
@@ -369,7 +386,7 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 	// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
 		var err error
-		if verbose {
+		if debug {
 			log.Printf("Received message Topic[%s] Key[%s] Value[%s] Timestamp[%v]",
 				   message.Topic, message.Key, message.Value, message.Timestamp)
 		}
