@@ -23,3 +23,12 @@ config/ab0x.go
 **/.DS_Store
 .DS_Store
 /googleapis
+
+.*sw?
+.vim*
+.env
+SUSE/docker-compose/config/traefik/traefik.toml
+SUSE/docker-compose/config/kafka-humio-gateway/kafka-humio-gateway.yml
+SUSE/docker-compose/config/velociraptor/*
+SUSE/docker-compose/data/velociraptor/*
+SUSE/docker-compose/logs/velociraptor/*

@@ -11,13 +11,20 @@ parameters:
   - name: syslogAuthLogPath
     default: /var/log/{auth.log,secure}*
 
+  - name: SSHSystemdUnit
+    description: Systemd Unit responsible for sshd
+    default: sshd.service
+
   - name: SSHGrok
     description: A Grok expression for parsing SSH auth lines.
     default: >-
-      %{SYSLOGTIMESTAMP:Timestamp} (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: %{DATA:event} %{DATA:method} for (invalid user )?%{DATA:user} from %{IPORHOST:ip} port %{NUMBER:port} ssh2(: %{GREEDYDATA:system.auth.ssh.signature})?
+      (%{SYSLOGTIMESTAMP:Timestamp} (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: )?%{DATA:event} %{DATA:method} for (invalid user )?%{DATA:user} from %{IPORHOST:ip} port %{NUMBER:port} ssh2(: %{GREEDYDATA:system.auth.ssh.signature})?
 
 sources:
-  - query: |
+  - name: syslog
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect SSH login attempts from syslog
+    query: |
       // Basic syslog parsing via GROK expressions.
       SELECT timestamp(string=Event.Timestamp) AS Time,
                Event.ip AS IP,
@@ -33,3 +40,86 @@ sources:
               FROM parse_lines(filename=FullPath)
               WHERE Event.program = "sshd"
           })
+  - name: systemd-journal
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect SSH login attempts from systemd journal
+    query: |
+      // Basic systemd journal parsing via GROK expressions.
+      SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+               Event.ip as IP,
+               Event.event AS Result,
+               Event.method AS Method,
+               Event.user AS AttemptedUser,
+               _SYSTEMD_UNIT as SystemdUnit
+        FROM foreach(
+          row={
+            SELECT SSHSystemdUnit as systemdUnit from scope()
+          }, query={
+            SELECT REALTIME_TIMESTAMP, _SYSTEMD_UNIT, grok(grok=SSHGrok, data=MESSAGE) AS Event
+            FROM scan_journal()
+            WHERE Event.method AND _TRANSPORT != 'kernel' AND _SYSTEMD_UNIT = systemdUnit
+          })
+
+reports:
+  - type: HUNT
+    template: |
+      {{ define "journald" }}
+        SELECT *
+        FROM source(source='systemd-journal')
+        ORDER BY Time DESC
+      {{end}}
+
+      {{ define "syslog" }}
+        SELECT *
+        FROM source(source='syslog')
+        ORDER BY Time DESC
+      {{end}}
+
+      SSH Logins (HUNT template)
+      ============
+
+      {{ .Description }}
+
+      The following tables shows basic information about login events via SSH on this system.
+
+      {{ Query "journald" | Table }}
+      {{ Query "syslog" | Table }}
+
+
+      The following VQL queries were used to create the table above.
+
+      ```sql
+      {{ template "journald" }}
+      {{ template "syslog" }}
+      ```
+  - type: CLIENT
+    template: |
+      {{ define "journald" }}
+        SELECT *
+        FROM source(source='systemd-journal')
+        ORDER BY Time DESC
+      {{end}}
+
+      {{ define "syslog" }}
+        SELECT *
+        FROM source(source='syslog')
+        ORDER BY Time DESC
+      {{end}}
+
+      SSH Logins (CLIENT template)
+      ============
+
+      {{ .Description }}
+
+      The following tables shows basic information about login events via SSH on this system.
+
+      {{ Query "journald" | Table }}
+      {{ Query "syslog" | Table }}
+
+
+      The following VQL queries were used to create the table above.
+
+      ```sql
+      {{ template "journald" }}
+      {{ template "syslog" }}
+      ```

@@ -165,7 +165,9 @@ func (self Builder) Run() error {
 		return err
 	}
 
-	tags := base_tags + self.extra_tags
+	env_extra_tags := os.Getenv("EXTRA_TAGS") + " "
+
+	tags := base_tags + self.extra_tags + env_extra_tags
 	args := []string{
 		"build",
 		"-o", filepath.Join("output", self.Name()),

@@ -1,0 +1,156 @@
+---
+version: '3'
+
+volumes:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
+  zookeeper-1-data:
+  zookeeper-2-data:
+  client-data:
+
+services:
+  traefik:
+    image: traefik:v1.7
+    container_name: traefik
+    hostname: traefik
+    command: |-
+      --logLevel=DEBUG
+      --web
+      --entrypoints='Name:http Address::80 Redirect.EntryPoint:https Redirect.Permanent:true'
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik/acme.json:/acme.json
+      - ./config/traefik/traefik.toml:/etc/traefik/traefik.toml
+      - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
+    restart: unless-stopped
+  zookeeper-1:
+    image: 'bitnami/zookeeper:3.8.0'
+    environment:
+      - ZOO_ENABLE_AUTH=yes
+      - ZOO_SERVER_USERS=${KAFKA_ZOOKEEPER_USER}
+      - ZOO_SERVER_PASSWORDS=${KAFKA_ZOOKEEPER_PASSWORD}
+      - ZOO_CLIENT_USER=${KAFKA_ZOOKEEPER_USER}
+      - ZOO_CLIENT_PASSWORD=${KAFKA_ZOOKEEPER_PASSWORD}
+        #    volumes:
+        #      - ./data/zookeeper-1:/bitnami/zookeeper
+    volumes:
+      - zookeeper-1-data:/bitnami/zookeeper
+    restart:
+      unless-stopped
+  zookeeper-2:
+    image: 'bitnami/zookeeper:3.8.0'
+    environment:
+      - ZOO_ENABLE_AUTH=yes
+      - ZOO_SERVER_USERS=${KAFKA_ZOOKEEPER_USER}
+      - ZOO_SERVER_PASSWORDS=${KAFKA_ZOOKEEPER_PASSWORD}
+      - ZOO_CLIENT_USER=${KAFKA_ZOOKEEPER_USER}
+      - ZOO_CLIENT_PASSWORD=${KAFKA_ZOOKEEPER_PASSWORD}
+    volumes:
+      - zookeeper-2-data:/bitnami/zookeeper
+        #      - ./data/zookeeper-2:/bitnami/zookeeper
+    restart:
+      unless-stopped
+  kafka-1:
+    image: 'bitnami/kafka:3.1.1'
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-1:2181,zookeeper-2:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_ZOOKEEPER_USER=${KAFKA_ZOOKEEPER_USER}
+      - KAFKA_ZOOKEEPER_PASSWORD=${KAFKA_ZOOKEEPER_PASSWORD}
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+    volumes:
+     - kafka-1-data:/bitnami/kafka
+    restart:
+      unless-stopped
+  kafka-2:
+    image: 'bitnami/kafka:3.1.1'
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+    environment:
+      - KAFKA_BROKER_ID=2
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-1:2181,zookeeper-2:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_ZOOKEEPER_USER=${KAFKA_ZOOKEEPER_USER}
+      - KAFKA_ZOOKEEPER_PASSWORD=${KAFKA_ZOOKEEPER_PASSWORD}
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+    volumes:
+     - kafka-2-data:/bitnami/kafka
+    restart:
+      unless-stopped
+  kafka-3:
+    image: 'bitnami/kafka:3.1.1'
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+    environment:
+      - KAFKA_BROKER_ID=3
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-1:2181,zookeeper-2:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_ZOOKEEPER_USER=${KAFKA_ZOOKEEPER_USER}
+      - KAFKA_ZOOKEEPER_PASSWORD=${KAFKA_ZOOKEEPER_PASSWORD}
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+    volumes:
+     - kafka-3-data:/bitnami/kafka
+    restart:
+      unless-stopped
+  kafka-humio-gateway:
+    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor-kafka-humio-gateway:latest
+    depends_on:
+      - kafka-1
+      - kafka-2
+    volumes:
+     - ./config/kafka-humio-gateway:/config
+    restart:
+      unless-stopped
+  sensor-frontend:
+    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    hostname: sensor-frontend
+    container_name: sensor-frontend
+    user: "1000:100"
+    depends_on:
+      - kafka-humio-gateway
+    ports:
+      - "8000:8000" # Frontend
+      # - "8003:8003" # Monitoring
+      # - "8001:8001" # gRPC endpoint (used for replication in multi-frontend environments)
+      # - "8889:8889" # GUI - proxied by traefik
+    volumes:
+      - ./config/velociraptor:/config
+      - ./data/velociraptor:/data
+      - ./logs/velociraptor:/logs
+    labels:
+      traefik.enable: "true"
+      traefik.frontend.passHostHeader: "true"
+      traefik.frontend.rule: "Host: ${SENSOR_GUI_HOSTNAME}"
+      traefik.port: 8889
+      # Once we figure out internal cert management
+      # traefik.gui.protocol: https
+    restart:
+      unless-stopped
+  sensor-client:
+    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    hostname: sensor-client
+    container_name: sensor-client
+    command: /usr/bin/velociraptor client --config /config/client.conf -v
+    depends_on:
+      - sensor-frontend
+    volumes:
+      - ./config/velociraptor:/config:ro
+      - client-data:/var/lib/velociraptor-client
+    restart:
+      unless-stopped

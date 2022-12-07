@@ -2724,6 +2724,14 @@
   - name: size
     type: int64
     description: Size of the LRU (default 1000)
+- name: lsattr
+  description: Queries the attributes for a file.
+  type: Function
+  args:
+  - name: file
+    type: string
+    description: The file whose attributes we require
+    required: true
 - name: lzxpress_decompress
   description: |
     Decompress an lzxpress blob.
@@ -4484,6 +4492,30 @@
   - name: string
     type: string
   category: parsers
+- name: rpm
+  description: |
+    List installed RPM packages.
+
+    This plugin enumerates all of the RPM packages listed on the system.
+
+    By default the following tags will be returned: "Name", "Summary",
+    "Version", "Release", "InstallTime", "PublicKey", and "PublicKeyName".
+
+    The list of tags may be specified using the tags parameter.  Valid tags
+    may be found using the 'rpm --querytags' command at a shell prompt.
+
+    If the RPM database is located in a nonstandard location, the path to
+    the directory containing the database file can be specified using the
+    paths parameter.  It will default to using "/var/lib/rpm"
+
+  type: Plugin
+  args:
+    - name: paths
+      description: Location(s) to search for RPM database files
+      type: list of string
+    - name: tags
+      description: Tags to return for each package
+      type: list of string
 - name: sample
   description: |
     Executes 'query' and samples every n'th row.

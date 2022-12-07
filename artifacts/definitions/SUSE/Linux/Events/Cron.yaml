@@ -1,0 +1,14 @@
+name: SUSE.Linux.Events.Crontab
+description: |
+   Print events when a crontab entry gets added/deleted 
+
+type: CLIENT_EVENT
+
+sources:
+  - name: Connections
+    precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      SELECT * from cronsnoop(spool_dir='/var/spool/cron/tabs',system_dirs=['/etc/crontab', '/etc/cron.d', '/etc/cron.hourly', '/etc/cron.monthly', '/etc/cron.daily', '/etc/cron.weekly'])
+

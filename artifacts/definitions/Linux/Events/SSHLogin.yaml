@@ -1,6 +1,6 @@
 name: Linux.Events.SSHLogin
 description: |
-  This monitoring artifact watches the auth.log file for new
+  This monitoring artifact watches the system logs for new
   successful SSH login events and relays them back to the server.
 
 reference:
@@ -12,13 +12,19 @@ parameters:
   - name: syslogAuthLogPath
     default: /var/log/auth.log
 
+  - name: SSHSystemdUnit
+    description: Systemd Unit responsible for sshd
+    default: sshd.service
+
   - name: SSHGrok
     description: A Grok expression for parsing SSH auth lines.
     default: >-
-      %{SYSLOGTIMESTAMP:timestamp} (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: %{DATA:event} %{DATA:method} for (invalid user )?%{DATA:user} from %{IPORHOST:ip} port %{NUMBER:port} ssh2(: %{GREEDYDATA:system.auth.ssh.signature})?
+      (%{SYSLOGTIMESTAMP:timestamp} (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: )?%{DATA:event} %{DATA:method} for (invalid user )?%{DATA:user} from %{IPORHOST:ip} port %{NUMBER:port} ssh2(: %{GREEDYDATA:system.auth.ssh.signature})?
 
 sources:
-  - query: |
+  - precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect successful SSH login attempts from syslog
+    query: |
       -- Basic syslog parsing via GROK expressions.
       LET success_login = SELECT grok(grok=SSHGrok, data=Line) AS Event, Line
         FROM watch_syslog(filename=syslogAuthLogPath)
@@ -30,3 +36,40 @@ sources:
               Event.IP AS SourceIP,
               Event.pid AS Pid
         FROM success_login
+  - precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect successful SSH login attempts from systemd journal
+    query: |
+      LET success_login = SELECT REALTIME_TIMESTAMP, _PID, grok(grok=SSHGrok, data=MESSAGE) AS Event
+        FROM watch_journal()
+        WHERE _TRANSPORT != 'kernel' AND _SYSTEMD_UNIT = SSHSystemdUnit AND Event.event = "Accepted"
+      SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+               Event.user AS User,
+               Event.method AS Method,
+               Event.ip as SourceIP,
+               _PID AS Pid
+      FROM success_login
+
+reports:
+  - type: MONITORING_DAILY
+    template: |
+
+      {{ define "journald" }}
+        SELECT *
+        FROM source()
+        ORDER BY Time DESC
+      {{end}}
+
+      SSH Logins
+      ============
+
+      {{ .Description }}
+
+      The following tables shows basic information about login events via SSH on this system.
+
+      {{ Query "journald" | Table }}
+
+      The following VQL queries were used to create the table above.
+
+      ```sql
+      {{ template "journald" }}
+      ```

@@ -19,4 +19,9 @@ package plugins
 
 import (
 	_ "www.velocidex.com/golang/velociraptor/vql/linux"
+	_ "www.velocidex.com/golang/velociraptor/vql/linux/tcpsnoop"
+	_ "www.velocidex.com/golang/velociraptor/vql/linux/dnssnoop"
+	_ "www.velocidex.com/golang/velociraptor/vql/linux/chattrsnoop"
+	_ "www.velocidex.com/golang/velociraptor/vql/linux/cronsnoop"
+
 )

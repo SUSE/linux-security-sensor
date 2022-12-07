@@ -1,0 +1,10 @@
+kafka:                                                                           
+  brokers:                                                                       
+    - kafka:9092                                                                 
+  topics:                                                                        
+    - velociraptor-events                                                        
+    - velociraptor-artifacts                                                     
+  consumer_group: velociraptor-consumer                                                             
+humio:                                                                           
+  endpoint_url: https://cloud.community.humio.com:443/api/v1/ingest/humio-structured
+  ingest_token: your-token
