@@ -1,7 +1,7 @@
 CLANG ?= clang
 LLVM_STRIP ?= llvm-strip
 CFLAGS := -g -O2 -Wall
-ARCH := $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's/ppc64le/powerpc/' | sed 's/mips.*/mips/')
+ARCH := $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's/ppc64le/powerpc/' | sed 's/mips.*/mips/' | sed 's/s390x/s390/')
 EXTRA_TAGS =
 
 GOOS := $(shell go env | grep GOOS|sed -e 's/^.*=//'|tr -d '"')
