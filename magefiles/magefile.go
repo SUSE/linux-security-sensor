@@ -212,11 +212,18 @@ func Release() error {
 	return Windows()
 }
 
-func Linux() error {
+func LinuxAmd64() error {
 	return Builder{
 		extra_tags: " release yara ",
 		goos:       "linux",
 		arch:       "amd64"}.Run()
+}
+
+func Linux() error {
+	return Builder{
+		extra_tags: " release yara ",
+		goos:       "linux",
+		arch:       runtime.GOARCH}.Run()
 }
 
 func LinuxMusl() error {
@@ -241,11 +248,18 @@ func LinuxMusl386() error {
 }
 
 // A Linux binary without the GUI
-func LinuxBare() error {
+func LinuxBareAmd64() error {
 	return Builder{
 		extra_tags: " release yara disable_gui ",
 		goos:       "linux",
 		arch:       "amd64"}.Run()
+}
+
+func LinuxBare() error {
+	return Builder{
+		extra_tags: " release yara disable_gui ",
+		goos:       "linux",
+		arch:       runtime.GOARCH}.Run()
 }
 
 func Freebsd() error {
