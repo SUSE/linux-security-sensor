@@ -79,6 +79,12 @@ func prepareJournalEntry(entry *sdjournal.JournalEntry) *ordereddict.Dict {
 		d.Set(name, value)
 	}
 
+	// https://github.com/systemd/systemd/issues/1347
+	_, ok := entry.Fields["_SYSTEMD_UNIT"]
+	if !ok {
+		d.Set("_SYSTEMD_UNIT", "")
+	}
+
 	d.Set("REALTIME_TIMESTAMP", entry.RealtimeTimestamp)
 	d.Set("MONOTONIC_TIMESTAMP", entry.MonotonicTimestamp)
 
