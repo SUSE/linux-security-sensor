@@ -60,7 +60,11 @@ func (self CronsnoopPlugin) Call(
 		}
 
 		defer snooper.Close()
-		snooper.WatchCrons()
+		err = snooper.WatchCrons()
+		if err != nil {
+			scope.Log("cronsnoop: Error starting cron watchers: %v", err)
+			return
+		}
 
 		for {
 			select {

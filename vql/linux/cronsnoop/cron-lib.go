@@ -12,13 +12,16 @@ import "C"
 
 import (
 	"bufio"
-	"github.com/fsnotify/fsnotify"
+	"fmt"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type Action int
@@ -89,18 +92,21 @@ func (snooper *CronSnooper) emit_event(cmd, user, file string, action Action) {
 	}
 }
 
-func (snooper *CronSnooper) add_cron_watches() {
+func (snooper *CronSnooper) add_cron_watches() error {
 	for _, v := range snooper.cron_system_paths {
 		err := snooper.watcher.Add(v)
-		if err != nil {
-			log.Fatal("Еrror adding a watch for: ", v, " err:", err)
+		if err != nil && err != syscall.ENOENT {
+			return fmt.Errorf("Еrror adding a watch for: %v err: %v", v, err)
 		}
 	}
 
 	err := snooper.watcher.Add(snooper.cron_spool_path)
-	if err != nil {
-		log.Fatal("Еrror adding a watch for: ", snooper.cron_spool_path, " err:", err)
+	if err != nil && err != syscall.ENOENT {
+		return fmt.Errorf("Еrror adding a watch for: %v err: %v",
+				  snooper.cron_spool_path, err)
 	}
+
+	return nil
 }
 
 // As per cron's man page user crontab files shall have identical names
@@ -334,9 +340,12 @@ func (snooper *CronSnooper) Close() {
 	close(snooper.done)
 }
 
-func (snooper *CronSnooper) WatchCrons() {
+func (snooper *CronSnooper) WatchCrons() error {
 
-	snooper.add_cron_watches()
+	err := snooper.add_cron_watches()
+	if err != nil {
+		return err
+	}
 
 	go func() {
 		defer snooper.watcher.Close()
@@ -385,4 +394,6 @@ func (snooper *CronSnooper) WatchCrons() {
 			}
 		}
 	}()
+
+	return nil
 }
