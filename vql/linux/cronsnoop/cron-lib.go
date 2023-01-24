@@ -12,16 +12,24 @@ import "C"
 
 import (
 	"bufio"
-	"github.com/fsnotify/fsnotify"
+	"fmt"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type Action int
+
+type Logger interface {
+	Info(format string, v ...interface{})
+	Warn(format string, v ...interface{})
+}
 
 const (
 	Deleted Action = iota
@@ -48,6 +56,7 @@ type CronSnooper struct {
 	watcher              *fsnotify.Watcher
 	result_chan          chan<- CronEvent
 	done                 chan int
+	logger		     Logger
 }
 
 func NewCronSnooperWithChan(spool_path string, system_paths []string, c chan<- CronEvent) (*CronSnooper, error) {
@@ -73,6 +82,28 @@ func NewCronSnooper(spool_path string, system_paths []string) (*CronSnooper, err
 	return NewCronSnooperWithChan(spool_path, system_paths, nil)
 }
 
+func (snooper *CronSnooper) SetLogger(logger Logger) {
+	snooper.logger = logger
+}
+
+func (snooper *CronSnooper) Info(format string, v ...interface{}) {
+	if snooper.logger != nil {
+		snooper.Info("cronsnoop: " + format, v...)
+		return
+	}
+
+	log.Printf(format, v...)
+}
+
+func (snooper *CronSnooper) Warn(format string, v ...interface{}) {
+	if snooper.logger != nil {
+		snooper.logger.Warn("cronsnoop: " + format, v...)
+		return
+	}
+
+	log.Printf(format, v...)
+}
+
 func (snooper *CronSnooper) emit_event(cmd, user, file string, action Action) {
 	if snooper.result_chan == nil {
 		return
@@ -85,22 +116,25 @@ func (snooper *CronSnooper) emit_event(cmd, user, file string, action Action) {
 		File: file}:
 
 	default:
-		log.Println("Dropped event cmd:", cmd, " user:", user, " action:", action)
+		snooper.Info("Dropped event cmd: %v user %v action %v", cmd, user, action)
 	}
 }
 
-func (snooper *CronSnooper) add_cron_watches() {
+func (snooper *CronSnooper) add_cron_watches() error {
 	for _, v := range snooper.cron_system_paths {
 		err := snooper.watcher.Add(v)
-		if err != nil {
-			log.Fatal("Еrror adding a watch for: ", v, " err:", err)
+		if err != nil && err != syscall.ENOENT {
+			return fmt.Errorf("Еrror adding a watch for: %v err: %v", v, err)
 		}
 	}
 
 	err := snooper.watcher.Add(snooper.cron_spool_path)
-	if err != nil {
-		log.Fatal("Еrror adding a watch for: ", snooper.cron_spool_path, " err:", err)
+	if err != nil && err != syscall.ENOENT {
+		return fmt.Errorf("Еrror adding a watch for: %v err: %v",
+				  snooper.cron_spool_path, err)
 	}
+
+	return nil
 }
 
 // As per cron's man page user crontab files shall have identical names
@@ -334,9 +368,12 @@ func (snooper *CronSnooper) Close() {
 	close(snooper.done)
 }
 
-func (snooper *CronSnooper) WatchCrons() {
+func (snooper *CronSnooper) WatchCrons() error {
 
-	snooper.add_cron_watches()
+	err := snooper.add_cron_watches()
+	if err != nil {
+		return err
+	}
 
 	go func() {
 		defer snooper.watcher.Close()
@@ -379,10 +416,12 @@ func (snooper *CronSnooper) WatchCrons() {
 					return
 				}
 
-				log.Println("Error from inotify:", err)
+				snooper.Warn("Error from inotify: %v", err)
 			case _ = <-snooper.done:
 				return
 			}
 		}
 	}()
+
+	return nil
 }
