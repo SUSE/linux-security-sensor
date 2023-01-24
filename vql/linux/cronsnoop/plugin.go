@@ -55,7 +55,7 @@ func (self CronsnoopPlugin) Call(
 		defer close(eventChan)
 
 		if err != nil {
-			scope.Log("cronsnoop: Error creaing snooper instance", err)
+			scope.Log("cronsnoop: Error creating snooper instance", err)
 			return
 		}
 
