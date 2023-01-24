@@ -8,6 +8,7 @@ import (
 
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/velociraptor/acls"
+	"www.velocidex.com/golang/velociraptor/logging"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
 	"www.velocidex.com/golang/vfilter/arg_parser"
@@ -48,6 +49,14 @@ func (self CronsnoopPlugin) Call(
 			return
 		}
 
+		config_obj, ok := vql_subsystem.GetServerConfig(scope)
+		if !ok {
+			scope.Log("cronsnoop: Couldn't obtain server config")
+			return
+
+		}
+		logger := logging.GetLogger(config_obj, &logging.ClientComponent)
+
 		// Make the chan large enough so that cron snooper doesn't block, waiting
 		// for the channel too be consumed
 		eventChan := make(chan CronEvent, 1000)
@@ -58,6 +67,8 @@ func (self CronsnoopPlugin) Call(
 			scope.Log("cronsnoop: Error creating snooper instance", err)
 			return
 		}
+
+		snooper.SetLogger(logger)
 
 		defer snooper.Close()
 		err = snooper.WatchCrons()

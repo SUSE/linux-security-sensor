@@ -26,6 +26,11 @@ import (
 
 type Action int
 
+type Logger interface {
+	Info(format string, v ...interface{})
+	Warn(format string, v ...interface{})
+}
+
 const (
 	Deleted Action = iota
 	Added
@@ -51,6 +56,7 @@ type CronSnooper struct {
 	watcher              *fsnotify.Watcher
 	result_chan          chan<- CronEvent
 	done                 chan int
+	logger		     Logger
 }
 
 func NewCronSnooperWithChan(spool_path string, system_paths []string, c chan<- CronEvent) (*CronSnooper, error) {
@@ -76,6 +82,28 @@ func NewCronSnooper(spool_path string, system_paths []string) (*CronSnooper, err
 	return NewCronSnooperWithChan(spool_path, system_paths, nil)
 }
 
+func (snooper *CronSnooper) SetLogger(logger Logger) {
+	snooper.logger = logger
+}
+
+func (snooper *CronSnooper) Info(format string, v ...interface{}) {
+	if snooper.logger != nil {
+		snooper.Info("cronsnoop: " + format, v...)
+		return
+	}
+
+	log.Printf(format, v...)
+}
+
+func (snooper *CronSnooper) Warn(format string, v ...interface{}) {
+	if snooper.logger != nil {
+		snooper.logger.Warn("cronsnoop: " + format, v...)
+		return
+	}
+
+	log.Printf(format, v...)
+}
+
 func (snooper *CronSnooper) emit_event(cmd, user, file string, action Action) {
 	if snooper.result_chan == nil {
 		return
@@ -88,7 +116,7 @@ func (snooper *CronSnooper) emit_event(cmd, user, file string, action Action) {
 		File: file}:
 
 	default:
-		log.Println("Dropped event cmd:", cmd, " user:", user, " action:", action)
+		snooper.Info("Dropped event cmd: %v user %v action %v", cmd, user, action)
 	}
 }
 
@@ -388,7 +416,7 @@ func (snooper *CronSnooper) WatchCrons() error {
 					return
 				}
 
-				log.Println("Error from inotify:", err)
+				snooper.Warn("Error from inotify: %v", err)
 			case _ = <-snooper.done:
 				return
 			}
