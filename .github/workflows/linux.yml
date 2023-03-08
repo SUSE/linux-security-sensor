@@ -24,6 +24,7 @@ jobs:
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
+        sudo apt-get update
         sudo apt-get install libsystemd-dev clang-12 llvm libelf-dev git linux-tools-common make
 
     - name: Build GUI-less binary
