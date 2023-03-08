@@ -27,6 +27,7 @@ jobs:
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
+        sudo apt-get update
         sudo apt-get install mingw-w64-x86-64-dev gcc-mingw-w64-x86-64 gcc-mingw-w64 gcc-aarch64-linux-gnu libsystemd-dev
 
     - name: Use Node.js v16
