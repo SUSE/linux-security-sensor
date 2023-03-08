@@ -16,7 +16,7 @@ LIBBPF_DIR := $(LIBBPFGO_DIR)/libbpf
 LIBBPF_OUTPUT := $(LIBBPFGO_DIR)/output
 LIBBPF_LIB := $(LIBBPF_OUTPUT)/libbpf.a
 GIT := git
-EXTRA_TAGS += linuxbpf libbpfgo_full_static
+EXTRA_TAGS += linuxbpf libbpfgo_static
 else
 $(error Cannot build BPF objects without clang installed.  Install clang or build with BUILD_LIBBPFGO=0.)
 endif
@@ -77,7 +77,7 @@ $(LIBBPFGO_DIR): always-check
 	$(GIT) submodule update --init --recursive $@
 
 $(LIBBPF_LIB): $(LIBBPFGO_DIR)
-	make -C $(LIBBPFGO_DIR) libbpfgo-full-static
+	make -C $(LIBBPFGO_DIR) libbpfgo-static
 
 %.bpf.o: %.bpf.c $(LIBBPF_LIB)
 	$(CLANG) $(CFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH)	      \

@@ -1,3 +1,4 @@
 [submodule "third_party/libbpfgo"]
 	path = third_party/libbpfgo
 	url = https://github.com/jeffmahoney/libbpfgo
+	branch = velociraptor-branch
