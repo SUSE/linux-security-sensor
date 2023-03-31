@@ -29,6 +29,7 @@ import (
 	_ "www.velocidex.com/golang/velociraptor/vql/server/downloads"
 	_ "www.velocidex.com/golang/velociraptor/vql/server/favorites"
 	_ "www.velocidex.com/golang/velociraptor/vql/server/flows"
+	_ "www.velocidex.com/golang/velociraptor/vql/server/humio"
 	_ "www.velocidex.com/golang/velociraptor/vql/server/hunts"
 	_ "www.velocidex.com/golang/velociraptor/vql/server/monitoring"
 	_ "www.velocidex.com/golang/velociraptor/vql/server/notebooks"
