@@ -64,7 +64,7 @@ sources:
                  })
           })
 
-      SELECT * FROM humio_ingest(
+      SELECT * FROM humio_upload(
           query=documents,
           apibaseurl=ingestApiBase,
           ingest_token=ingestToken,

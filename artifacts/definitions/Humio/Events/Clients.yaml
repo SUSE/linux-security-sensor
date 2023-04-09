@@ -59,7 +59,7 @@ sources:
              FROM watch_monitoring(artifact=Artifact)
           })
 
-      SELECT * FROM humio_ingest(
+      SELECT * FROM humio_upload(
           query=events,
           apibaseurl=ingestApiBase,
           ingest_token=ingestToken,

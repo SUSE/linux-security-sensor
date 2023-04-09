@@ -206,8 +206,8 @@ func (self humioPlugin) Info(
 	scope vfilter.Scope,
 	type_map *vfilter.TypeMap) *vfilter.PluginInfo {
 	return &vfilter.PluginInfo{
-		Name: "humio_ingest",
-		Doc:  "Submit rows to Humio ingestion server.",
+		Name: "humio_upload",
+		Doc:  "Upload rows to Humio ingestion server.",
 
 		ArgType: type_map.AddType(scope, &humioPluginArgs{}),
 	}
