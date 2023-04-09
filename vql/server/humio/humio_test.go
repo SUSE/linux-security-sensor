@@ -31,6 +31,7 @@ import (
         "www.velocidex.com/golang/velociraptor/services/indexing"
         "www.velocidex.com/golang/velociraptor/vql/acl_managers"
         vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
+	"www.velocidex.com/golang/velociraptor/vql/functions"
         "www.velocidex.com/golang/velociraptor/vtesting"
 
 	vfilter "www.velocidex.com/golang/vfilter"
@@ -41,8 +42,9 @@ var (
 	validAuthToken = "valid-ingest-token"
 	validWorkerCount = 1
 	invalidWorkerCount = -11
-	testTimestampStringTZ = "2023-04-05T08:56:10-04:00"
+	testTimestampStringTZ = "2023-04-05T13:36:51-04:00"
 	testTimestampUNIX = uint64(1680716211)  // json ints are uint64
+	testTimestamp = "2023-04-05T17:36:51Z"
 	testClientId = "C.0030300330303000"
 	testHostname = "testhost12"
 )
@@ -59,6 +61,11 @@ type HumioQueueTestSuite struct {
         clients		[]string
 
 	server		*httptest.Server
+}
+
+func formatTimestamp(ts time.Time) string {
+	// json.MarshalWithOptions(payloads, opts) will turn this into UTC
+	return ts.UTC().Format(time.RFC3339Nano)
 }
 
 func (self *HumioQueueTestSuite) SetupTest() {
@@ -278,6 +285,11 @@ func (self *HumioQueueTestSuite) TestSetTaggedFieldsEmptyTagString() {
 	require.ErrorAs(self.T(), err, &errInvalidArgument{})
 }
 
+func (self *HumioQueueTestSuite) checkTimestamp(payload *HumioPayload) {
+	require.Equal(self.T(), testTimestamp, formatTimestamp(payload.Events[0].Timestamp))
+	require.Equal(self.T(), "", payload.Events[0].Timezone)
+}
+
 func (self *HumioQueueTestSuite) TestTimestamp_TimeString() {
 	row := ordereddict.NewDict().
 		Set("Time", testTimestampStringTZ).
@@ -287,9 +299,9 @@ func (self *HumioQueueTestSuite) TestTimestamp_TimeString() {
 
 	payload := NewHumioPayload(row)
 
-	self.queue.addTimestamp(row, payload)
+	self.queue.addTimestamp(self.scope, row, payload)
 
-	require.Equal(self.T(), testTimestampStringTZ, payload.Events[0].Timestamp)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) TestTimestamp_timestampString() {
@@ -300,9 +312,9 @@ func (self *HumioQueueTestSuite) TestTimestamp_timestampString() {
 
 	payload := NewHumioPayload(row)
 
-	self.queue.addTimestamp(row, payload)
+	self.queue.addTimestamp(self.scope, row, payload)
 
-	require.Equal(self.T(), testTimestampStringTZ, payload.Events[0].Timestamp)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) TestTimestamp__tsString() {
@@ -312,10 +324,9 @@ func (self *HumioQueueTestSuite) TestTimestamp__tsString() {
 
 	payload := NewHumioPayload(row)
 
-	self.queue.addTimestamp(row, payload)
+	self.queue.addTimestamp(self.scope, row, payload)
 
-	require.Equal(self.T(), testTimestampStringTZ, payload.Events[0].Timestamp)
-	require.Equal(self.T(), "", payload.Events[0].Timezone)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) TestTimestamp_TimeUNIX() {
@@ -327,9 +338,9 @@ func (self *HumioQueueTestSuite) TestTimestamp_TimeUNIX() {
 
 	payload := NewHumioPayload(row)
 
-	self.queue.addTimestamp(row, payload)
+	self.queue.addTimestamp(self.scope, row, payload)
 
-	require.Equal(self.T(), testTimestampUNIX, payload.Events[0].Timestamp)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) TestTimestamp_timestampUNIX() {
@@ -340,9 +351,9 @@ func (self *HumioQueueTestSuite) TestTimestamp_timestampUNIX() {
 
 	payload := NewHumioPayload(row)
 
-	self.queue.addTimestamp(row, payload)
+	self.queue.addTimestamp(self.scope, row, payload)
 
-	require.Equal(self.T(), testTimestampUNIX, payload.Events[0].Timestamp)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) TestTimestamp__tsUNIX() {
@@ -352,10 +363,9 @@ func (self *HumioQueueTestSuite) TestTimestamp__tsUNIX() {
 
 	payload := NewHumioPayload(row)
 
-	self.queue.addTimestamp(row, payload)
+	self.queue.addTimestamp(self.scope, row, payload)
 
-	require.Equal(self.T(), testTimestampUNIX, payload.Events[0].Timestamp)
-	require.Equal(self.T(), "UTC", payload.Events[0].Timezone)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) TestAddMappedTags() {
@@ -409,7 +419,7 @@ func (self *HumioQueueTestSuite) TestRowToPayload() {
 
 	self.queue.SetTaggedFields(expectedTags)
 
-	payload := self.queue.rowToPayload(self.ctx, row)
+	payload := self.queue.rowToPayload(self.ctx, self.scope, row)
 
 	expectedAttributes := row.Keys()
 	actualAttributes := payload.Events[0].Attributes.Keys()
@@ -443,8 +453,7 @@ func (self *HumioQueueTestSuite) TestRowToPayload() {
 		require.EqualValues(self.T(), val, payload.Tags[k])
 	}
 
-	require.Equal(self.T(), testTimestampUNIX, payload.Events[0].Timestamp)
-	require.Equal(self.T(), "UTC", payload.Events[0].Timezone)
+	self.checkTimestamp(payload)
 }
 
 func (self *HumioQueueTestSuite) handleEndpointRequest(w http.ResponseWriter, r *http.Request) {
@@ -480,12 +489,6 @@ func (self *HumioQueueTestSuite) handleEndpointRequest(w http.ResponseWriter, r 
 			w.WriteHeader(http.StatusBadRequest)
 			w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 			fmt.Fprintf(w, "Could not handle input. reason=%s", "Could not parse JSON")
-			return
-		}
-		if data[0].Events[0].Timestamp == nil || data[0].Events[0].Timestamp == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-			fmt.Fprintf(w, "timestamp not found in event.")
 			return
 		}
 	}
@@ -542,12 +545,13 @@ func (self *HumioQueueTestSuite) preparePayloads(payloads []*HumioPayload) []byt
 
 func (self *HumioQueueTestSuite) TestPostBytesValid() {
 	row := generateRow()
+	timestamp, _ := functions.TimeFromAny(self.scope, testTimestampStringTZ)
 	payloads := []*HumioPayload{
 			&HumioPayload{
 				Events: []HumioEvent{
 					HumioEvent{
 						Attributes: row,
-						Timestamp: "testTimestampStringTZ",
+						Timestamp: timestamp,
 					},
 				},
 				Tags: map[string]interface{}{
@@ -618,38 +622,6 @@ func (self *HumioQueueTestSuite) TestPostBytesEmptyConnRefused() {
 	require.ErrorAs(self.T(), err, &netErr)
 	require.ErrorIs(self.T(), err, syscall.ECONNREFUSED)
 	require.True(self.T(), retry)
-}
-
-func (self *HumioQueueTestSuite) TestPostBytesMissingTimestamp() {
-	row := generateRow()
-	payloads := []*HumioPayload{
-			&HumioPayload{
-				Events: []HumioEvent{
-					HumioEvent{
-						Attributes: row,
-					},
-				},
-				Tags: map[string]interface{}{
-					"ClientId" : testClientId,
-					"ClientHostname" : testHostname,
-				},
-			},
-		}
-
-	server := self.startMockServer()
-	defer server.Close()
-
-	err := self.queue.Open(self.scope, server.URL, validAuthToken)
-	require.NoError(self.T(), err)
-
-	data := self.preparePayloads(payloads)
-
-	err, retry := self.queue.postBytes(self.ctx, self.scope, data, len(payloads))
-	clientError := errHttpClientError{}
-	require.NotNil(self.T(), err)
-	require.ErrorAs(self.T(), err, &clientError)
-	require.Equal(self.T(), clientError.StatusCode, http.StatusBadRequest)
-	require.False(self.T(), retry)
 }
 
 func (self *HumioQueueTestSuite) TestPostBytesNoEvents() {

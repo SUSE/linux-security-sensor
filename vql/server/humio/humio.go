@@ -24,6 +24,7 @@ import (
 	"www.velocidex.com/golang/velociraptor/services"
 	"www.velocidex.com/golang/velociraptor/utils"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
+	"www.velocidex.com/golang/velociraptor/vql/functions"
 	vfilter "www.velocidex.com/golang/vfilter"
 )
 
@@ -127,8 +128,7 @@ type HumioQueue struct {
 }
 
 type HumioEvent struct {
-	// Could be string or int.  We don't need to care which.
-	Timestamp interface{}        `json:"timestamp"`
+	Timestamp time.Time          `json:"timestamp"`
 	Attributes *ordereddict.Dict `json:"attributes"`
 	Timezone string              `json:"timezone,omitempty"`
 }
@@ -401,28 +401,24 @@ func (self *HumioQueue) addMappedTags(row *ordereddict.Dict, payload *HumioPaylo
 	}
 }
 
-// We don't want to parse the timestamp.  We don't actually care.  Humio can
-// handle the parsing.
-func (self *HumioQueue) addTimestamp(row *ordereddict.Dict, payload *HumioPayload) {
+func (self *HumioQueue) addTimestamp(scope vfilter.Scope, row *ordereddict.Dict,
+				     payload *HumioPayload) {
 	timestamp, ok := row.Get("Time")
-	timezone := ""
 	if !ok {
 		timestamp, ok = row.Get("timestamp")
 	}
 	if !ok {
 		timestamp, ok = row.Get("_ts")
 	}
-	if !ok {
-		timestamp = time.Now().UTC()
+	var ts time.Time
+	if ok {
+		// It's only an error if it's nil, and it can't be.
+		ts, _ = functions.TimeFromAny(scope, timestamp)
+	} else {
+		ts = time.Now()
 	}
 
-	_, isint := timestamp.(uint64)
-	if isint {
-		timezone = "UTC"
-	}
-
-	payload.Events[0].Timestamp = timestamp
-	payload.Events[0].Timezone = timezone
+	payload.Events[0].Timestamp = ts
 }
 
 func NewHumioPayload(row *ordereddict.Dict) *HumioPayload {
@@ -436,12 +432,13 @@ func NewHumioPayload(row *ordereddict.Dict) *HumioPayload {
 	}
 }
 
-func (self *HumioQueue) rowToPayload(ctx context.Context, row *ordereddict.Dict) *HumioPayload {
+func (self *HumioQueue) rowToPayload(ctx context.Context, scope vfilter.Scope,
+				     row *ordereddict.Dict) *HumioPayload {
 	payload := NewHumioPayload(row)
 
 	self.addClientInfo(ctx, row, payload)
 	self.addMappedTags(row, payload)
-	self.addTimestamp(row, payload)
+	self.addTimestamp(scope, row, payload)
 
 	return payload
 }
@@ -505,7 +502,7 @@ func (self *HumioQueue) postEvents(ctx context.Context, scope vfilter.Scope,
 
 	payloads := []*HumioPayload{}
 	for _, row := range(rows) {
-		payloads = append(payloads, self.rowToPayload(ctx, row))
+		payloads = append(payloads, self.rowToPayload(ctx, scope, row))
 	}
 
 	data, err := json.MarshalWithOptions(payloads, opts)
