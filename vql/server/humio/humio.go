@@ -392,7 +392,6 @@ func (self *HumioQueue) addClientInfo(ctx context.Context, row *ordereddict.Dict
 
 func (self *HumioQueue) addMappedTags(row *ordereddict.Dict, payload *HumioPayload) {
 	for name, mappedName := range self.tagMap {
-		var value interface{}
 		value, ok := row.Get(name)
 
 		if ok {
