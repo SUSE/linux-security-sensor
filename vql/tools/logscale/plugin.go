@@ -2,15 +2,18 @@ package logscale
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/velociraptor/acls"
+	"www.velocidex.com/golang/velociraptor/crypto"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
-	"www.velocidex.com/golang/velociraptor/vql/networking"
 	vfilter "www.velocidex.com/golang/vfilter"
 	"www.velocidex.com/golang/vfilter/arg_parser"
 )
@@ -23,7 +26,7 @@ type logscalePluginArgs struct {
 	HttpTimeoutSec	   int	    `vfilter:"optional,field=http_timeout,doc=Timeout for http requests (default: 10s)"`
 	MaxRetries	   int      `vfilter:"optional,field=max_retries,doc=Maximum number of retries before failing an operation. A value < 0 means retry forever. (default: 7200)"`
 	RootCerts          string   `vfilter:"optional,field=root_ca,doc=As a better alternative to skip_verify, allows root ca certs to be added here."`
-	SkipVerify	   bool	    `vfilter:"optional,field=skip_verify,doc=Skip verification of server certificates (default: false)"`
+	SkipVerify         bool     `vfilter:"optional,field=skip_verify,doc=Skip verification of server certificates (default: false)"`
 	BatchingTimeoutMs  int      `vfilter:"optional,field=batching_timeout_ms,doc=Timeout between posts (default: 3000ms)"`
 	EventBatchSize	   int	    `vfilter:"optional,field=event_batch_size,doc=Items to batch before post (default: 2000)"`
 	TagFields	   []string `vfilter:"optional,field=tag_fields,doc=Name of fields to be used as tags. Fields can be renamed using =<newname>"`
@@ -209,25 +212,31 @@ func (self logscalePlugin) Call(ctx context.Context,
 			return
 		}
 
-		transport, err := networking.GetHttpTransport(config_obj.Client, arg.RootCerts)
-		if err != nil {
-			scope.Log("logscale: %v", err)
-			return
-		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
 
-		if arg.SkipVerify {
-			err = networking.EnableSkipVerify(transport.TLSClientConfig,
-							  config_obj.Client)
+		CA_Pool := x509.NewCertPool()
+		crypto.AddPublicRoots(CA_Pool)
+		if config_obj != nil {
+			err := crypto.AddDefaultCerts(config_obj.Client, CA_Pool)
 			if err != nil {
 				scope.Log("logscale: %v", err)
 				return
 			}
 		}
 
-		err = queue.SetHttpTransport(transport)
-		if err != nil {
-			scope.Log("logscale: %v", err)
-			return
+		if arg.RootCerts != "" &&
+		   !CA_Pool.AppendCertsFromPEM([]byte(arg.RootCerts)) {
+			   scope.Log("logscale: Unable to add root certs")
+			   return
+		}
+
+		if arg.RootCerts != "" {
+			tlsConfig := &tls.Config{
+				ClientSessionCache: tls.NewLRUClientSessionCache(100),
+				RootCAs:	    CA_Pool,
+				InsecureSkipVerify: arg.SkipVerify,
+			}
+			transport.TLSClientConfig = tlsConfig
 		}
 
 		err = queue.Open(ctx, scope, arg.ApiBaseUrl, arg.IngestToken)
@@ -238,7 +247,6 @@ func (self logscalePlugin) Call(ctx context.Context,
 		queue.Log(scope, "plugin started (%v threads)", queue.WorkerCount())
 
 		rowChan := arg.Query.Eval(ctx, scope)
-
 
 		var tickerChan <- chan time.Time
 		if arg.StatsInterval > 0 {

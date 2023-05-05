@@ -25,7 +25,6 @@ import (
 	"www.velocidex.com/golang/velociraptor/utils"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/velociraptor/vql/functions"
-	"www.velocidex.com/golang/velociraptor/vql/networking"
 	vfilter "www.velocidex.com/golang/vfilter"
 )
 
@@ -337,10 +336,7 @@ func (self *LogScaleQueue) Open(parentCtx context.Context, scope vfilter.Scope,
 
 	transport := self.httpTransport
 	if transport == nil {
-		transport, err = networking.GetHttpTransport(self.config.Client, "")
-		if err != nil {
-			return err
-		}
+		transport = http.DefaultTransport.(*http.Transport).Clone()
 	}
 
 	self.httpClient = &http.Client{Timeout: self.httpClientTimeoutDuration,
