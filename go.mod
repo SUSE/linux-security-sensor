@@ -58,7 +58,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mattn/go-pointer v0.0.0-20180825124634-49522c3f3791
 	github.com/mattn/go-sqlite3 v1.14.12
-	github.com/microcosm-cc/bluemonday v1.0.21
+	github.com/microcosm-cc/bluemonday v1.0.23
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/panicwrap v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
@@ -81,10 +81,10 @@ require (
 	github.com/xor-gate/debpkg v1.0.0
 	go.starlark.net v0.0.0-20221010140840-6bf6f0955179
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
-	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
-	golang.org/x/net v0.0.0-20221019024206-cb67ada4b0ad
-	golang.org/x/sys v0.1.0
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/mod v0.8.0
+	golang.org/x/net v0.8.0
+	golang.org/x/sys v0.6.0
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858
 	google.golang.org/api v0.96.0
 	google.golang.org/genproto v0.0.0-20221018160656-63c7b68cfc55
@@ -214,8 +214,8 @@ require (
 	go.uber.org/goleak v1.2.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/term v0.0.0-20221017184919-83659145692c // indirect
-	golang.org/x/tools v0.1.12 // indirect
+	golang.org/x/term v0.6.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
