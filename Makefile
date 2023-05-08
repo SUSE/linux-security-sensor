@@ -77,11 +77,11 @@ $(LIBBPFGO_DIR): always-check
 	echo "INFO: updating submodule 'libbpfgo'"
 	$(GIT) submodule update --init --recursive $@
 
-$(LIBBPFGO_DIR)/vmlinux.h: $(LIBBFGO_DIR)
+$(LIBBPF_OUTPUT)/vmlinux.h: $(LIBBFGO_DIR)
 	mkdir -p $(LIBBPF_OUTPUT)
-	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > ./third_party/libbpfgo/output/vmlinux.h
+	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > $@
 
-$(LIBBPF_LIB): $(LIBBPFGO_DIR) $(LIBBPFGO_DIR)/vmlinux.h
+$(LIBBPF_LIB): $(LIBBPFGO_DIR) $(LIBBPF_OUTPUT)/vmlinux.h
 	make -C $(LIBBPFGO_DIR) libbpfgo-static
 
 %.bpf.o: %.bpf.c $(LIBBPF_LIB)
