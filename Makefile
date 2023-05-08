@@ -16,6 +16,7 @@ LIBBPF_DIR := $(LIBBPFGO_DIR)/libbpf
 LIBBPF_OUTPUT := $(LIBBPFGO_DIR)/output
 LIBBPF_LIB := $(LIBBPF_OUTPUT)/libbpf.a
 GIT := git
+BPFTOOL := bpftool
 EXTRA_TAGS += linuxbpf libbpfgo_static
 else
 $(error Cannot build BPF objects without clang installed.  Install clang or build with BUILD_LIBBPFGO=0.)
@@ -76,7 +77,11 @@ $(LIBBPFGO_DIR): always-check
 	echo "INFO: updating submodule 'libbpfgo'"
 	$(GIT) submodule update --init --recursive $@
 
-$(LIBBPF_LIB): $(LIBBPFGO_DIR)
+$(LIBBPFGO_DIR)/vmlinux.h: $(LIBBFGO_DIR)
+	mkdir -p $(LIBBPF_OUTPUT)
+	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > ./third_party/libbpfgo/output/vmlinux.h
+
+$(LIBBPF_LIB): $(LIBBPFGO_DIR) $(LIBBPFGO_DIR)/vmlinux.h
 	make -C $(LIBBPFGO_DIR) libbpfgo-static
 
 %.bpf.o: %.bpf.c $(LIBBPF_LIB)

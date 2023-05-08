@@ -41,7 +41,7 @@ jobs:
       run: |
         go get -v -t -d ./...
         sudo apt-get update
-        sudo apt-get install mingw-w64-x86-64-dev gcc-mingw-w64-x86-64 gcc-mingw-w64 libsystemd-dev clang-12 llvm libelf-dev git linux-tools-common make libzstd-dev
+        sudo apt-get install mingw-w64-x86-64-dev gcc-mingw-w64-x86-64 gcc-mingw-w64 libsystemd-dev clang-12 llvm libelf-dev git linux-tools-common make libzstd-dev linux-tools-common
 
     - name: Use Node.js v16
       uses: actions/setup-node@v1
