@@ -2680,6 +2680,50 @@
     type: string
     description: Level to log at (DEFAULT, WARN, ERROR, INFO).
   category: basic
+- name: logscale_upload
+  description: Upload rows to LogScale.
+  type: Plugin:
+  args:
+  - name: query
+    type: StoredQuery
+    description: Source for rows to upload.
+    required: true
+  - name: apibaseurl
+    type: string
+    description: The LogScale API base URL.
+  - name: ingest_token
+    type: string
+    description: LogScale Ingestion Token
+  - name: threads
+    type: int64
+    description: How many threads to use.
+  - name: http_timeout
+    type: int64
+    description: Timeout for HTTP requests to complete, in seconds (default: 10).
+  - name: max_retries
+    type: int64
+    description: Maximum number of retries before an upload is considered failed (default: 7200).
+  - name: root_ca
+    type: string
+    description: As a better alternative to skip_verify, allows root ca certs to be
+      added here.
+  - name: skip_verify
+    type: bool
+    description: 'Skip SSL verification(default: False).'
+  - name: batching_timeout_ms
+    type: int64
+    description: Timeout without new rows to upload batch in milliseconds (default: 3000).
+  - name: event_batch_size
+    type: int64
+    description: Number of rows to batch before uploading (default: 2000).
+  - name: tag_fields
+    type: string
+    description: Comma-separated list of fields to use as tags.  The fields can be remapped using oldname=newname syntax.
+  - name: stats_interval
+    type: int64 description: Interval between posting statistics as output rows in seconds (default: 600).
+  - name: debug
+    type: bool
+    description: Enable verbose logging (default: false).
 - name: lookupSID
   description: Get information about the SID.
   type: Function
