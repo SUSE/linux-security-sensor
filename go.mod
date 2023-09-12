@@ -53,7 +53,7 @@ require (
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/juju/ratelimit v1.0.1
 	github.com/lib/pq v1.2.0
-	github.com/magefile/mage v1.11.0
+	github.com/magefile/mage v1.15.0
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mattn/go-pointer v0.0.0-20180825124634-49522c3f3791
