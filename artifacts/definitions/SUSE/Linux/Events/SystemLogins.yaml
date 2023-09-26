@@ -1,6 +1,6 @@
 name: SUSE.Linux.Events.SystemLogins
 description: |
-   Pulls all the system login and logout events from auditd logs.
+   This monitoring artifact collects system login and logout events from auditd events.
    
 type: CLIENT_EVENT
 
