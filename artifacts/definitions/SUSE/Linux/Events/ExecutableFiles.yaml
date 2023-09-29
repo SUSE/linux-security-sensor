@@ -1,0 +1,62 @@
+name: SUSE.Linux.Events.ExecutableFiles
+
+description: |
+  This artifact collects new executable files in the `directories` parameter by monitoring fchmodat/fchmod calls in kernel audit events.
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+parameters:
+  - name: directories
+    description: List of directories to be monitored.
+    type: json_array
+    default: '["/home", "/root", "/tmp"]'
+
+sources:
+
+  - query: |
+     LET exec_bit_rules = ("-a always,exit -F arch=b64 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b64 -S fchmod -F a1&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmod -F a1&73 -k vrr_exec_bit_addition")
+
+     // ["/a", "/b", "/c"] -> "^/a|^/b|^/c"
+     LET directories_regex = join(
+       array=array(a={ SELECT "^" + _value FROM foreach(row=directories) }),
+       sep="|"
+     )
+
+     // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
+     LET clean_path(path) = "/" + relpath(path=path, base="/")
+
+     LET full_path(cwd, path) = clean_path(
+       path=if(
+         condition=path=~"^/", then=path,
+         else=cwd + "/" + path
+       )
+     )
+
+     LET exec_bit_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           User.IDs.uid AS UserId,
+           Result AS State,
+           basename(path=File.path) AS FileName,
+           full_path(cwd=Process.CWD, path=File.path) AS FilePath
+       FROM audit(rules=exec_bit_rules)
+       WHERE "vrr_exec_bit_addition" in Tags
+
+     LET hash_log = SELECT Time, UserId,
+           State, FileName, FilePath,
+           hash(path=FilePath, hashselect=["SHA1", "SHA256"]) AS hashes
+       FROM exec_bit_log
+       WHERE FilePath =~ directories_regex
+
+     LET uids_to_names <= memoize(
+       query={ SELECT Uid, User FROM Artifact.Linux.Sys.Users() },
+       key='Uid',
+       period=3600
+     )
+
+     SELECT Time, UserId,
+              get(item=uids_to_names, field=UserId).User AS User,
+              State, FileName, FilePath,
+              hashes.SHA256 AS SHA256,
+              hashes.SHA1 AS SHA1
+     FROM hash_log
