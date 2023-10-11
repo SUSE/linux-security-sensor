@@ -1,13 +1,11 @@
 name: Linux.Events.ProcessExecutions
+
 description: |
-  This artifact collects process execution logs from the Linux kernel.
+  This artifact collects process execution events from the Linux audit system.
 
 precondition: SELECT OS From info() where OS = 'linux'
 
 type: CLIENT_EVENT
-
-required_permissions:
-  - EXECVE
 
 sources:
   - query: |
@@ -25,6 +23,10 @@ sources:
        FROM audit(rules=proc_exec_rules)
        WHERE "vrr_procmon" in Tags AND Result = 'success'
 
+     LET hash_log = SELECT *,
+           hash(path=Exe, hashselect=['SHA1', 'SHA256']) AS hashes
+       FROM exec_log
+
      // Cache Uid -> Username mapping.
      LET users <= SELECT User, atoi(string=Uid) AS Uid
        FROM Artifact.Linux.Sys.Users()
@@ -35,5 +37,7 @@ sources:
               regex_replace(source=read_file(filename= "/proc/" + PPID + "/cmdline"),
                             replace=" ", re="[\\0]") AS Parent,
               CmdLine,
-              Exe, CWD
-       FROM exec_log
+              Exe, CWD,
+              hashes.SHA1 AS SHA1,
+              hashes.SHA256 AS SHA256
+       FROM hash_log
