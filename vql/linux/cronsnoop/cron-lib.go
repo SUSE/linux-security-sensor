@@ -209,7 +209,7 @@ func special_cron_string(line_fields []string) bool {
 
 func should_skip_line(line_fields []string) bool {
 	// ignore comments and empty lines
-	if line_fields[0][0] == '#' || len(line_fields) == 0 {
+	if len(line_fields) == 0 || len(line_fields[0]) == 0 || line_fields[0][0] == '#' {
 		return true
 	}
 
