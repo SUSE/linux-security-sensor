@@ -367,6 +367,13 @@ func TestMultiUserCommentIgnore(t *testing.T) {
 	assertMUserDoesntExist("user3", fName, s, t)
 }
 
+func TestShouldSkipLineEmptyLine(t *testing.T) {
+	fields := []string{""}
+	if !should_skip_line(fields) {
+		t.Fatal("Empty line should be skipped")
+	}
+}
+
 func TestMultiUserSpecialStringHandling(t *testing.T) {
 	tempdir := t.TempDir()
 
