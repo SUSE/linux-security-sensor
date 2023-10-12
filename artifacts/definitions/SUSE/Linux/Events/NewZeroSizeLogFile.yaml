@@ -1,0 +1,54 @@
+name: SUSE.Linux.Events.NewZeroSizeLogFile
+
+description: |
+  This monitoring artifact collects new zero sized log files in /var/log.
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+sources:
+  - query: |
+      LET audit_rules = ("-w /var/log -p w -k vrr_var_log")
+
+      // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
+      LET clean_path(path) = "/" + relpath(path=path, base="/")
+
+      LET full_path(cwd, path) = clean_path(
+        path=if(
+          condition=path=~"^/", then=path,
+          else=cwd + "/" + path
+        )
+      )
+
+      LET audit_events = SELECT
+          timestamp(string=Timestamp) AS Time,
+          Sequence,
+          basename(path=File.path) AS FileName,
+          full_path(cwd=Process.CWD, path=File.path) AS FilePath
+        FROM audit(rules=audit_rules)
+        WHERE "vrr_var_log" IN Tags
+          AND Result = "success"
+          AND Summary.action = "opened-file"
+          AND Paths[-1].nametype = "CREATE"
+
+      LET zero_size_files = SELECT
+          *,
+          { SELECT Size FROM stat(filename=FilePath) } AS Size
+        FROM audit_events
+        WHERE Size = 0
+
+      LET zero_size_files_with_hashes = SELECT
+          *,
+          hash(path=FilePath, hashselect=["SHA1", "SHA256"]) AS hashes
+      FROM zero_size_files
+
+      SELECT
+        Time,
+        Sequence,
+        FileName,
+        FilePath,
+        hashes.SHA1 AS SHA1,
+        hashes.SHA256 AS SHA256
+      FROM zero_size_files_with_hashes
+
