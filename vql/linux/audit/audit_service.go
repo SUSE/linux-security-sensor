@@ -486,7 +486,7 @@ func (self *auditService) logEventLoop(ctx context.Context) error {
 				subscriber.logChannel <- msg
 			}
 			self.subscriberLock.Unlock()
-			self.logger.Info(msg)
+			self.logger.Info("%s", msg)
 		}
 	}
 
