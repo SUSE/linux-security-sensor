@@ -1,22 +1,23 @@
+//go:build linux
 // +build linux
+
 package audit
 
 import (
 	"context"
 	_ "embed"
 	"encoding/json"
-
-	_ "fmt"
 	"testing"
 
-        "github.com/alecthomas/assert"
-        "github.com/sebdah/goldie"
-        "github.com/stretchr/testify/suite"
+	_ "fmt"
 
-        "www.velocidex.com/golang/velociraptor/file_store/test_utils"
+	"github.com/alecthomas/assert"
+	"github.com/sebdah/goldie"
+	"github.com/stretchr/testify/suite"
+
+	"www.velocidex.com/golang/velociraptor/file_store/test_utils"
 	"www.velocidex.com/golang/velociraptor/logging"
 	"www.velocidex.com/golang/vfilter"
-
 )
 
 type AuditServiceTestSuite struct {
@@ -26,14 +27,13 @@ type AuditServiceTestSuite struct {
 
 type TestListener struct {
 	events [][]byte
-	count int
+	count  int
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 func newTestListener() *TestListener {
-	return &TestListener{
-	}
+	return &TestListener{}
 }
 
 //go:embed testdata.json
@@ -41,7 +41,7 @@ var eventsJson []byte
 
 func (self *TestListener) Open(ctx context.Context) error {
 	self.ctx, self.cancel = context.WithCancel(context.Background())
-//	fmt.Printf("%v\n", string(eventsJson))
+	//	fmt.Printf("%v\n", string(eventsJson))
 	return json.Unmarshal(eventsJson, &self.events)
 }
 
@@ -111,7 +111,7 @@ L:
 	golden, err := json.MarshalIndent(events, "", "  ")
 	assert.NoError(self.T(), err)
 
-        goldie.Assert(self.T(), "TestRunService", golden)
+	goldie.Assert(self.T(), "TestRunService", golden)
 }
 
 func TestAuditService(t *testing.T) {
