@@ -180,7 +180,7 @@ func (self *AuditListener) Receive(buf *auditBuf) error {
 				return err
 			}
 			self.sockBufSize *= 4
-			return unix.EAGAIN
+			return errRetryNeeded
 		}
 
 		// There likely won't be any listeners left and the socket
