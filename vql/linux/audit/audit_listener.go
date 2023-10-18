@@ -10,25 +10,23 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var (
-	gMinimumSocketBufSize         = 512 * 1024
-)
+var gMinimumSocketBufSize = 512 * 1024
 
 type AuditListener struct {
-	sockFd int
-	timeout int
+	sockFd      int
+	timeout     int
 	sockBufSize int
 
-	poll_chan chan int
-	error_chan chan error
-	wg sync.WaitGroup
+	poll_chan   chan int
+	error_chan  chan error
+	wg          sync.WaitGroup
 	stopPolling context.CancelFunc
 }
 
 func NewAuditListener() *AuditListener {
 	return &AuditListener{
-		wg: sync.WaitGroup{},
-		poll_chan: make(chan int),
+		wg:         sync.WaitGroup{},
+		poll_chan:  make(chan int),
 		error_chan: make(chan error),
 	}
 }
@@ -53,7 +51,7 @@ func openAuditListenerSocket() (int, error) {
 	return sockFd, nil
 }
 
-func setSocketBufSize(fd int, sockBufSize int) error {
+func setSocketBufSize(fd, sockBufSize int) error {
 	err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUFFORCE, sockBufSize)
 	if err != nil {
 		err = fmt.Errorf("failed to increase listener socket buffer size (size %v): %w.  Events may be lost.", sockBufSize, err)
@@ -175,7 +173,7 @@ func (self *AuditListener) Receive(buf *auditBuf) error {
 	if err != nil {
 		// Increase the size of the socket buffer and try again
 		if errors.Is(err, unix.ENOBUFS) {
-			err = setSocketBufSize(self.sockFd, self.sockBufSize * 4)
+			err = setSocketBufSize(self.sockFd, self.sockBufSize*4)
 			if err != nil {
 				return err
 			}
