@@ -80,6 +80,7 @@ type auditListener interface {
 	Receive(*auditBuf) error
 	Close() error
 }
+var errRetryNeeded = errors.New("Operation should be retried")
 
 type commandClient interface {
 	AddRule(rule []byte) error
@@ -355,8 +356,12 @@ func (self *auditService) acceptEvents(ctx context.Context) error {
 		msgType, err := self.receiveMessageBuf(buf)
 		if err != nil {
 			self.rawBufPool.Put(buf)
-			if errors.Is(err, syscall.EAGAIN) {
+			if errors.Is(err, errRetryNeeded) {
 				continue
+			}
+
+			if errors.Is(err, syscall.EAGAIN) {
+				break
 			}
 			return err
 		}
