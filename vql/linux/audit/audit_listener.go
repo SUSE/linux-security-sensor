@@ -14,7 +14,6 @@ var gMinimumSocketBufSize = 512 * 1024
 
 type AuditListener struct {
 	sockFd      int
-	timeout     int
 	sockBufSize int
 
 	poll_chan   chan int

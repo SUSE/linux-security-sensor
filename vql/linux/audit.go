@@ -7,7 +7,6 @@ import (
 	"www.velocidex.com/golang/velociraptor/acls"
 	"www.velocidex.com/golang/velociraptor/artifacts"
 	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
-	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	audit "www.velocidex.com/golang/velociraptor/vql/linux/audit"
 	"www.velocidex.com/golang/vfilter"
@@ -24,7 +23,7 @@ func (self AuditPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMap) *vf
 	return &vfilter.PluginInfo{
 		Name:     "audit",
 		Doc:      "Register as an audit daemon in the kernel.",
-		Metadata: vql.VQLMetadata().Permissions(acls.MACHINE_STATE).Build(),
+		Metadata: vql_subsystem.VQLMetadata().Permissions(acls.MACHINE_STATE).Build(),
 	}
 }
 

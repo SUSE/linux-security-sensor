@@ -10,7 +10,6 @@ import (
 
 	libaudit "github.com/elastic/go-libaudit/v2"
 	"www.velocidex.com/golang/velociraptor/file_store/test_utils"
-	"www.velocidex.com/golang/vfilter"
 )
 
 type mockCommandClient struct {
@@ -78,9 +77,6 @@ func (self *mockCommandClient) Close() error {
 
 type AuditTestSuite struct {
 	test_utils.TestSuite
-
-	client *mockCommandClient
-	scope  vfilter.Scope
 }
 
 func (self *AuditTestSuite) SetupTest() {

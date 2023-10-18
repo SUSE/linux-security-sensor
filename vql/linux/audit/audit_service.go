@@ -140,7 +140,7 @@ type auditBuf struct {
 
 func newAuditBuf(bufSize int, pool *sync.Pool) *auditBuf {
 	return &auditBuf{
-		data:     make([]byte, bufSize, bufSize),
+		data:     make([]byte, bufSize),
 		refcount: utils.NewRefcount(),
 		pool:     pool,
 	}
@@ -159,10 +159,6 @@ func (self *auditBuf) Put() {
 		self.size = 0
 		self.pool.Put(self)
 	}
-}
-
-type auditBufs struct {
-	pool *sync.Pool
 }
 
 func newAuditService(config_obj *config_proto.Config, logger *logging.LogContext, listener auditListener, client commandClient) *auditService {
@@ -546,7 +542,6 @@ func (self *auditService) reportStats(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(5 * time.Second):
-			break
 		}
 
 		received := self.totalMessagesReceivedCounter.Value()
@@ -795,9 +790,7 @@ func (self *auditService) startRulesChecker(ctx context.Context) error {
 			if err != nil {
 				self.logger.Warn("audit: rules check failed %v", err)
 			}
-		case <-self.checkerChannel:
-			// Reset timer
-			break
+		case <-self.checkerChannel: // Wait for config change event
 		}
 	}
 }
