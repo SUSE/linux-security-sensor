@@ -80,6 +80,7 @@ type auditListener interface {
 	Receive(*auditBuf) error
 	Close() error
 }
+
 var errRetryNeeded = errors.New("Operation should be retried")
 
 type commandClient interface {
@@ -104,7 +105,7 @@ type auditService struct {
 	// Once up and running, protected by rulesLock
 	commandClient commandClient
 	reassembler   *libaudit.Reassembler
-	listener auditListener
+	listener      auditListener
 
 	logChannel     chan string
 	checkerChannel chan aucoalesce.Event
@@ -131,17 +132,17 @@ type auditService struct {
 }
 
 type auditBuf struct {
-	data []byte
-	size int
+	data     []byte
+	size     int
 	refcount utils.Refcount
-	pool *sync.Pool
+	pool     *sync.Pool
 }
 
 func newAuditBuf(bufSize int, pool *sync.Pool) *auditBuf {
 	return &auditBuf{
-		data: make([]byte, bufSize, bufSize),
+		data:     make([]byte, bufSize, bufSize),
 		refcount: utils.NewRefcount(),
-		pool: pool,
+		pool:     pool,
 	}
 }
 
@@ -173,14 +174,14 @@ func newAuditService(config_obj *config_proto.Config, logger *logging.LogContext
 	}
 
 	return &auditService{
-		config:      config_obj,
-		rules:       map[string]*RefcountedAuditRule{},
-		bannedRules: map[string]*AuditRule{},
-		rawBufPool:  rawBufPool,
-		subscribers: []*subscriber{},
-		logger:      logger,
+		config:        config_obj,
+		rules:         map[string]*RefcountedAuditRule{},
+		bannedRules:   map[string]*AuditRule{},
+		rawBufPool:    rawBufPool,
+		subscribers:   []*subscriber{},
+		logger:        logger,
 		commandClient: client,
-		listener:    listener,
+		listener:      listener,
 	}
 }
 
