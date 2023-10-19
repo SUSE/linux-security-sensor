@@ -43,3 +43,25 @@ func (self *OSFileInfo) Atime() time.Time {
 	ts := int64(self._Sys().Atimespec.Sec)
 	return time.Unix(ts, 0)
 }
+
+func splitDevNumber(dev uint64) (major, minor uint64) {
+	// See freebsd-src/sys/sys/types.h
+	major = ((dev >> 32) & 0xffffff00) | ((dev >> 8) & 0xff)
+	minor = ((dev >> 24) & 0xff00) | (dev & 0xffff00ff)
+	return
+}
+
+func getFSType(path string) string {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(path, &st); err != nil {
+		return ""
+	}
+	var name []byte
+	for _, c := range st.Fstypename {
+		if c == 0 {
+			break
+		}
+		name = append(name, byte(c))
+	}
+	return string(name)
+}

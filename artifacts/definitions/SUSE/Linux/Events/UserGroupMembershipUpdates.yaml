@@ -1,0 +1,35 @@
+name: SUSE.Linux.Events.UserGroupMembershipUpdates
+description: |
+  This artifact collects user group changes from auditd events, by
+  monitoring updates made to either /etc/group or /etc/nsswitch.conf.
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+sources:
+  - query: |
+
+     LET change_log_rules = ("-w /etc/group -p wa -k vrr_etc_group", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
+
+     LET change_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           Process.Title AS CmdLine,
+           Process.Exe AS Exe,
+           Process.CWD AS CWD
+       FROM audit(rules=change_log_rules)
+       WHERE "vrr_etc_group" in Tags OR "vrr_etc_nsswitch_conf" in Tags
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, UserId,
+            { SELECT User from usrs WHERE Uid = UserId} AS User,
+            State, CmdLine, Exe, CWD
+     FROM change_log
