@@ -20,6 +20,10 @@ type BPFBuildEnv struct {
 	bpftool   string
 }
 
+func (self *BPFBuildEnv) uapiDir() string {
+	return filepath.Join(self.baseDir, "libbpf", "include", "uapi")
+}
+
 func (self *BPFBuildEnv) outputDir() string {
 	return filepath.Join(self.baseDir, "output")
 }
@@ -142,7 +146,12 @@ func (self *BPFBuildEnv) env() map[string]string {
 		path = "."
 	}
 
-	env["CGO_CFLAGS"] = fmt.Sprintf("-I%s", path)
+	uapi, err := filepath.Abs(self.uapiDir())
+	if err != nil {
+		uapi = "."
+	}
+
+	env["CGO_CFLAGS"] = fmt.Sprintf("-I%s -I%s", path, uapi)
 	env["CGO_LDFLAGS"] = fmt.Sprintf("%s/libbpf.a -l:libelf.a -lz -lzstd", path)
 	if self.bpftool != "" {
 		env["BPFTOOL"] = self.bpftool
