@@ -43,7 +43,7 @@ $(LIBBPFGO_DIR)/go.mod:
 	$(GIT) submodule update --init --recursive "$(LIBBPFGO_DIR)"
 
 $(LIBBPF): $(LIBBPFGO_DIR)/go.mod
-	make -C $(LIBBPFGO_DIR) libbpfgo-static
+	make -C $(LIBBPFGO_DIR) $(LIBBPF)
 
 $(VMLINUX_H):
 	mkdir -p $(LIBBPFGO_OUTPUT)
