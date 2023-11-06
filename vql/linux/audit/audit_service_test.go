@@ -7,6 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"reflect"
 	"regexp"
 	"strconv"
 	"testing"
@@ -26,6 +27,7 @@ type AuditServiceTestSuite struct {
 	test_utils.TestSuite
 	auditService *auditService
 	listener     *TestListener
+	client       *mockCommandClient
 }
 
 type TestListener struct {
@@ -103,8 +105,8 @@ func (self *AuditServiceTestSuite) SetupTest() {
 
 	logger := logging.GetLogger(self.ConfigObj, &logging.ClientComponent)
 	self.listener = newTestListener()
-	client := newMockCommandClient()
-	self.auditService = newAuditService(self.ConfigObj, logger, self.listener, client)
+	self.client = newMockCommandClient()
+	self.auditService = newAuditService(self.ConfigObj, logger, self.listener, self.client)
 
 	self.TestSuite.SetupTest()
 }
@@ -158,6 +160,59 @@ L:
 	assert.Equal(self.T(), len(events), self.listener.real_count)
 
 	goldie.Assert(self.T(), "TestSubscribeEvents", golden)
+}
+
+func (self *AuditServiceTestSuite) TestMissingRules() {
+	rules := []string{"-a always,exit", "-w /etc/passwd -p rwxa -k passwd"}
+
+	subscriber, err := self.auditService.Subscribe(rules)
+	assert.NoError(self.T(), err)
+	defer self.auditService.Unsubscribe(subscriber)
+
+	oRules, err := self.client.GetRules()
+	assert.NoError(self.T(), err)
+	assert.Equal(self.T(), len(oRules), len(rules))
+
+	oldrule := self.client.rules[1]
+
+	self.client.rules = self.client.rules[0:1]
+
+	nRules, err := self.client.GetRules()
+	assert.NoError(self.T(), err)
+	assert.Equal(self.T(), len(nRules), 1)
+
+	err = self.auditService.checkRules()
+	assert.NoError(self.T(), err)
+
+	nRules, err = self.client.GetRules()
+	assert.NoError(self.T(), err)
+	assert.Equal(self.T(), len(nRules), len(rules))
+
+	assert.True(self.T(), reflect.DeepEqual(oldrule, self.client.rules[1]))
+
+	events := []vfilter.Row{}
+
+	logEvents := []string{}
+L:
+	for {
+		select {
+		case logEvent, ok := <-subscriber.LogEvents():
+			if !ok {
+				break L
+			}
+			logEvents = append(logEvents, logEvent)
+		case event, ok := <-subscriber.Events():
+			if !ok {
+				break L
+			}
+
+			events = append(events, event)
+		}
+	}
+
+	assert.NoError(self.T(), err)
+	assert.Equal(self.T(), len(events), self.listener.real_count)
+	assert.Equal(self.T(), len(logEvents), 1)
 }
 
 func TestAuditService(t *testing.T) {
