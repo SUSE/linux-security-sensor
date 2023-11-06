@@ -7,6 +7,8 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"regexp"
+	"strconv"
 	"testing"
 
 	_ "fmt"
@@ -23,13 +25,15 @@ import (
 type AuditServiceTestSuite struct {
 	test_utils.TestSuite
 	auditService *auditService
+	listener     *TestListener
 }
 
 type TestListener struct {
-	events [][]byte
-	count  int
-	ctx    context.Context
-	cancel context.CancelFunc
+	events     [][]byte
+	count      int
+	real_count int
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 func newTestListener() *TestListener {
@@ -40,9 +44,36 @@ func newTestListener() *TestListener {
 var eventsJson []byte
 
 func (self *TestListener) Open(ctx context.Context) error {
-	self.ctx, self.cancel = context.WithCancel(context.Background())
-	//	fmt.Printf("%v\n", string(eventsJson))
-	return json.Unmarshal(eventsJson, &self.events)
+	newctx, cancel := context.WithCancel(ctx)
+	err := json.Unmarshal(eventsJson, &self.events)
+	if err != nil {
+		cancel()
+		return nil
+	}
+
+	seqs := map[int]bool{}
+
+	// Count the sequence numbers to determine how many events are in
+	// the test input stream
+	re := regexp.MustCompile(`\d+:(\d+)`)
+	for _, line := range self.events {
+		found := re.FindSubmatch(line[22:])
+		if found != nil {
+			seq, err := strconv.Atoi(string(found[1]))
+			if err != nil {
+				cancel()
+				return err
+			}
+			seqs[seq] = true
+		}
+	}
+
+	self.real_count = len(seqs)
+
+	self.ctx = newctx
+	self.cancel = cancel
+	self.count = 0
+	return nil
 }
 
 func (self *TestListener) Wait(ctx context.Context) error {
@@ -71,9 +102,9 @@ func (self *AuditServiceTestSuite) SetupTest() {
 	self.ConfigObj = self.LoadConfig()
 
 	logger := logging.GetLogger(self.ConfigObj, &logging.ClientComponent)
-	listener := newTestListener()
+	self.listener = newTestListener()
 	client := newMockCommandClient()
-	self.auditService = newAuditService(self.ConfigObj, logger, listener, client)
+	self.auditService = newAuditService(self.ConfigObj, logger, self.listener, client)
 
 	self.TestSuite.SetupTest()
 }
@@ -93,9 +124,12 @@ func (self *AuditServiceTestSuite) TearDownTest() {
 }
 
 func (self *AuditServiceTestSuite) TestRunService() {
-	self.auditService.runService()
+	err := self.auditService.runService()
+	assert.NoError(self.T(), err)
+}
 
-	rules := []string{}
+func (self *AuditServiceTestSuite) TestSubscribeEvents() {
+	rules := []string{"-a always,exit"}
 
 	subscriber, err := self.auditService.Subscribe(rules)
 	assert.NoError(self.T(), err)
@@ -121,8 +155,9 @@ L:
 
 	golden, err := json.MarshalIndent(events, "", "  ")
 	assert.NoError(self.T(), err)
+	assert.Equal(self.T(), len(events), self.listener.real_count)
 
-	goldie.Assert(self.T(), "TestRunService", golden)
+	goldie.Assert(self.T(), "TestSubscribeEvents", golden)
 }
 
 func TestAuditService(t *testing.T) {
