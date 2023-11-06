@@ -224,16 +224,32 @@ func (self *auditService) runService() error {
 		self.bannedRules[watcherRule.rule] = watcherRule
 	}
 
+	// errgroup doesn't offer a cancel function, so we'll use the hierarchical
+	// nature of contexts to get the same result.
+	ctx, cancel := context.WithCancel(context.Background())
+	grp, grpctx := errgroup.WithContext(ctx)
+
+	err = self.listener.Open(grpctx)
+	if err != nil {
+		cancel()
+		self.commandClient.Close()
+		return err
+	}
+
 	status, err := self.commandClient.GetStatus()
 	if err != nil {
+		cancel()
 		self.commandClient.Close()
+		self.listener.Close()
 		return err
 	}
 
 	if status.Enabled == 0 {
 		err = self.commandClient.SetEnabled(true, libaudit.WaitForReply)
 		if err != nil {
+			cancel()
 			self.commandClient.Close()
+			self.listener.Close()
 			return fmt.Errorf("failed to enable audit subsystem: %w", err)
 		}
 		self.logger.Info("audit: enabled kernel audit subsystem")
@@ -241,17 +257,14 @@ func (self *auditService) runService() error {
 
 	self.reassembler, err = libaudit.NewReassembler(5, 500*time.Millisecond, self)
 	if err != nil {
+		cancel()
 		self.commandClient.Close()
+		self.listener.Close()
 		return err
 	}
 
 	self.logger.Info("audit: starting audit service")
 	self.running = true
-
-	// errgroup doesn't offer a cancel function, so we'll use the hierarchical
-	// nature of contexts to get the same result.
-	ctx, cancel := context.WithCancel(context.Background())
-	grp, grpctx := errgroup.WithContext(ctx)
 
 	options := api.QueueOptions{
 		DisableFileBuffering: false,
@@ -265,6 +278,7 @@ func (self *auditService) runService() error {
 		cancel()
 		self.commandClient.Close()
 		self.reassembler.Close()
+		self.listener.Close()
 		self.running = false
 		return err
 	}
@@ -317,6 +331,7 @@ func (self *auditService) shutdown() {
 
 	self.reassembler.Close()
 	self.commandClient.Close()
+	self.listener.Close()
 
 	close(self.logChannel)
 	close(self.checkerChannel)
@@ -500,14 +515,8 @@ func (self *auditService) listenerEventLoop(ctx context.Context,
 	self.Debug("audit: listener event loop started")
 	defer self.Debug("audit: listener event loop exited")
 
-	err := self.listener.Open(ctx)
-	if err != nil {
-		return err
-	}
-	defer self.listener.Close()
-
 	for {
-		err = self.listener.Wait(ctx)
+		err := self.listener.Wait(ctx)
 		if err != nil {
 			return err
 		}
