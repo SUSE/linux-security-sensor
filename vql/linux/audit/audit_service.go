@@ -275,8 +275,13 @@ func (self *auditService) runService() error {
 	grp.Go(func() error { return self.startMaintainer(grpctx) })
 	grp.Go(func() error { return self.startRulesChecker(grpctx) })
 	grp.Go(func() error { return self.mainEventLoop(grpctx) })
-	grp.Go(func() error { return self.listenerEventLoop(grpctx) })
 	grp.Go(func() error { return self.reportStats(grpctx) })
+	grp.Go(func() error {
+		// We close the message queue once we flush the events
+		err := self.listenerEventLoop(grpctx)
+		self.messageQueue.Close()
+		return err
+	})
 
 	// Wait until we cancel the context or something hits an error
 	go func() {
@@ -490,7 +495,6 @@ func (self *auditService) logEventLoop(ctx context.Context) error {
 }
 
 func (self *auditService) listenerEventLoop(ctx context.Context) error {
-	defer self.messageQueue.Close()
 	self.Debug("audit: listener event loop started")
 	defer self.Debug("audit: listener event loop exited")
 
