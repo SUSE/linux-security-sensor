@@ -446,9 +446,10 @@ func (self *auditService) mainEventLoop(ctx context.Context) error {
 
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
+		// We wait on the messageQueue to close instead of the
+		// context to be done.  The context is shared with the
+		// listener event loop and we want to ensure the listener
+		// has flushed its messages.
 		case buf, ok := <-self.messageQueue.Output():
 			if !ok {
 				return nil
