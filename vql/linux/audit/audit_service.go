@@ -264,6 +264,7 @@ func (self *auditService) runService() error {
 	if err != nil {
 		cancel()
 		self.commandClient.Close()
+		self.reassembler.Close()
 		self.running = false
 		return err
 	}
