@@ -250,12 +250,8 @@ func (self *auditService) runService() error {
 	self.logger.Info("audit: starting audit service")
 	self.running = true
 
-	// This is a workaround for errgroup not returning a cancel func or
-	// exporting the one it keeps for itself.  The choice is to either
-	// reimplement errgroup with an exported cancel func or just
-	// use the hierarchical nature of context cancelation to get the
-	// same result.  The only difference is that we need to wait for
-	// either context to signal Done.
+	// errgroup doesn't offer a cancel function, so we'll use the hierarchical
+	// nature of contexts to get the same result.
 	ctx, cancel := context.WithCancel(context.Background())
 	grp, grpctx := errgroup.WithContext(ctx)
 
@@ -288,10 +284,7 @@ func (self *auditService) runService() error {
 		defer self.Debug("audit: shutdown watcher exited")
 
 		select {
-		// If we exit the main event loop normally
-		case <-ctx.Done():
-			break
-		// If any of the goroutines exits abnormally
+		// This gets canceled too if the main context is canceled
 		case <-grpctx.Done():
 			break
 		}
