@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"syscall"
 	"testing"
 
 	"github.com/alecthomas/assert"
@@ -28,11 +29,16 @@ type AuditServiceTestSuite struct {
 }
 
 type TestListener struct {
-	events     [][]byte
-	count      int
-	real_count int
-	ctx        context.Context
-	cancel     context.CancelFunc
+	events      [][]byte
+	count       int
+	real_count  int
+	ctx         context.Context
+	cancel      context.CancelFunc
+	opened      bool
+	failOpen    bool
+	failReceive bool
+	failWait    bool
+	failClose   bool
 }
 
 func newTestListener() *TestListener {
@@ -43,6 +49,13 @@ func newTestListener() *TestListener {
 var eventsJson []byte
 
 func (self *TestListener) Open(ctx context.Context) error {
+	if self.opened {
+		return syscall.EBUSY
+	}
+	if self.failOpen {
+		return syscall.EPERM
+	}
+
 	newctx, cancel := context.WithCancel(ctx)
 	err := json.Unmarshal(eventsJson, &self.events)
 	if err != nil {
@@ -71,15 +84,22 @@ func (self *TestListener) Open(ctx context.Context) error {
 
 	self.ctx = newctx
 	self.cancel = cancel
+	self.opened = true
 	self.count = 0
 	return nil
 }
 
 func (self *TestListener) Wait(ctx context.Context) error {
+	if !self.opened || self.failWait {
+		return syscall.ENOTCONN
+	}
 	return nil
 }
 
 func (self *TestListener) Receive(buf *auditBuf) error {
+	if !self.opened || self.failReceive {
+		return syscall.ENOTCONN
+	}
 	if self.count >= len(self.events) {
 		self.cancel()
 		return self.ctx.Err()
@@ -93,7 +113,12 @@ func (self *TestListener) Receive(buf *auditBuf) error {
 }
 
 func (self *TestListener) Close() error {
+	if !self.opened || self.failClose {
+		return syscall.ENOTCONN
+	}
 	self.cancel()
+	self.cancel = nil
+	self.opened = false
 	return nil
 }
 
@@ -119,12 +144,25 @@ func (self *AuditServiceTestSuite) TearDownTest() {
 		self.auditService.serviceWg.Wait()
 	}
 
+	assert.False(self.T(), self.listener.opened, "self.listener.opened should be false")
 	self.auditService = nil
+	self.listener = nil
 }
 
 func (self *AuditServiceTestSuite) TestRunService() {
 	err := self.auditService.runService()
 	assert.NoError(self.T(), err)
+
+	self.auditService.serviceLock.Lock()
+	self.auditService.shuttingDown = true
+	self.auditService.cancelService()
+	self.auditService.serviceLock.Unlock()
+}
+
+func (self *AuditServiceTestSuite) TestRunServiceFailListenerOpen() {
+	self.listener.failOpen = true
+	err := self.auditService.runService()
+	assert.Error(self.T(), err)
 }
 
 func (self *AuditServiceTestSuite) TestSubscribeEvents() {
@@ -157,6 +195,37 @@ L:
 	assert.Equal(self.T(), len(events), self.listener.real_count)
 
 	goldie.Assert(self.T(), "TestSubscribeEvents", golden)
+}
+
+func (self *AuditServiceTestSuite) TestSubscribeEventsListenerWaitFail() {
+	rules := []string{"-a always,exit"}
+
+	self.listener.failWait = true
+
+	subscriber, err := self.auditService.Subscribe(rules)
+	assert.NoError(self.T(), err)
+	defer self.auditService.Unsubscribe(subscriber)
+
+	events := []vfilter.Row{}
+
+L:
+	for {
+		select {
+		case _, ok := <-subscriber.LogEvents():
+			if !ok {
+				break L
+			}
+		case event, ok := <-subscriber.Events():
+			if !ok {
+				break L
+			}
+
+			events = append(events, event)
+		}
+	}
+
+	assert.NoError(self.T(), err)
+	assert.Equal(self.T(), len(events), 0)
 }
 
 func (self *AuditServiceTestSuite) TestMissingRules() {
