@@ -308,6 +308,24 @@ func (self *AuditServiceTestSuite) TestServiceRestart() {
 	self.TestRunService()
 }
 
+func (self *AuditServiceTestSuite) TestSubscribeEventsBadRule() {
+	rules := []string{"-a always,exit,garbage"}
+
+	subscriber, err := self.auditService.Subscribe(rules)
+	assert.Error(self.T(), err)
+	assert.Nil(self.T(), subscriber)
+}
+
+func (self *AuditServiceTestSuite) TestSubscribeEventsFailAddRule() {
+	rules := []string{"-a always,exit"}
+
+	self.client.failAddRule = true
+
+	subscriber, err := self.auditService.Subscribe(rules)
+	assert.Error(self.T(), err)
+	assert.Nil(self.T(), subscriber)
+}
+
 func TestAuditService(t *testing.T) {
 	suite.Run(t, &AuditServiceTestSuite{})
 }
