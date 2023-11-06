@@ -13,10 +13,16 @@ import (
 )
 
 type mockCommandClient struct {
-	status   libaudit.AuditStatus
-	rules    [][]byte
-	opened   bool
-	failOpen bool
+	status         libaudit.AuditStatus
+	rules          [][]byte
+	opened         bool
+	failOpen       bool
+	failAddRule    bool
+	failDeleteRule bool
+	failGetRules   bool
+	failGetStatus  bool
+	failSetEnabled bool
+	failClose      bool
 }
 
 func newMockCommandClient() *mockCommandClient {
@@ -41,7 +47,7 @@ func (self *mockCommandClient) Open() error {
 }
 
 func (self *mockCommandClient) AddRule(rule []byte) error {
-	if !self.opened {
+	if !self.opened || self.failAddRule {
 		return syscall.ENOTCONN
 	}
 	for _, currentRule := range self.rules {
@@ -55,7 +61,7 @@ func (self *mockCommandClient) AddRule(rule []byte) error {
 }
 
 func (self *mockCommandClient) DeleteRule(rule []byte) error {
-	if !self.opened {
+	if !self.opened || self.failDeleteRule {
 		return syscall.ENOTCONN
 	}
 	rules := [][]byte{}
@@ -78,21 +84,21 @@ func (self *mockCommandClient) DeleteRule(rule []byte) error {
 }
 
 func (self *mockCommandClient) GetRules() ([][]byte, error) {
-	if !self.opened {
+	if !self.opened || self.failGetRules {
 		return nil, syscall.ENOTCONN
 	}
 	return self.rules, nil
 }
 
 func (self *mockCommandClient) GetStatus() (*libaudit.AuditStatus, error) {
-	if !self.opened {
+	if !self.opened || self.failGetStatus {
 		return nil, syscall.ENOTCONN
 	}
 	return &self.status, nil
 }
 
 func (self *mockCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) error {
-	if !self.opened {
+	if !self.opened || self.failSetEnabled {
 		return syscall.ENOTCONN
 	}
 	var e uint32
@@ -104,7 +110,7 @@ func (self *mockCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) er
 }
 
 func (self *mockCommandClient) Close() error {
-	if !self.opened {
+	if !self.opened || self.failClose {
 		return syscall.ENOTCONN
 	}
 	self.opened = false

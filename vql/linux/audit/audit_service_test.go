@@ -168,6 +168,18 @@ func (self *AuditServiceTestSuite) TestRunServiceFailClientOpen() {
 	assert.Error(self.T(), err)
 }
 
+func (self *AuditServiceTestSuite) TestRunServiceFailGetStatus() {
+	self.client.failGetStatus = true
+	err := self.auditService.runService()
+	assert.Error(self.T(), err)
+}
+
+func (self *AuditServiceTestSuite) TestRunServiceFailSetEnabled() {
+	self.client.failSetEnabled = true
+	err := self.auditService.runService()
+	assert.Error(self.T(), err)
+}
+
 func (self *AuditServiceTestSuite) TestRunServiceFailListenerOpen() {
 	self.listener.failOpen = true
 	err := self.auditService.runService()
