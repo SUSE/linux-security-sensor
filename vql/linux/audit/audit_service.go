@@ -697,7 +697,7 @@ func (self *auditService) deleteRule(rule *AuditRule) error {
 
 func (self *auditService) notifyMissingRule(rule *AuditRule) {
 	self.subscriberLock.Lock()
-	defer self.subscriberLock.Lock()
+	defer self.subscriberLock.Unlock()
 	count := 0
 
 	msg := fmt.Sprintf("audit: replaced missing rule `%v'", rule.rule)
