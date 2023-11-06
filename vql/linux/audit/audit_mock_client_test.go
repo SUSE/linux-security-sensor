@@ -38,10 +38,12 @@ func (self *mockCommandClient) AddRule(rule []byte) error {
 func (self *mockCommandClient) DeleteRule(rule []byte) error {
 	rules := [][]byte{}
 	found := false
+
 	for _, currentRule := range self.rules {
-		if reflect.DeepEqual(currentRule, rule) {
+		if !found && len(rule) == len(currentRule) &&
+		   reflect.DeepEqual(currentRule, rule) {
 			found = true
-			break
+			continue
 		}
 		rules = append(rules, currentRule)
 	}
