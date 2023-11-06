@@ -146,7 +146,9 @@ func (self *AuditServiceTestSuite) TearDownTest() {
 	}
 
 	assert.False(self.T(), self.listener.opened, "self.listener.opened should be false")
+	assert.False(self.T(), self.client.opened, "self.client.opened should be false")
 	self.auditService = nil
+	self.client = nil
 	self.listener = nil
 }
 
@@ -158,6 +160,12 @@ func (self *AuditServiceTestSuite) TestRunService() {
 	self.auditService.shuttingDown = true
 	self.auditService.cancelService()
 	self.auditService.serviceLock.Unlock()
+}
+
+func (self *AuditServiceTestSuite) TestRunServiceFailClientOpen() {
+	self.client.failOpen = true
+	err := self.auditService.runService()
+	assert.Error(self.T(), err)
 }
 
 func (self *AuditServiceTestSuite) TestRunServiceFailListenerOpen() {
@@ -280,6 +288,12 @@ L:
 	assert.NoError(self.T(), err)
 	assert.Equal(self.T(), len(events), self.listener.real_count)
 	assert.Equal(self.T(), len(logEvents), 1)
+}
+
+func (self *AuditServiceTestSuite) TestServiceRestart() {
+	self.TestRunService()
+	self.TestRunService()
+	self.TestRunService()
 }
 
 func TestAuditService(t *testing.T) {
