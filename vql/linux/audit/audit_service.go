@@ -84,6 +84,7 @@ type auditListener interface {
 var errRetryNeeded = errors.New("Operation should be retried")
 
 type commandClient interface {
+	Open() error
 	AddRule(rule []byte) error
 	DeleteRule(rule []byte) error
 	GetRules() ([][]byte, error)
@@ -228,6 +229,12 @@ func (self *auditService) runService() error {
 	// nature of contexts to get the same result.
 	ctx, cancel := context.WithCancel(context.Background())
 	grp, grpctx := errgroup.WithContext(ctx)
+
+	err = self.commandClient.Open()
+	if err != nil {
+		cancel()
+		return err
+	}
 
 	err = self.listener.Open(grpctx)
 	if err != nil {
@@ -906,11 +913,7 @@ func GetAuditService(config_obj *config_proto.Config) (AuditService, error) {
 	defer mu.Unlock()
 
 	if gService == nil {
-		client, err := libaudit.NewAuditClient(nil)
-		if err != nil {
-			return nil, err
-		}
-
+		client := NewCommandClient()
 		listener := NewAuditListener()
 		gService = newAuditService(config_obj, logger, listener, client)
 	}
