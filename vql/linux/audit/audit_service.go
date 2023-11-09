@@ -292,13 +292,27 @@ func (self *auditService) runService() error {
 	}
 
 	// Start up the workers
-	grp.Go(func() error { return self.logEventLoop(grpctx) })
-	grp.Go(func() error { return self.startMaintainer(grpctx) })
-	grp.Go(func() error { return self.startRulesChecker(grpctx) })
-	grp.Go(func() error { return self.mainEventLoop(grpctx, messageQueue) })
-	grp.Go(func() error { return self.reportStats(grpctx) })
+	grp.Go(func() error {
+		self.logEventLoop(grpctx)
+		return nil
+	})
+	grp.Go(func() error {
+		self.startMaintainer(grpctx)
+		return nil
+	})
+	grp.Go(func() error {
+		self.startRulesChecker(grpctx)
+		return nil
+	})
+	grp.Go(func() error {
+		self.mainEventLoop(grpctx, messageQueue)
+		return nil
+	})
 	if gDebugStats {
-		grp.Go(func() error { return self.reportStats(grpctx) })
+		grp.Go(func() error {
+			self.reportStats(grpctx)
+			return nil
+		})
 	}
 	grp.Go(func() error {
 		// We close the message queue once we flush the events
@@ -470,7 +484,7 @@ func (self *auditService) removeSubscriberRules(subscriber *subscriber) error {
 }
 
 func (self *auditService) mainEventLoop(ctx context.Context,
-					messageQueue *directory.ListenerBytes) error {
+					messageQueue *directory.ListenerBytes) {
 	self.Debug("audit: mainEventLoop started")
 	defer self.Debug("audit: mainEventLoop exited")
 	wg := sync.WaitGroup{}
@@ -484,7 +498,7 @@ func (self *auditService) mainEventLoop(ctx context.Context,
 		// has flushed its messages.
 		case buf, ok := <-messageQueue.Output():
 			if !ok {
-				return nil
+				return
 			}
 			err := self.processOneMessage(buf.Data())
 			if err != nil {
@@ -496,17 +510,17 @@ func (self *auditService) mainEventLoop(ctx context.Context,
 	}
 }
 
-func (self *auditService) logEventLoop(ctx context.Context) error {
+func (self *auditService) logEventLoop(ctx context.Context) {
 	self.Debug("audit: log event loop started")
 	defer self.Debug("audit: log event loop exited")
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case msg, ok := <-self.logChannel:
 			if !ok {
 				fmt.Printf("log channel closed\n")
-				return nil
+				return
 			}
 
 			self.subscriberLock.Lock()
@@ -517,8 +531,6 @@ func (self *auditService) logEventLoop(ctx context.Context) error {
 			self.logger.Info(msg)
 		}
 	}
-
-	return nil
 }
 
 func (self *auditService) listenerEventLoop(ctx context.Context,
@@ -545,7 +557,7 @@ func (self *auditService) listenerEventLoop(ctx context.Context,
 	}
 }
 
-func (self *auditService) reportStats(ctx context.Context) error {
+func (self *auditService) reportStats(ctx context.Context) {
 	lastReceived := 0
 	lastDiscarded := 0
 	lastDropped := 0
@@ -556,7 +568,7 @@ func (self *auditService) reportStats(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-time.After(5 * time.Second):
 		}
 
@@ -599,23 +611,21 @@ func (self *auditService) reportStats(ctx context.Context) error {
 		lastQueued = queued
 		lastMessagesPosted = messagesPosted
 	}
-
-	return nil
 }
 
-func (self *auditService) startMaintainer(ctx context.Context) error {
+func (self *auditService) startMaintainer(ctx context.Context) {
 	self.Debug("audit: reassembler maintainer started")
 	defer self.Debug("audit: reassembler maintainer exited")
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 
 		case <-time.After(gReassemblerMaintainerTimeout):
 			// Maintain will only return error when closed
 			if self.reassembler.Maintain() != nil {
-				return nil
+				return
 			}
 		}
 	}
@@ -792,14 +802,14 @@ func (self *auditService) checkRules() error {
 
 // This will allow us to treat a series of rule changes as a single event.  Otherwise, we'll
 // end up checking the rules for _every_ event, which is just wasteful.
-func (self *auditService) startRulesChecker(ctx context.Context) error {
+func (self *auditService) startRulesChecker(ctx context.Context) {
 	self.Debug("audit: rules checker started")
 	defer self.Debug("audit: rules checker exited")
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 
 		case <-time.After(gBatchTimeout):
 			err := self.checkRules()
