@@ -337,14 +337,23 @@ func (self *auditService) runService() error {
 			self.logger.Info("audit: shutting down due to error ; err=%s", err)
 		}
 
-		self.shutdown()
+		self.evictAllSubscribers()
+
+		self.reassembler.Close()
+		self.commandClient.Close()
+		self.listener.Close()
+
+		close(self.logChannel)
+		close(self.checkerChannel)
+
+		self.finalizeShutdown()
 	}()
 
 	self.serviceWg.Add(1)
 	return nil
 }
 
-func (self *auditService) shutdown() {
+func (self *auditService) evictAllSubscribers() {
 	// If we're shutting down due to error, we'll still have subscribed callers
 	self.subscriberLock.Lock()
 	for _, subscriber := range self.subscribers {
@@ -352,14 +361,9 @@ func (self *auditService) shutdown() {
 	}
 	self.subscribers = []*subscriber{}
 	self.subscriberLock.Unlock()
+}
 
-	self.reassembler.Close()
-	self.commandClient.Close()
-	self.listener.Close()
-
-	close(self.logChannel)
-	close(self.checkerChannel)
-
+func (self *auditService) finalizeShutdown() {
 	self.bannedRules = map[string]*AuditRule{}
 	self.rules = map[string]*RefcountedAuditRule{}
 
