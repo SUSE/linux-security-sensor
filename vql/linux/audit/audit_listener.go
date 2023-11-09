@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -14,19 +13,14 @@ var gMinimumSocketBufSize = 512 * 1024
 
 type AuditListener struct {
 	sockFd      int
+	epollFd     int
 	sockBufSize int
-
-	poll_chan   chan int
-	error_chan  chan error
-	wg          sync.WaitGroup
-	stopPolling context.CancelFunc
 }
 
 func NewAuditListener() *AuditListener {
 	return &AuditListener{
-		wg:         sync.WaitGroup{},
-		poll_chan:  make(chan int),
-		error_chan: make(chan error),
+		sockFd:  -1,
+		epollFd: -1,
 	}
 }
 
@@ -79,6 +73,10 @@ func openEpollDescriptor(fd int) (int, error) {
 }
 
 func (self *AuditListener) Open(ctx context.Context) error {
+	if self.sockFd >= 0 {
+		return syscall.EBUSY
+	}
+
 	sockFd, err := openAuditListenerSocket()
 	if err != nil {
 		return fmt.Errorf("could not open listener socket: %w", err)
@@ -107,63 +105,40 @@ func (self *AuditListener) Open(ctx context.Context) error {
 		}
 	}
 
-	pollctx, cancel := context.WithCancel(ctx)
-
-	self.wg.Add(1)
-	go func(ctx context.Context) {
-		defer self.wg.Done()
-		defer syscall.Close(epollFd)
-		defer close(self.error_chan)
-		defer close(self.poll_chan)
-
-		ready := make([]unix.EpollEvent, 2)
-		for {
-			select {
-			case <-pollctx.Done():
-				return
-			default:
-				count, err := unix.EpollWait(epollFd, ready, 5000)
-				if err != nil {
-					if errors.Is(err, unix.EINTR) {
-						continue
-					}
-					self.error_chan <- err
-					return
-				}
-
-				if count > 0 {
-					self.poll_chan <- count
-				}
-			}
-		}
-	}(ctx)
-
 	self.sockFd = sockFd
+	self.epollFd = epollFd
 	self.sockBufSize = sockBufSize
-	self.stopPolling = cancel
 	return nil
 }
 
 func (self *AuditListener) Wait(ctx context.Context) error {
+	if self.sockFd < 0 {
+		return syscall.ENOTCONN
+	}
+
+	ready := make([]unix.EpollEvent, 2)
 	for {
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return ctx.Err()
-		case _, ok := <-self.poll_chan:
-			if !ok {
-				continue
-			}
-		case err, ok := <-self.error_chan:
-			if !ok {
+		}
+
+		count, err := unix.EpollWait(self.epollFd, ready, 5000)
+		if err != nil {
+			if errors.Is(syscall.EINTR, err) {
 				continue
 			}
 			return err
 		}
-		return nil
+		if count > 0 {
+			return nil
+		}
 	}
 }
 
 func (self *AuditListener) Receive(buf *auditBuf) error {
+	if self.sockFd < 0 {
+		return syscall.ENOTCONN
+	}
 	if len(buf.data) < unix.NLMSG_HDRLEN {
 		return unix.EINVAL
 	}
@@ -180,15 +155,9 @@ func (self *AuditListener) Receive(buf *auditBuf) error {
 			return errRetryNeeded
 		}
 
-		// There likely won't be any listeners left and the socket
-		// was closed in shutdown
-		if errors.Is(err, unix.EBADF) {
-			return fmt.Errorf("listener socket closed: %w", err)
-		}
-
 		// EAGAIN or EWOULDBLOCK will be returned for non-blocking reads where
 		// the read would normally have blocked.
-		return fmt.Errorf("receive failed: %w", err)
+		return err
 	}
 
 	if size < unix.NLMSG_HDRLEN {
@@ -206,9 +175,13 @@ func (self *AuditListener) Receive(buf *auditBuf) error {
 }
 
 func (self *AuditListener) Close() error {
-	self.stopPolling()
+	if self.sockFd < 0 {
+		return syscall.ENOTCONN
+	}
+	syscall.Close(self.epollFd)
 	syscall.Close(self.sockFd)
-	self.wg.Wait()
 
+	self.epollFd = -1
+	self.sockFd = -1
 	return nil
 }
