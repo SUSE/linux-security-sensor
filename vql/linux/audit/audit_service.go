@@ -34,6 +34,7 @@ var (
 	// Timeout for batching audit configuration events
 	gBatchTimeout                 = 1000 * time.Millisecond
 	gDebugPrintingEnabled         = false
+	gDebugStats                   = false
 	gReassemblerMaintainerTimeout = 2 * time.Second
 )
 
@@ -296,6 +297,9 @@ func (self *auditService) runService() error {
 	grp.Go(func() error { return self.startRulesChecker(grpctx) })
 	grp.Go(func() error { return self.mainEventLoop(grpctx, messageQueue) })
 	grp.Go(func() error { return self.reportStats(grpctx) })
+	if gDebugStats {
+		grp.Go(func() error { return self.reportStats(grpctx) })
+	}
 	grp.Go(func() error {
 		// We close the message queue once we flush the events
 		err := self.listenerEventLoop(grpctx, messageQueue)
@@ -548,10 +552,6 @@ func (self *auditService) reportStats(ctx context.Context) error {
 	lastQueued := 0
 	lastPosted := 0
 	lastMessagesPosted := 0
-
-	if !gDebugPrintingEnabled {
-		return nil
-	}
 
 	for {
 		select {
