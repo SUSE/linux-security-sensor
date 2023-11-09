@@ -99,6 +99,7 @@ type auditService struct {
 	serviceWg   sync.WaitGroup
 	serviceLock sync.Mutex
 	logger      *logging.LogContext
+	listener    auditListener
 
 	rulesLock   sync.Mutex
 	rules       map[string]*RefcountedAuditRule
@@ -106,7 +107,6 @@ type auditService struct {
 
 	// Once up and running, protected by rulesLock
 	commandClient commandClient
-	listener      auditListener
 
 	logChannel     chan string
 	checkerChannel chan aucoalesce.Event
@@ -291,29 +291,53 @@ func (self *auditService) runService() error {
 		return err
 	}
 
-	// Start up the workers
-	grp.Go(func() error {
-		self.logEventLoop(grpctx)
-		return nil
-	})
+	// For the service
+	self.serviceWg.Add(1)
+
+	// For goroutines that exit when channels are closed
+	chanWg := sync.WaitGroup{}
+
+	// exits when the log channel is closed
+	chanWg.Add(1)
+	go func() {
+		self.logEventLoop()
+		chanWg.Done()
+	}()
+
+	// exits when the checker channel is closed
+	chanWg.Add(1)
+	go func() {
+		self.startRulesChecker()
+		chanWg.Done()
+	}()
+
+	// For goroutines that exit when the listener has exited
+	listenerWg := sync.WaitGroup{}
+
+	// exits when messageQueue is closed
+	listenerWg.Add(1)
+	go func() {
+		self.mainEventLoop(messageQueue, reassembler)
+		listenerWg.Done()
+	}()
+
+	// exits when context is canceled or reassembler is closed
+	listenerWg.Add(1)
 	grp.Go(func() error {
 		self.startMaintainer(grpctx, reassembler)
+		listenerWg.Done()
 		return nil
 	})
-	grp.Go(func() error {
-		self.startRulesChecker(grpctx)
-		return nil
-	})
-	grp.Go(func() error {
-		self.mainEventLoop(grpctx, messageQueue, reassembler)
-		return nil
-	})
+
 	if gDebugStats {
+		// exits when context is canceled
 		grp.Go(func() error {
 			self.reportStats(grpctx)
 			return nil
 		})
 	}
+
+	// exits on error or context cancelation
 	grp.Go(func() error {
 		// We close the message queue once we flush the events
 		err := self.listenerEventLoop(grpctx, messageQueue)
@@ -329,7 +353,13 @@ func (self *auditService) runService() error {
 		defer self.Debug("audit: shutdown watcher exited")
 
 		select {
+		// Lock out new subscribers.  There is a small window between grpctx being canceled
+		// and taking the lock where new subscribers could sneak in.  Those will be
+		// automatically unsubscribed.
 		case <-grpctx.Done():
+			self.serviceLock.Lock()
+			self.shuttingDown = true
+			self.serviceLock.Unlock()
 		// No more subscribers
 		case <-self.subscriberChan:
 		}
@@ -337,24 +367,39 @@ func (self *auditService) runService() error {
 		// Cancel the top-level context
 		cancel()
 
+		// Wait for the listener to exit
 		err := grp.Wait()
 		if !errors.Is(err, context.Canceled) {
 			self.logger.Info("audit: shutting down due to error ; err=%s", err)
 		}
 
+		// No new messages will be generated, wait for the main event loop
+		// and reassembler to exit
+		listenerWg.Wait()
+
+		// Closing will clean up any remaining incomplete messages
+		reassembler.Close()
+
+		// Reassembler is flushed so there won't be any more reconfiguration
+		// messages.  We can shut down the rules checker.
+		close(self.checkerChannel)
+
+		// Evict subscribers and remove audit rules
 		self.evictAllSubscribers()
 
-		reassembler.Close()
+		// Close our sockets
 		self.commandClient.Close()
 		self.listener.Close()
 
+		// Everything else is shut down so there won't be any more log messages
 		close(self.logChannel)
-		close(self.checkerChannel)
+
+		// Wait for logger and rules checker to shut down
+		chanWg.Wait()
 
 		self.finalizeShutdown()
 	}()
 
-	self.serviceWg.Add(1)
 	return nil
 }
 
@@ -491,8 +536,8 @@ func (self *auditService) removeSubscriberRules(subscriber *subscriber) error {
 	return nil
 }
 
-func (self *auditService) mainEventLoop(ctx context.Context,
-					messageQueue *directory.ListenerBytes,
+// exits when the listener message queue is closed
+func (self *auditService) mainEventLoop(messageQueue *directory.ListenerBytes,
 					reassembler *libaudit.Reassembler) {
 	self.Debug("audit: mainEventLoop started")
 	defer self.Debug("audit: mainEventLoop exited")
@@ -517,16 +562,14 @@ func (self *auditService) mainEventLoop(ctx context.Context,
 	}
 }
 
-func (self *auditService) logEventLoop(ctx context.Context) {
+// exits when the log channel is closed
+func (self *auditService) logEventLoop() {
 	self.Debug("audit: log event loop started")
 	defer self.Debug("audit: log event loop exited")
 	for {
 		select {
-		case <-ctx.Done():
-			return
 		case msg, ok := <-self.logChannel:
 			if !ok {
-				fmt.Printf("log channel closed\n")
 				return
 			}
 
@@ -620,6 +663,7 @@ func (self *auditService) reportStats(ctx context.Context) {
 	}
 }
 
+// exits when the reassembler is closed or the context is canceled.
 func (self *auditService) startMaintainer(ctx context.Context, reassembler *libaudit.Reassembler) {
 	self.Debug("audit: reassembler maintainer started")
 	defer self.Debug("audit: reassembler maintainer exited")
@@ -809,21 +853,22 @@ func (self *auditService) checkRules() error {
 
 // This will allow us to treat a series of rule changes as a single event.  Otherwise, we'll
 // end up checking the rules for _every_ event, which is just wasteful.
-func (self *auditService) startRulesChecker(ctx context.Context) {
+// Exits when checkerChannel is closed since it consumes events from ReassemblyComplete
+func (self *auditService) startRulesChecker() {
 	self.Debug("audit: rules checker started")
 	defer self.Debug("audit: rules checker exited")
 
 	for {
 		select {
-		case <-ctx.Done():
-			return
-
 		case <-time.After(gBatchTimeout):
 			err := self.checkRules()
 			if err != nil {
 				self.logger.Warn("audit: rules check failed %v", err)
 			}
-		case <-self.checkerChannel: // Wait for config change event
+		case _, ok := <-self.checkerChannel: // Wait for config change event
+			if !ok {
+				return
+			}
 		}
 	}
 }
