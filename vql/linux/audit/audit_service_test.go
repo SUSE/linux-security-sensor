@@ -157,7 +157,7 @@ func (self *AuditServiceTestSuite) TestRunService() {
 
 	self.auditService.serviceLock.Lock()
 	self.auditService.shuttingDown = true
-	self.auditService.cancelService()
+	close(self.auditService.subscriberChan)
 	self.auditService.serviceLock.Unlock()
 }
 
