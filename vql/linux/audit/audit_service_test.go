@@ -94,6 +94,10 @@ func (self *TestListener) Wait(ctx context.Context) error {
 	if !self.opened || self.failWait {
 		return syscall.ENOTCONN
 	}
+	// If we're out of events, just wait until we're canceled
+	if self.count >= len(self.events) {
+		<- self.ctx.Done()
+	}
 	return nil
 }
 
@@ -101,9 +105,9 @@ func (self *TestListener) Receive(buf *auditBuf) error {
 	if !self.opened || self.failReceive {
 		return syscall.ENOTCONN
 	}
+	// No more events to receive
 	if self.count >= len(self.events) {
-		self.cancel()
-		return self.ctx.Err()
+		return syscall.EAGAIN
 	}
 
 	copy(buf.data, self.events[self.count])
@@ -208,6 +212,9 @@ L:
 			}
 
 			events = append(events, event)
+			if len(events) >= self.listener.real_count {
+				break L
+			}
 		}
 	}
 
@@ -294,6 +301,9 @@ L:
 			}
 
 			events = append(events, event)
+			if len(events) >= self.listener.real_count {
+				break L
+			}
 		}
 	}
 
