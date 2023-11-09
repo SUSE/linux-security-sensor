@@ -263,13 +263,8 @@ func (self *auditService) runService() error {
 		self.logger.Info("audit: enabled kernel audit subsystem")
 	}
 
-	self.reassembler, err = libaudit.NewReassembler(5, 500*time.Millisecond, self)
-	if err != nil {
-		cancel()
-		self.commandClient.Close()
-		self.listener.Close()
-		return err
-	}
+	// Can only fail if self is nil
+	self.reassembler, _ = libaudit.NewReassembler(5, 500*time.Millisecond, self)
 
 	self.logger.Info("audit: starting audit service")
 	self.running = true
