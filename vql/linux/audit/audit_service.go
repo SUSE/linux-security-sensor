@@ -113,8 +113,6 @@ type auditService struct {
 	shuttingDown   bool
 	cancelService  func()
 
-	messageQueue *directory.ListenerBytes
-
 	rawBufPool sync.Pool
 
 	subscriberLock sync.RWMutex
@@ -261,7 +259,7 @@ func (self *auditService) runService() error {
 		OwnerName:            "audit-plugin",
 	}
 
-	self.messageQueue, err = directory.NewListenerBytes(self.config, grpctx, options.OwnerName,
+	messageQueue, err := directory.NewListenerBytes(self.config, grpctx, options.OwnerName,
 		options)
 	if err != nil {
 		cancel()
@@ -274,12 +272,12 @@ func (self *auditService) runService() error {
 	grp.Go(func() error { return self.logEventLoop(grpctx) })
 	grp.Go(func() error { return self.startMaintainer(grpctx) })
 	grp.Go(func() error { return self.startRulesChecker(grpctx) })
-	grp.Go(func() error { return self.mainEventLoop(grpctx) })
+	grp.Go(func() error { return self.mainEventLoop(grpctx, messageQueue) })
 	grp.Go(func() error { return self.reportStats(grpctx) })
 	grp.Go(func() error {
 		// We close the message queue once we flush the events
-		err := self.listenerEventLoop(grpctx)
-		self.messageQueue.Close()
+		err := self.listenerEventLoop(grpctx, messageQueue)
+		messageQueue.Close()
 		return err
 	})
 
@@ -334,7 +332,8 @@ func (self *auditService) shutdown() {
 	self.serviceLock.Unlock()
 }
 
-func (self *auditService) acceptEvents(ctx context.Context) error {
+func (self *auditService) acceptEvents(ctx context.Context,
+				       messageQueue *directory.ListenerBytes) error {
 	receivedCount := 0
 	discardedCount := 0
 	queuedCount := 0
@@ -371,7 +370,7 @@ func (self *auditService) acceptEvents(ctx context.Context) error {
 		}
 
 		// Send will take its own reference if needed
-		self.messageQueue.Send(buf)
+		messageQueue.Send(buf)
 		buf.Put()
 		queuedCount += 1
 	}
@@ -443,7 +442,8 @@ func (self *auditService) removeSubscriberRules(subscriber *subscriber) error {
 	return nil
 }
 
-func (self *auditService) mainEventLoop(ctx context.Context) error {
+func (self *auditService) mainEventLoop(ctx context.Context,
+					messageQueue *directory.ListenerBytes) error {
 	self.Debug("audit: mainEventLoop started")
 	defer self.Debug("audit: mainEventLoop exited")
 	wg := sync.WaitGroup{}
@@ -455,7 +455,7 @@ func (self *auditService) mainEventLoop(ctx context.Context) error {
 		// context to be done.  The context is shared with the
 		// listener event loop and we want to ensure the listener
 		// has flushed its messages.
-		case buf, ok := <-self.messageQueue.Output():
+		case buf, ok := <-messageQueue.Output():
 			if !ok {
 				return nil
 			}
@@ -494,7 +494,8 @@ func (self *auditService) logEventLoop(ctx context.Context) error {
 	return nil
 }
 
-func (self *auditService) listenerEventLoop(ctx context.Context) error {
+func (self *auditService) listenerEventLoop(ctx context.Context,
+					    messageQueue *directory.ListenerBytes) error {
 	self.Debug("audit: listener event loop started")
 	defer self.Debug("audit: listener event loop exited")
 
@@ -511,7 +512,7 @@ func (self *auditService) listenerEventLoop(ctx context.Context) error {
 		}
 
 		self.totalReceiveLoopCounter.Inc()
-		err = self.acceptEvents(ctx)
+		err = self.acceptEvents(ctx, messageQueue)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
