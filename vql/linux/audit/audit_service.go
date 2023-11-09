@@ -491,8 +491,6 @@ func (self *auditService) mainEventLoop(ctx context.Context,
 					messageQueue *directory.ListenerBytes) {
 	self.Debug("audit: mainEventLoop started")
 	defer self.Debug("audit: mainEventLoop exited")
-	wg := sync.WaitGroup{}
-	defer wg.Wait()
 
 	for {
 		select {
