@@ -113,7 +113,7 @@ type auditService struct {
 	checkerChannel chan aucoalesce.Event
 	running        bool
 	shuttingDown   bool
-	cancelService  func()
+	subscriberChan chan struct{}
 
 	rawBufPool sync.Pool
 
@@ -321,16 +321,21 @@ func (self *auditService) runService() error {
 		return err
 	})
 
+	self.subscriberChan = make(chan struct{})
+
 	// Wait until we cancel the context or something hits an error
 	go func() {
 		self.Debug("audit: shutdown watcher starting")
 		defer self.Debug("audit: shutdown watcher exited")
 
 		select {
-		// This gets canceled too if the main context is canceled
 		case <-grpctx.Done():
-			break
+		// No more subscribers
+		case <-self.subscriberChan:
 		}
+
+		// Cancel the top-level context
+		cancel()
 
 		err := grp.Wait()
 		if !errors.Is(err, context.Canceled) {
@@ -340,7 +345,6 @@ func (self *auditService) runService() error {
 		self.shutdown()
 	}()
 
-	self.cancelService = cancel
 	self.serviceWg.Add(1)
 	return nil
 }
@@ -866,7 +870,7 @@ func (self *auditService) unsubscribe(subscriber *subscriber, shuttingDown bool)
 		// No more subscribers: Shut it down
 		if len(self.subscribers) == 0 {
 			self.shuttingDown = true
-			self.cancelService()
+			close(self.subscriberChan)
 		}
 		self.serviceLock.Unlock()
 	}
