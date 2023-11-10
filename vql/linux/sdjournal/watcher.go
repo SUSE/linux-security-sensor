@@ -2,7 +2,7 @@ package sdjournal
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -53,21 +53,12 @@ type JournalWatcherService struct {
 	config_obj *config_proto.Config
 	listeners  []*Handle
 	nListeners int
-	journal    *sdjournal.Journal
 }
 
 func NewJournalWatcherService(config_obj *config_proto.Config) (*JournalWatcherService, error) {
-	jflags := sdjournal.SD_JOURNAL_LOCAL_ONLY
-	jflags |= sdjournal.SD_JOURNAL_SYSTEM
-	journal, err := sdjournal.NewJournalWithFlags(jflags)
-	if err != nil {
-		return nil, errors.New("Failed to open journal")
-	}
-
 	return &JournalWatcherService{
 		config_obj: config_obj,
 		listeners:  make([]*Handle, 0, 1),
-		journal:    journal,
 	}, nil
 }
 
@@ -75,7 +66,7 @@ func (self *JournalWatcherService) Register(
 	ctx context.Context,
 	scope vfilter.Scope,
 	output_chan chan vfilter.Row,
-) func() {
+) (error, func()) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
@@ -90,32 +81,40 @@ func (self *JournalWatcherService) Register(
 	self.listeners = append(self.listeners, handle)
 	self.nListeners += 1
 	if self.nListeners == 1 {
-		go self.StartMonitoring()
+		jflags := sdjournal.SD_JOURNAL_LOCAL_ONLY
+		jflags |= sdjournal.SD_JOURNAL_SYSTEM
+		journal, err := sdjournal.NewJournalWithFlags(jflags)
+		if err != nil {
+			return fmt.Errorf("Failed to open journal %w", err), nil
+		}
+
+		go func() {
+			self.StartMonitoring(journal)
+			journal.Close()
+		}()
 	}
 
 	scope.Log("Registered listener for systemd journal")
 
-	return cancel
+	return nil, cancel
 }
 
 // Monitor the journal for new events and emit them to all interested
 // listeners. If no listeners exist we terminate.
-func (self *JournalWatcherService) StartMonitoring() {
+func (self *JournalWatcherService) StartMonitoring(journal *sdjournal.Journal) {
 	defer utils.CheckForPanic("StartMonitoring")
 
 	scope := vql_subsystem.MakeScope()
 	defer scope.Close()
 
-	defer self.journal.Close()
-
-	err := self.journal.SeekTail()
+	err := journal.SeekTail()
 	if err != nil {
 		scope.Log("Failed to seek tail of journal: %v", err)
 		return
 	}
 
 	for {
-		status := self.journal.Wait(100 * time.Millisecond)
+		status := journal.Wait(100 * time.Millisecond)
 
 		switch status {
 		case sdjournal.SD_JOURNAL_NOP:
@@ -129,7 +128,7 @@ func (self *JournalWatcherService) StartMonitoring() {
 			scope.Log("Received unknown event %v while waiting on journal", status)
 		}
 
-		listen, err := self.monitorOnce()
+		listen, err := self.monitorOnce(journal)
 		if listen == false || err != nil {
 			if err != nil {
 				scope.Log("Aborting journal watcher: %v", err)
@@ -139,7 +138,7 @@ func (self *JournalWatcherService) StartMonitoring() {
 	}
 }
 
-func (self *JournalWatcherService) monitorOnce() (bool, error) {
+func (self *JournalWatcherService) monitorOnce(journal *sdjournal.Journal) (bool, error) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
@@ -150,8 +149,8 @@ func (self *JournalWatcherService) monitorOnce() (bool, error) {
 	var err error
 	var cur uint64 = 0
 
-	for cur, err = self.journal.Next(); err == nil && cur > 0; cur, err = self.journal.Next() {
-		entry, err := self.journal.GetEntry()
+	for cur, err = journal.Next(); err == nil && cur > 0; cur, err = journal.Next() {
+		entry, err := journal.GetEntry()
 		if err != nil {
 			logger := logging.GetLogger(self.config_obj, &logging.ClientComponent)
 			logger.Warning("Failed to read log entry: %v", err)
@@ -179,6 +178,7 @@ func (self *JournalWatcherService) distributeEntry(entry *sdjournal.JournalEntry
 		case <-handle.ctx.Done():
 			// If context is done, drop the event.
 			self.nListeners -= 1
+			close(handle.output_chan)
 
 		case handle.output_chan <- d:
 			new_handles = append(new_handles, handle)
@@ -245,10 +245,15 @@ func (self _WatchJournalPlugin) Call(
 		journalService, err := GlobalJournalService(config_obj)
 		if err != nil {
 			scope.Log("watch_journal: Could not start journal service: %v", err)
+			return
 		}
 
+		err, cancel := journalService.Register(ctx, scope, event_channel)
+		if err != nil {
+			scope.Log("watch_journal: Could not register with journal service: %v", err)
+			return
+		}
 		scope.Log("Registered watcher for systemd journal")
-		cancel := journalService.Register(ctx, scope, event_channel)
 		defer cancel()
 
 		for {
