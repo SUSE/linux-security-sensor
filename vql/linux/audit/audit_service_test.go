@@ -138,16 +138,9 @@ func (self *AuditServiceTestSuite) SetupTest() {
 }
 
 func (self *AuditServiceTestSuite) TearDownTest() {
-	for {
-		self.auditService.serviceLock.Lock()
-		if !self.auditService.shuttingDown {
-			self.auditService.serviceLock.Unlock()
-			break
-		}
-		self.auditService.serviceLock.Unlock()
-		self.auditService.serviceWg.Wait()
-	}
-
+	self.auditService.serviceLock.Lock()
+	self.auditService.waitForShutdown()
+	self.auditService.serviceLock.Unlock()
 	assert.False(self.T(), self.listener.opened, "self.listener.opened should be false")
 	assert.False(self.T(), self.client.opened, "self.client.opened should be false")
 	self.auditService = nil
@@ -160,8 +153,7 @@ func (self *AuditServiceTestSuite) TestRunService() {
 	assert.NoError(self.T(), err)
 
 	self.auditService.serviceLock.Lock()
-	self.auditService.shuttingDown = true
-	close(self.auditService.subscriberChan)
+	self.auditService.initiateShutdown()
 	self.auditService.serviceLock.Unlock()
 }
 
@@ -312,9 +304,9 @@ L:
 }
 
 func (self *AuditServiceTestSuite) TestServiceRestart() {
-	self.TestRunService()
-	self.TestRunService()
-	self.TestRunService()
+	self.TestSubscribeEvents()
+	self.TestSubscribeEvents()
+	self.TestSubscribeEvents()
 }
 
 func (self *AuditServiceTestSuite) TestSubscribeEventsBadRule() {
