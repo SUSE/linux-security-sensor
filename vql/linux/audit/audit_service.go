@@ -187,6 +187,12 @@ func (self *auditService) Debug(format string, v ...interface{}) {
 	}
 }
 
+func (self *auditService) Log(format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	self.logger.Info("%s", msg)
+	self.logChannel <- msg
+}
+
 func (self *auditService) runService() error {
 	var err error
 
@@ -552,7 +558,7 @@ func (self *auditService) listenerEventLoop(ctx context.Context,
 				return err
 			}
 
-			self.logChannel <- fmt.Sprintf("audit: acceptEvents %v", err)
+			self.Log("audit: acceptEvents %v", err)
 			return err
 		}
 	}
@@ -661,7 +667,7 @@ func (self *auditService) EventsLost(count int) {
 	if count > 0x80000000 {
 		count = 0x100000000 - count
 	}
-	self.logChannel <- fmt.Sprintf("Detected the loss of %v sequences.", count)
+	self.Log("audit: Detected the loss of %v sequences.", count)
 	self.totalMessagesDroppedCounter.Add(count)
 }
 
@@ -795,7 +801,7 @@ func (self *auditService) checkRules() error {
 		if err != nil {
 			return err
 		}
-		self.logChannel <- fmt.Sprintf("audit: removed banned rule %v", text)
+		self.Log("audit: removed banned rule %v", text)
 	}
 
 	return nil
