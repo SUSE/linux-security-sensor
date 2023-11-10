@@ -95,11 +95,12 @@ type commandClient interface {
 }
 
 type auditService struct {
-	config      *config_proto.Config
-	serviceWg   sync.WaitGroup
-	serviceLock sync.Mutex
-	logger      *logging.LogContext
-	listener    auditListener
+	config       *config_proto.Config
+	serviceWg    sync.WaitGroup
+	serviceLock  sync.Mutex
+	logger       *logging.LogContext
+	listener     auditListener
+	nSubscribers int
 
 	rulesLock   sync.Mutex
 	rules       map[string]*RefcountedAuditRule
@@ -108,16 +109,17 @@ type auditService struct {
 	// Once up and running, protected by rulesLock
 	commandClient commandClient
 
-	logChannel     chan string
-	checkerChannel chan aucoalesce.Event
-	running        bool
-	shuttingDown   bool
-	subscriberChan chan struct{}
+	logChannel            chan string
+	missingRuleLogChannel chan *AuditRule
+	checkerChannel        chan aucoalesce.Event
+	running               bool
+	shuttingDown          bool
+	eventChannel          chan vfilter.Row
+	subscribeChannel      chan *subscriber
+	unsubscribeChannel    chan *subscriber
+	shutdownChan          chan struct{}
 
 	rawBufPool sync.Pool
-
-	subscriberLock sync.RWMutex
-	subscribers    []*subscriber
 
 	// Used only for stats reporting
 	totalMessagesReceivedCounter   AtomicCounter
@@ -173,7 +175,6 @@ func newAuditService(config_obj *config_proto.Config, logger *logging.LogContext
 		rules:         map[string]*RefcountedAuditRule{},
 		bannedRules:   map[string]*AuditRule{},
 		rawBufPool:    rawBufPool,
-		subscribers:   []*subscriber{},
 		logger:        logger,
 		commandClient: client,
 		listener:      listener,
@@ -194,32 +195,6 @@ func (self *auditService) Log(format string, v ...interface{}) {
 
 func (self *auditService) runService() error {
 	var err error
-
-	defer self.serviceLock.Unlock()
-	self.serviceLock.Lock()
-
-	// It's possible for another subscriber to attempt to start the
-	// service and then fail, which will shut it down again.  We only
-	// exit the loop in a known state: service is running or we need to
-	// start it.
-	for {
-		if self.running {
-			if !self.shuttingDown {
-				return nil
-			}
-
-			// Wait for previous instance to shut down
-			self.serviceLock.Unlock()
-			self.serviceWg.Wait()
-			self.serviceLock.Lock()
-			continue
-		}
-		// Start the service
-		break
-	}
-
-	self.logChannel = make(chan string, 2)
-	self.checkerChannel = make(chan aucoalesce.Event)
 
 	for _, rule := range gBannedRules {
 		watcherRule, err := parseRule(rule)
@@ -281,7 +256,7 @@ func (self *auditService) runService() error {
 	}
 
 	messageQueue, err := directory.NewListenerBytes(self.config, grpctx, options.OwnerName,
-		options)
+							options)
 	if err != nil {
 		cancel()
 		self.commandClient.Close()
@@ -290,6 +265,14 @@ func (self *auditService) runService() error {
 		self.running = false
 		return err
 	}
+
+	self.logChannel = make(chan string)
+	self.missingRuleLogChannel = make(chan *AuditRule)
+	self.checkerChannel = make(chan aucoalesce.Event)
+	self.eventChannel = make(chan vfilter.Row)
+	self.subscribeChannel = make(chan *subscriber)
+	self.unsubscribeChannel = make(chan *subscriber)
+	self.shutdownChan = make(chan struct{})
 
 	// For the service
 	self.serviceWg.Add(1)
@@ -300,7 +283,9 @@ func (self *auditService) runService() error {
 	// exits when the log channel is closed
 	chanWg.Add(1)
 	go func() {
-		self.logEventLoop()
+		self.subscriberDistributionLoop()
+		close(self.subscribeChannel)
+		close(self.unsubscribeChannel)
 		chanWg.Done()
 	}()
 
@@ -308,6 +293,7 @@ func (self *auditService) runService() error {
 	chanWg.Add(1)
 	go func() {
 		self.startRulesChecker()
+		close(self.missingRuleLogChannel)
 		chanWg.Done()
 	}()
 
@@ -317,7 +303,7 @@ func (self *auditService) runService() error {
 	// exits when messageQueue is closed
 	listenerWg.Add(1)
 	go func() {
-		self.mainEventLoop(messageQueue, reassembler)
+		self.eventProcessingLoop(messageQueue, reassembler)
 		listenerWg.Done()
 	}()
 
@@ -345,24 +331,24 @@ func (self *auditService) runService() error {
 		return err
 	})
 
-	self.subscriberChan = make(chan struct{})
-
 	// Wait until we cancel the context or something hits an error
 	go func() {
 		self.Debug("audit: shutdown watcher starting")
 		defer self.Debug("audit: shutdown watcher exited")
 
 		select {
-		// Lock out new subscribers.  There is a small window between grpctx being canceled
-		// and taking the lock where new subscribers could sneak in.  Those will be
-		// automatically unsubscribed.
 		case <-grpctx.Done():
+			// Shutdown due to error, don't allow new subscribers
+			// when the distribution loop exits, it will evict
+			// remaining subscribers
 			self.serviceLock.Lock()
-			self.shuttingDown = true
+			self.initiateShutdown()
 			self.serviceLock.Unlock()
-		// No more subscribers
-		case <-self.subscriberChan:
+		case <-self.shutdownChan:
+			// Normal shutdown due to zero subscribers
 		}
+
+		self.Debug("audit: shutting down")
 
 		// Cancel the top-level context
 		cancel()
@@ -370,28 +356,28 @@ func (self *auditService) runService() error {
 		// Wait for the listener to exit
 		err := grp.Wait()
 		if !errors.Is(err, context.Canceled) {
-			self.logger.Info("audit: shutting down due to error ; err=%s", err)
+			// This should be rare, a netlink recvfrom() failure
+			self.Log("audit: shutting down due to error ; err=%s", err)
 		}
 
-		// No new messages will be generated, wait for the main event loop
+		// No new messages will be generated, wait for the event processing loop
 		// and reassembler to exit
 		listenerWg.Wait()
 
 		// Closing will clean up any remaining incomplete messages
 		reassembler.Close()
+		close(self.eventChannel)
 
 		// Reassembler is flushed so there won't be any more reconfiguration
 		// messages.  We can shut down the rules checker.
 		close(self.checkerChannel)
-
-		// Evict subscribers and remove audit rules
-		self.evictAllSubscribers()
 
 		// Close our sockets
 		self.commandClient.Close()
 		self.listener.Close()
 
 		// Everything else is shut down so there won't be any more log messages
+		// exit the distribution goroutine
 		close(self.logChannel)
 
 		// Wait for logger and rules checker to shut down
@@ -403,16 +389,6 @@ func (self *auditService) runService() error {
 	return nil
 }
 
-func (self *auditService) evictAllSubscribers() {
-	// If we're shutting down due to error, we'll still have subscribed callers
-	self.subscriberLock.Lock()
-	for _, subscriber := range self.subscribers {
-		self.unsubscribe(subscriber, true)
-	}
-	self.subscribers = []*subscriber{}
-	self.subscriberLock.Unlock()
-}
-
 func (self *auditService) finalizeShutdown() {
 	self.bannedRules = map[string]*AuditRule{}
 	self.rules = map[string]*RefcountedAuditRule{}
@@ -422,8 +398,8 @@ func (self *auditService) finalizeShutdown() {
 	self.serviceLock.Lock()
 	self.running = false
 	self.shuttingDown = false
-	self.serviceWg.Done()
 	self.serviceLock.Unlock()
+	self.serviceWg.Done()
 }
 
 func (self *auditService) acceptEvents(ctx context.Context,
@@ -444,6 +420,7 @@ func (self *auditService) acceptEvents(ctx context.Context,
 		msgType, err := self.receiveMessageBuf(buf)
 		if err != nil {
 			self.rawBufPool.Put(buf)
+			// Increased socket receive buffer
 			if errors.Is(err, errRetryNeeded) {
 				continue
 			}
@@ -451,6 +428,7 @@ func (self *auditService) acceptEvents(ctx context.Context,
 			if errors.Is(err, syscall.EAGAIN) {
 				break
 			}
+			// recvfrom() failure
 			return err
 		}
 
@@ -537,10 +515,10 @@ func (self *auditService) removeSubscriberRules(subscriber *subscriber) error {
 }
 
 // exits when the listener message queue is closed
-func (self *auditService) mainEventLoop(messageQueue *directory.ListenerBytes,
-					reassembler *libaudit.Reassembler) {
-	self.Debug("audit: mainEventLoop started")
-	defer self.Debug("audit: mainEventLoop exited")
+func (self *auditService) eventProcessingLoop(messageQueue *directory.ListenerBytes,
+					      reassembler *libaudit.Reassembler) {
+	self.Debug("audit: eventProcessingLoop started")
+	defer self.Debug("audit: eventProcessingLoop exited")
 
 	for {
 		select {
@@ -562,10 +540,15 @@ func (self *auditService) mainEventLoop(messageQueue *directory.ListenerBytes,
 	}
 }
 
-// exits when the log channel is closed
-func (self *auditService) logEventLoop() {
-	self.Debug("audit: log event loop started")
-	defer self.Debug("audit: log event loop exited")
+// exits when a channel is closed
+func (self *auditService) subscriberDistributionLoop() {
+	self.Debug("audit: subscriber distribution loop started")
+	defer self.Debug("audit: subscriber distribution loop exited")
+
+	subscribers := []*subscriber{}
+	defer func() {
+		self.evictSubscribers(subscribers)
+	}()
 	for {
 		select {
 		case msg, ok := <-self.logChannel:
@@ -573,12 +556,62 @@ func (self *auditService) logEventLoop() {
 				return
 			}
 
-			self.subscriberLock.Lock()
-			for _, subscriber := range self.subscribers {
+			for _, subscriber := range subscribers {
 				subscriber.logChannel <- msg
 			}
-			self.subscriberLock.Unlock()
 			self.logger.Info(msg)
+		case rule, ok := <-self.missingRuleLogChannel:
+			if !ok {
+				return
+			}
+			var msg string
+			for _, subscriber := range subscribers {
+				_, ok := subscriber.rules[rule.rule]
+				if !ok {
+					continue
+				}
+				if msg == "" {
+					msg = fmt.Sprintf("audit: replaced missing rule `%v'", rule.rule)
+				}
+				subscriber.logChannel <- msg
+			}
+
+		case event, ok := <-self.eventChannel:
+			if !ok {
+				return
+			}
+			for _, subscriber := range subscribers {
+				subscriber.eventChannel <- event
+			}
+		case subscriber, _ := <-self.subscribeChannel:
+			subscribers = append(subscribers, subscriber)
+			self.Debug("audit: adding subscriber, total now %v", len(subscribers))
+			subscriber.wait.Done()
+		case subscriber, _ := <-self.unsubscribeChannel:
+			for i, sub := range subscribers {
+				if sub != subscriber {
+					continue
+				}
+
+				newlen := len(subscribers) - 1
+				subscribers[i] = subscribers[newlen]
+				subscribers = subscribers[:newlen]
+				break
+			}
+
+			self.Debug("audit: removing subscriber, total now %v", len(subscribers))
+
+			subscriber.wait.Done()
+		}
+	}
+}
+
+func (self *auditService) evictSubscribers(subscribers []*subscriber) {
+	// Evict remaining subscribers if we shut down due to error
+	if len(subscribers) > 0 {
+		self.logger.Info("audit: Evicting remaining %d subscribers", len(subscribers))
+		for _, subscriber := range subscribers {
+			self.unsubscribe(subscriber)
 		}
 	}
 }
@@ -699,12 +732,8 @@ func (self *auditService) ReassemblyComplete(msgs []*auparse.AuditMessage) {
 		self.checkerChannel <- *event
 	}
 
+	self.eventChannel <- *event
 	self.totalRowsPostedCounter.Inc()
-	self.subscriberLock.RLock()
-	for _, subscriber := range self.subscribers {
-		subscriber.eventChannel <- *event
-	}
-	self.subscriberLock.RUnlock()
 }
 
 func (self *auditService) EventsLost(count int) {
@@ -772,25 +801,6 @@ func (self *auditService) deleteRule(rule *AuditRule) error {
 	return nil
 }
 
-func (self *auditService) notifyMissingRule(rule *AuditRule) {
-	self.subscriberLock.Lock()
-	defer self.subscriberLock.Unlock()
-	count := 0
-
-	msg := fmt.Sprintf("audit: replaced missing rule `%v'", rule.rule)
-	for _, subscriber := range self.subscribers {
-		_, ok := subscriber.rules[rule.rule]
-		if ok {
-			subscriber.logChannel <- msg
-			count += 1
-		}
-	}
-
-	if count > 0 {
-		self.logger.Info("audit: replaced missing rule `%v'", rule.rule)
-	}
-}
-
 func (self *auditService) checkRules() error {
 	self.rulesLock.Lock()
 	defer self.rulesLock.Unlock()
@@ -819,7 +829,8 @@ func (self *auditService) checkRules() error {
 			continue
 		}
 
-		self.notifyMissingRule(&rule.rule)
+		self.missingRuleLogChannel <- &rule.rule
+
 		err := self.addRuleToSubsystem(&rule.rule.wfRule)
 		if err != nil {
 			return err
@@ -889,38 +900,37 @@ func (self *auditService) receiveMessageBuf(buf *auditBuf) (msgType auparse.Audi
 	return
 }
 
-func (self *auditService) unsubscribe(subscriber *subscriber, shuttingDown bool) {
+func (self *auditService) unsubscribe(subscriber *subscriber) {
 	// Not an error; Shutdown and caller-initiated unsubscribe can happen
 	// concurrently.  Both will take the subscriberLock.
-	if !subscriber.subscribed {
-		return
+	if subscriber.subscribed {
+		_ = self.removeSubscriberRules(subscriber)
+		subscriber.disconnect()
 	}
+}
 
-	for i, sub := range self.subscribers {
-		if sub != subscriber {
-			continue
+// It's possible for another subscriber to attempt to start the
+// service and then fail, which will shut it down again.
+// Expects that the caller holds serviceLock
+func (self *auditService) waitForShutdown() {
+	for {
+		if !self.shuttingDown {
+			return
 		}
 
-		newlen := len(self.subscribers) - 1
-		self.subscribers[i] = self.subscribers[newlen]
-		self.subscribers = self.subscribers[:newlen]
-		break
-	}
-
-	self.Debug("audit: removing subscriber, total now %v", len(self.subscribers))
-
-	_ = self.removeSubscriberRules(subscriber)
-
-	subscriber.disconnect()
-
-	if !shuttingDown {
-		self.serviceLock.Lock()
-		// No more subscribers: Shut it down
-		if len(self.subscribers) == 0 {
-			self.shuttingDown = true
-			close(self.subscriberChan)
-		}
+		// Wait for previous instance to shut down
 		self.serviceLock.Unlock()
+		self.serviceWg.Wait()
+		self.serviceLock.Lock()
+	}
+}
+
+// Expects that the caller holds serviceLock
+func (self *auditService) initiateShutdown() {
+	if !self.shuttingDown {
+		self.shuttingDown = true
+		self.nSubscribers = 0
+		close(self.shutdownChan)
 	}
 }
 
@@ -932,31 +942,85 @@ func (self *auditService) Subscribe(rules []string) (AuditEventSubscriber, error
 		return nil, err
 	}
 
-	err = self.runService()
+	self.serviceLock.Lock()
+	self.waitForShutdown()
+
+	// Service was started by another caller
+	if self.nSubscribers == 0 {
+		err = self.runService()
+		if err != nil {
+			self.serviceLock.Unlock()
+			return nil, err
+		}
+	}
+
+	err = subscriber.connect()
 	if err != nil {
+		if self.nSubscribers == 0 {
+			self.initiateShutdown()
+		}
+		self.serviceLock.Unlock()
 		return nil, err
 	}
 
-	defer self.subscriberLock.Unlock()
-	self.subscriberLock.Lock()
-
-	self.subscribers = append(self.subscribers, subscriber)
-	self.Debug("audit: adding subscriber, total now %v", len(self.subscribers))
 	err = self.addSubscriberRules(subscriber)
 	if err != nil {
-		self.unsubscribe(subscriber, false)
+		if self.nSubscribers == 0 {
+			self.initiateShutdown()
+		}
+		self.serviceLock.Unlock()
 		return nil, err
 	}
+
+	self.nSubscribers += 1
+	self.serviceLock.Unlock()
+
+	subscriber.wait.Add(1)
+	self.subscribeChannel <- subscriber
+	subscriber.wait.Wait()
 
 	return subscriber, nil
 }
 
 func (self *auditService) Unsubscribe(auditSubscriber AuditEventSubscriber) {
-	defer self.subscriberLock.Unlock()
-	self.subscriberLock.Lock()
-
 	subscriber := auditSubscriber.(*subscriber)
-	self.unsubscribe(subscriber, false)
+	if !subscriber.subscribed {
+		return
+	}
+
+	// Continue to drain events/messages until we're disconnected
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case _, ok := <-subscriber.logChannel:
+				if !ok {
+					return
+				}
+			case _, ok := <-subscriber.eventChannel:
+				if !ok {
+					return
+				}
+			}
+		}
+	}()
+
+	subscriber.wait.Add(1)
+	self.unsubscribeChannel <- subscriber
+	subscriber.wait.Wait()
+
+	self.unsubscribe(subscriber)
+	wg.Wait()
+
+	// Last subscriber - shut it down
+	self.serviceLock.Lock()
+	self.nSubscribers -= 1
+	if self.nSubscribers == 0 {
+		self.initiateShutdown()
+	}
+	self.serviceLock.Unlock()
 }
 
 type AuditEventSubscriber interface {

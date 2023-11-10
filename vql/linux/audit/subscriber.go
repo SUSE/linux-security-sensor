@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -47,13 +48,7 @@ type subscriber struct {
 }
 
 func newSubscriber() *subscriber {
-	return &subscriber{
-		eventChannel: make(chan vfilter.Row, 2),
-		logChannel:   make(chan string, 2),
-		rules:        map[string]*AuditRule{},
-		wait:         sync.WaitGroup{},
-		subscribed:   true,
-	}
+	return &subscriber{}
 }
 
 func (self *subscriber) Events() chan vfilter.Row {
@@ -65,6 +60,9 @@ func (self *subscriber) LogEvents() chan string {
 }
 
 func (self *subscriber) addRules(rules []string) error {
+	if self.rules == nil {
+		self.rules = map[string]*AuditRule{}
+	}
 	for _, line := range rules {
 		parsedRule, err := parseRule(line)
 		if err != nil {
@@ -78,6 +76,18 @@ func (self *subscriber) addRules(rules []string) error {
 
 		self.rules[parsedRule.rule] = parsedRule
 	}
+
+	return nil
+}
+
+func (self *subscriber) connect() error {
+	if self.subscribed {
+		return errors.New("subscriber already connected")
+	}
+	self.eventChannel = make(chan vfilter.Row, 2)
+	self.logChannel = make(chan string, 2)
+	self.wait = sync.WaitGroup{}
+	self.subscribed = true
 
 	return nil
 }
