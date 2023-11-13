@@ -78,7 +78,18 @@ func (self *AuditServiceTestSuite) SetupTest() {
 	self.TestSuite.SetupTest()
 }
 
-func (self *AuditServiceTestSuite) TearDown() {
+func (self *AuditServiceTestSuite) TearDownTest() {
+	for {
+		self.auditService.serviceLock.Lock()
+		if !self.auditService.shuttingDown {
+			self.auditService.serviceLock.Unlock()
+			break
+		}
+		self.auditService.serviceLock.Unlock()
+		self.auditService.serviceWg.Wait()
+	}
+
+	self.auditService = nil
 }
 
 func (self *AuditServiceTestSuite) TestRunService() {
