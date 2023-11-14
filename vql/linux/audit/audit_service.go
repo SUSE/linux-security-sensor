@@ -106,7 +106,6 @@ type auditService struct {
 
 	// Once up and running, protected by rulesLock
 	commandClient commandClient
-	reassembler   *libaudit.Reassembler
 	listener      auditListener
 
 	logChannel     chan string
@@ -270,7 +269,7 @@ func (self *auditService) runService() error {
 	}
 
 	// Can only fail if self is nil
-	self.reassembler, _ = libaudit.NewReassembler(5, 500*time.Millisecond, self)
+	reassembler, _ := libaudit.NewReassembler(5, 500*time.Millisecond, self)
 
 	self.logger.Info("audit: starting audit service")
 	self.running = true
@@ -286,7 +285,7 @@ func (self *auditService) runService() error {
 	if err != nil {
 		cancel()
 		self.commandClient.Close()
-		self.reassembler.Close()
+		reassembler.Close()
 		self.listener.Close()
 		self.running = false
 		return err
@@ -298,7 +297,7 @@ func (self *auditService) runService() error {
 		return nil
 	})
 	grp.Go(func() error {
-		self.startMaintainer(grpctx)
+		self.startMaintainer(grpctx, reassembler)
 		return nil
 	})
 	grp.Go(func() error {
@@ -306,7 +305,7 @@ func (self *auditService) runService() error {
 		return nil
 	})
 	grp.Go(func() error {
-		self.mainEventLoop(grpctx, messageQueue)
+		self.mainEventLoop(grpctx, messageQueue, reassembler)
 		return nil
 	})
 	if gDebugStats {
@@ -345,7 +344,7 @@ func (self *auditService) runService() error {
 
 		self.evictAllSubscribers()
 
-		self.reassembler.Close()
+		reassembler.Close()
 		self.commandClient.Close()
 		self.listener.Close()
 
@@ -436,7 +435,7 @@ func (self *auditService) acceptEvents(ctx context.Context,
 	return err
 }
 
-func (self *auditService) processOneMessage(buf []byte) error {
+func (self *auditService) processOneMessage(reassembler *libaudit.Reassembler, buf []byte) error {
 	if len(buf) < unix.NLMSG_HDRLEN {
 		return syscall.EINVAL
 	}
@@ -450,7 +449,7 @@ func (self *auditService) processOneMessage(buf []byte) error {
 		return err
 	}
 
-	self.reassembler.PushMessage(msgBuf)
+	reassembler.PushMessage(msgBuf)
 
 	// These record types aren't included in the complete callback
 	// but they still need to be pushed
@@ -493,7 +492,8 @@ func (self *auditService) removeSubscriberRules(subscriber *subscriber) error {
 }
 
 func (self *auditService) mainEventLoop(ctx context.Context,
-					messageQueue *directory.ListenerBytes) {
+					messageQueue *directory.ListenerBytes,
+					reassembler *libaudit.Reassembler) {
 	self.Debug("audit: mainEventLoop started")
 	defer self.Debug("audit: mainEventLoop exited")
 
@@ -507,7 +507,7 @@ func (self *auditService) mainEventLoop(ctx context.Context,
 			if !ok {
 				return
 			}
-			err := self.processOneMessage(buf.Data())
+			err := self.processOneMessage(reassembler, buf.Data())
 			if err != nil {
 				self.logger.Info("failed to parse message: %v", err)
 			}
@@ -620,7 +620,7 @@ func (self *auditService) reportStats(ctx context.Context) {
 	}
 }
 
-func (self *auditService) startMaintainer(ctx context.Context) {
+func (self *auditService) startMaintainer(ctx context.Context, reassembler *libaudit.Reassembler) {
 	self.Debug("audit: reassembler maintainer started")
 	defer self.Debug("audit: reassembler maintainer exited")
 
@@ -631,7 +631,7 @@ func (self *auditService) startMaintainer(ctx context.Context) {
 
 		case <-time.After(gReassemblerMaintainerTimeout):
 			// Maintain will only return error when closed
-			if self.reassembler.Maintain() != nil {
+			if reassembler.Maintain() != nil {
 				return
 			}
 		}
