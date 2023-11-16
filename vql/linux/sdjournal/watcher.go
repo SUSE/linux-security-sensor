@@ -113,6 +113,12 @@ func (self *JournalWatcherService) StartMonitoring(journal *sdjournal.Journal) {
 		return
 	}
 
+	_, err = journal.Previous()
+	if err != nil {
+		scope.Log("Failed to set read pointer to previous journal entry: %v", err)
+		return
+	}
+
 	for {
 		status := journal.Wait(100 * time.Millisecond)
 
