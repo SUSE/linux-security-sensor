@@ -1,8 +1,18 @@
 name: SUSE.Linux.Events.Crontab
 description: |
-   Print events when a crontab entry gets added/deleted
+   Print events when a crontab entry gets added/deleted/executed
 
 type: CLIENT_EVENT
+
+parameters:
+
+  - name: syslogCronLogPath
+    default: /var/log/messages
+
+  - name: CronGrok
+    description: A Grok expression for parsing cron task execution.
+    default: >-
+      ((?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp}) (?:%{SYSLOGFACILITY} )?%{SYSLOGHOST:logsource} %{SYSLOGPROG}: )?\(%{USER:user}\) %{DATA:action} \(%{DATA:cmd}\)
 
 sources:
   - name: Connections
@@ -12,3 +22,31 @@ sources:
     query: |
       SELECT * from cronsnoop(spool_dir='/var/spool/cron/tabs',system_dirs=['/etc/crontab', '/etc/cron.d', '/etc/cron.hourly', '/etc/cron.monthly', '/etc/cron.daily', '/etc/cron.weekly'])
 
+  - name: JournalTaskExecs
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect cron task executions from systemd journal
+    query: |
+      LET cron_exec = SELECT REALTIME_TIMESTAMP, _PID, MESSAGE, grok(grok=CronGrok, data=MESSAGE) AS Event
+        FROM watch_journal()
+        WHERE _TRANSPORT != 'kernel' AND SYSLOG_IDENTIFIER = "CRON" and Event.action = "CMD"
+      SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+               Event.user AS User,
+               Event.cmd AS Cmd,
+               _PID AS Pid,
+               MESSAGE AS Line
+      FROM cron_exec
+
+  - name: SyslogTaskExecs
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect cron task executions from syslog
+    query: |
+      -- Basic cron parsing via GROK expressions.
+      LET cron_exec = SELECT grok(grok=CronGrok, data=Line) AS Event, Line
+        FROM watch_syslog(filename=syslogCronLogPath)
+        WHERE (Event.program = "CRON" OR Event.program = "cron") AND Event.action = "CMD"
+      SELECT timestamp(string=Event.timestamp) AS Time,
+              Event.user AS User,
+              Event.cmd AS Cmd,
+              Event.pid AS Pid,
+              Line
+      FROM cron_exec
