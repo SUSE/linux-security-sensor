@@ -616,7 +616,7 @@ func (self *HTTPConnector) rekeyWithURL(ctx context.Context, url string) error {
 	}
 
 	if err != nil {
-		self.logger.Info("While getting %v: %v", url, err)
+		self.logger.Error("While getting %v: %v", url, err)
 		if strings.Contains(err.Error(), "cannot validate certificate") {
 			self.logger.Info("If you intend to connect to a self signed " +
 				"VelociraptorServer, make sure Client.use_self_signed_ssl " +
