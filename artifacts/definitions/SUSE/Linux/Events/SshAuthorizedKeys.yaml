@@ -1,0 +1,24 @@
+name: SUSE.Linux.Events.SshAuthorizedKeys
+
+description: |
+  This monitoring artifact watches for changes to the .ssh/authorized_keys
+  in each user home directory.
+
+precondition: |
+  SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+parameters:
+  - name: period
+    description: Seconds between checks
+    type: int
+    default: 600
+
+sources:
+  - query: |
+      SELECT Mtime AS Timestamp, User, Uid, OSPath AS Path, Diff AS Change, Key, Comment FROM diff(
+        query={ SELECT *, join(array=[User, Key]) AS _diffKey FROM Artifact.Linux.Ssh.AuthorizedKeys() },
+        key="_diffKey",
+        period=period)
+
