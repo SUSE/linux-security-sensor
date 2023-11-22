@@ -34,7 +34,7 @@ services:
     image: ${SENSOR_IMAGE}
     hostname: sensor-frontend
     container_name: sensor-frontend
-    user: "1000:100"
+    user: "velociraptor:velociraptor"
     ports:
       - "8000:8000" # Frontend
       # - "8003:8003" # Monitoring
