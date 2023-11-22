@@ -31,7 +31,7 @@ services:
       - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
     restart: unless-stopped
   sensor-frontend:
-    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    image: ${SENSOR_IMAGE}
     hostname: sensor-frontend
     container_name: sensor-frontend
     user: "1000:100"
@@ -62,7 +62,7 @@ services:
     restart:
       unless-stopped
   sensor-client:
-    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    image: ${SENSOR_IMAGE}
     hostname: sensor-client
     container_name: sensor-client
     user: root
