@@ -44,6 +44,7 @@ services:
       - ./config/velociraptor:/config
       - ./data/velociraptor:/data
       - ./logs/velociraptor:/logs
+      - ./artifacts:/artifacts
       - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
     labels:
       traefik.enable: "true"

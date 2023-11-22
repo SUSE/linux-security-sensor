@@ -7,4 +7,4 @@ if test ! -e "${SERVER_CONFIG}"; then
 	/generate-config.sh
 fi
 
-exec velociraptor frontend -v --config "${SERVER_CONFIG}"
+exec velociraptor frontend -v --config "${SERVER_CONFIG}" --definitions=/artifacts
