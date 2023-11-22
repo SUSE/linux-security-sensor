@@ -25,4 +25,7 @@ RUN chmod a+x /entry-point.sh /generate-config.sh
 RUN zypper -q --non-interactive install catatonit && zypper clean -a
 COPY ${SENSOR_BIN} /usr/bin/velociraptor
 
+RUN groupadd velociraptor && useradd -c "Velociraptor User" -g velociraptor -d /var/lib/velociraptor -s /sbin/nologin velociraptor
+USER velociraptor:velociraptor
+
 CMD ["/usr/bin/catatonit", "--", "/entry-point.sh" ]
