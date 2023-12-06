@@ -93,6 +93,7 @@ func (self ChattrsnoopPlugin) Call(
 			mode, err := f.Stat()
 			if err != nil {
 				scope.Log("chattrsnoop: Error stating: %s", path)
+				continue
 			}
 
 			if !mode.IsDir() {
