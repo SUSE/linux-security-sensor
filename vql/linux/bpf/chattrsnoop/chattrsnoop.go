@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package bpf
@@ -8,7 +9,6 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -31,13 +31,13 @@ func (self ChattrsnoopPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMa
 	}
 }
 
-func calcSha256(f *os.File) string {
+func calcSha256(f *os.File) (string, error) {
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		log.Fatal("h256: ", err)
+		return "", err
 	}
 
-	return hex.EncodeToString(h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 type Event struct {
@@ -96,7 +96,11 @@ func (self ChattrsnoopPlugin) Call(
 			}
 
 			if !mode.IsDir() {
-				hash = calcSha256(f)
+				hash, err = calcSha256(f)
+				if err != nil {
+					scope.Log("chattrsnoop: Error hashing %s: %s", path, err)
+					continue
+				}
 			}
 
 			e := Event{
