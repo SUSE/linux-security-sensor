@@ -62,7 +62,7 @@ func (self ChattrsnoopPlugin) Call(
 
 		bpfModule, err := initBpf()
 		if err != nil {
-			scope.Log("chattrsnoop: Error initialising bpf")
+			scope.Log("chattrsnoop: Error initialising bpf: %s", err)
 			return
 		}
 
@@ -73,7 +73,7 @@ func (self ChattrsnoopPlugin) Call(
 
 		perfBuffer, err := bpfModule.InitPerfBuf("events", eventsChan, lostChan, 128)
 		if err != nil {
-			scope.Log("chattrsnoop: Error opening bpf communication channel")
+			scope.Log("chattrsnoop: Error opening bpf communication channel: %s", err)
 			return
 		}
 
@@ -85,14 +85,14 @@ func (self ChattrsnoopPlugin) Call(
 
 			f, err := os.Open(path)
 			if err != nil {
-				scope.Log("chattrsnoop: Error opening: %s", path)
+				scope.Log("chattrsnoop: Error opening: %s: %s", path, err)
 				continue
 			}
 
 			defer f.Close()
 			mode, err := f.Stat()
 			if err != nil {
-				scope.Log("chattrsnoop: Error stating: %s", path)
+				scope.Log("chattrsnoop: Error stating: %s: %s", path, err)
 				continue
 			}
 
