@@ -10,4 +10,4 @@ sources:
       SELECT OS From info() where OS = 'linux'
 
     query: |
-      SELECT Timestamp, Path, Dir, Sha256Sum, Action FROM chattrsnoop()
+      SELECT Timestamp, Path, Dir, Sha256sum, Action FROM chattrsnoop()
