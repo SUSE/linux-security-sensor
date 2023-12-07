@@ -26,12 +26,18 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"www.velocidex.com/golang/velociraptor/accessors"
 )
 
 // On Linux we need xstat() support to get birth time.
 func (self *OSFileInfo) Btime() time.Time {
-	return time.Time{}
+	statx := unix.Statx_t{}
+	err := unix.Statx(0, self.FullPath(), 0, unix.STATX_BTIME, &statx)
+	if err != nil {
+		return time.Time{}
+	}
+	return time.Unix(statx.Btime.Sec, 0)
 }
 
 func (self *OSFileInfo) Mtime() time.Time {
