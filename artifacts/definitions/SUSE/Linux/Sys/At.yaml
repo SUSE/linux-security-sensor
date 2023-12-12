@@ -1,0 +1,31 @@
+name: SUSE.Linux.Sys.At
+description: |
+   Displays parsed tasks from at command.
+
+parameters:
+  - name: AtGrok
+    description: A Grok expression for parsing at task list.
+    default: >-
+      (%{NUMBER:id}\t%{NUMBER:timestamp} %{DATA:queue} %{USER:user})
+
+sources:
+  - name: Tasks
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect at task list
+    query: |
+      LET at_output = SELECT Stdout
+        FROM execve(
+          argv=["atq", "-o", "%s"],
+          sep="\n")
+        WHERE Stdout != ""
+      
+      LET at_info <= SELECT grok(grok=AtGrok, data=Stdout) as Event
+        FROM at_output
+
+      SELECT timestamp(string=Event.timestamp) as Time,
+              Event.id as JobId,
+              Event.user as User,
+              {SELECT Stdout FROM execve(
+                argv=["at", "-c", Event.id]
+              )} as Script
+        FROM at_info
