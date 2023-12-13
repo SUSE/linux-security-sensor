@@ -1,0 +1,59 @@
+name: SUSE.Linux.Events.NewHiddenFile
+
+description: |
+  This monitoring artifact collects new hidden files or directories.
+
+precondition: |
+  SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+parameters:
+  - name: directories
+    description: List of directories to be monitored.
+    type: json_array
+    default: '["/home", "/root", "/tmp"]'
+
+sources:
+  - query: |
+      LET audit_rules = array(
+        a= { SELECT format(format='-w %s -p w -k vrr_hidden_files', args=_value)
+             FROM foreach(row=directories) })
+
+      LET isHidden(name) = if(
+        condition=substr(str=name, start=0, end=1) = ".", then=true,
+        else=false)
+
+      LET full_path(parent, name) = if(
+         condition=name=~"^/", then=name,
+         else=join(array=[parent, name], sep='/'))
+
+      LET hidden_files_events = SELECT
+          timestamp(string=Timestamp) AS Time,
+          Summary.action AS action,
+          basename(path=Paths[1].name) AS Filename,
+          full_path(parent=Paths[0].name, name=Paths[1].name) AS Path
+        FROM audit(rules=audit_rules)
+        WHERE "vrr_hidden_files" IN Tags
+          AND Result = "success"
+          AND action =~ "opened-file|created-directory"
+          AND Paths[1].nametype = "CREATE"
+          AND isHidden(name=Filename)
+
+      -- don't compute the hashes for directories
+      LET new_hidden_files_with_hashes = SELECT *,
+        { SELECT * FROM if(
+            condition=action="opened-file",
+            then={ SELECT hash(path=Path, hashselect=['SHA1', 'SHA256']) FROM scope() },
+            else={ SELECT dict(SHA1=null, SHA256=null) FROM scope() })
+        } AS hashes
+        FROM hidden_files_events
+
+      SELECT
+        Time,
+        Filename,
+        Path,
+        hashes.SHA1 AS SHA1,
+        hashes.SHA256 AS SHA256
+      FROM new_hidden_files_with_hashes
+
