@@ -37,4 +37,4 @@ awk "
 { if (seen_client == 1 && skip_record != 1) print \$0; }
 " < "${SERVER_CONFIG}" > "${CLIENT_CONFIG}"
 
-sed -e 's#https://sensor-frontend:8000/#https//velociraptor.fqdn:8000/' < "${CLIENT_CONFIG}" > "${CLIENT_CONFIG}.template"
+sed -e 's#https://sensor-frontend:8000/#https//velociraptor.fqdn:8000/#' < "${CLIENT_CONFIG}" > "${CLIENT_CONFIG}.template"

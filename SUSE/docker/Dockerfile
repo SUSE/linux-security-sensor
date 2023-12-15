@@ -17,6 +17,7 @@ LABEL org.opensuse.reference="registry.opensuse.org/security/sensor/containers/l
 VOLUME /data
 VOLUME /logs
 VOLUME /config
+VOLUME /artifacts
 
 # API
 EXPOSE 8801
