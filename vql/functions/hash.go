@@ -299,6 +299,9 @@ func (self *HashFunction) Call(ctx context.Context,
 		if useCache {
 			if entry == nil {
 				entry, err = newHashResultCacheEntry(path)
+				if err != nil {
+					entry = nil
+				}
 			}
 
 			if entry != nil {
