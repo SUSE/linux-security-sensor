@@ -1,0 +1,52 @@
+name: Server.Utils.ScheduleDeleteClientData
+
+description: |
+    This artifact runs on a schedule and searches the monitoring data for all
+    clients and optionally removes data older than the specified number of days.
+
+    **NOTE** This artifact will destroy all data irrevocably. Take
+      care! You should always do a dry run first to see which files
+      will match before using the ReallyDoIt option.
+
+type: SERVER_EVENT
+
+parameters:
+   - name: ScheduleDayRegex
+     description: Day of week to run, e.g. "Monday" or "." for every day
+     default: .
+     type: regex
+   - name: ScheduleTimeRegex
+     description: Time of day to run in "HH:mm:" format, e.g. "15:30:"
+     default: "00:00:"
+     type: regex
+   - name: DaysOld
+     description: Delete files older than this many days
+     default: 30
+     type: int
+   - name: ReallyDoIt
+     type: bool
+     description: Only delete files when this is true
+     default: false
+
+sources:
+  - query: |
+      LET schedule = SELECT
+          UTC.String AS Now,
+          Weekday.String AS Today
+        FROM clock(period=60)
+        WHERE Today =~ ScheduleDayRegex
+          AND Now =~ ScheduleTimeRegex
+          AND log(message="Launching at time " + Now)
+
+      SELECT * FROM foreach(
+        row=schedule,
+        query={
+          SELECT
+            OSPath AS Matched,
+            Size,
+            if(condition=ReallyDoIt, then=file_store_delete(path=OSPath)) AS Deleted
+          FROM glob(globs="C.*/monitoring*/**.json*", accessor="fs", root="/clients/")
+          WHERE Name =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            AND timestamp(epoch=Name) < timestamp(epoch=now() - DaysOld*24*3600)
+      })
+
