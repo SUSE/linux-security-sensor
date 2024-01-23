@@ -1,0 +1,48 @@
+name: SUSE.Linux.Events.Packages
+
+type: CLIENT_EVENT
+
+description: |
+  This monitoring artifact collects details about new and updated RPMs on the client.
+
+precondition: |
+  SELECT OS From info() where OS = 'linux'
+
+parameters:
+  - name: period
+    type: int
+    description: Number of seconds between checks for new RPMs.
+    default: 180
+
+sources:
+  - query: |
+
+      LET pkgFiles <= SELECT OSPath
+                      FROM glob(root="/var/lib/rpm", globs=["Packages", "Packages.db", "rpmdb.sqlite"])
+
+      -- Check the modification time of the packages file every period seconds,
+      -- and only run the rpm plugin if the file has changed since the previous check.
+      SELECT * FROM foreach(
+        row={
+          SELECT * FROM foreach(
+            row = {
+              SELECT _ FROM clock(period=period)
+            },
+            query = {
+              SELECT _ FROM foreach(
+                row=pkgFiles,
+                query={
+                   SELECT Mtime, log(message="%s was modified", args=OSPath)
+                   FROM stat(filename=OSPath)
+                   WHERE Mtime >= timestamp(epoch=now() - period)
+                }
+              )
+            }
+          )
+        },
+        query={
+          SELECT Name, Version, Release, InstallTime, PublicKey
+          FROM rpm()
+          WHERE InstallTime >= timestamp(epoch=now() - period)
+        }
+      )
