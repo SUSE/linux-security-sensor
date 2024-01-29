@@ -26,7 +26,7 @@ sources:
           query={
             SELECT Uid, User, OSPath, Hostname, Type, PublicKey
             FROM split_records(
-               filenames=OSPath, regex=" ", record_regex="\n",
+               filenames=OSPath, regex=" ",
                columns=["Hostname", "Type", "PublicKey"])
             /* Ignore comment lines. */
             WHERE not Hostname =~ "^[^#]+#"
