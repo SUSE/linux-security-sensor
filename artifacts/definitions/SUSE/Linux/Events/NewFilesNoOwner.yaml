@@ -1,0 +1,142 @@
+name: SUSE.Linux.Events.NewFilesNoOwner
+
+description: |
+  This monitoring artifact collects new files owned by a user who is not present on the system.
+
+precondition: |
+  SELECT OS From info() where OS = "linux"
+
+type: CLIENT_EVENT
+
+parameters:
+  - name: directories
+    description: List of directories to be monitored.
+    type: json_array
+    default: '["/home", "/root", "/tmp"]'
+
+sources:
+  - query: |
+
+      // ["a", "b", "c"] -> "^a|^b|^c"
+      LET directories_regex = join(
+        array=array(a={ SELECT "^" + _value FROM foreach(row=directories) }),
+        sep="|"
+      )
+
+      LET new_files_audit_rules = array(
+        a={ SELECT format(format='-w %s -p w -k vrr_unknown_uid_watch', args=_value)
+            FROM foreach(row=directories) }
+      )
+
+      // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
+      LET clean_path(path) = "/" + relpath(path=path, base="/")
+
+      LET full_path(cwd, path) = clean_path(
+        path=if(
+          condition=path=~"^/", then=path,
+          else=cwd + "/" + path
+        )
+      )
+
+      // convert a string with hex number to decimal string, e.g. "FF"->"255"
+      LET hex2dec(hex) = format(format="%d", args=atoi(string="0x"+hex))
+
+      // create and populate dict on startup
+      LET known_uids <= to_dict(item={
+        SELECT Uid AS _key, TRUE AS _value
+        FROM Artifact.Linux.Sys.Users()
+      })
+
+      // refresh known_uids dict when /etc/passwd changes
+      LET update_known_uids = SELECT
+          { SELECT
+              Uid, set(item=known_uids, field=Uid, value=TRUE)
+            FROM Artifact.Linux.Sys.Users()
+          } AS _update_known_uids
+        FROM audit(rules="-w /etc/passwd -p w -k vrr_unknown_uids_etc_passwd")
+        WHERE "vrr_unknown_uids_etc_passwd" IN Tags
+          AND Result = "success"
+          AND Summary.action = "opened-file"
+          AND log(message="/etc/passwd may have changed - reloading user uids", dedup=-1)
+          AND _update_known_uids // force lazy eval
+          AND FALSE // don't generate rows
+
+
+      LET inode_to_path <= lru(size=1000)
+
+      // This query watches for new files in the monitored directories
+      // and adds a mapping to inode_to_path for each new file.
+      LET new_file_events = SELECT _
+        FROM audit(rules=new_files_audit_rules)
+        WHERE "vrr_unknown_uid_watch" IN Tags
+          AND Result = "success"
+          AND Summary.action = "opened-file"
+          AND Paths[-1].nametype = "CREATE"
+          AND set(
+                item=inode_to_path,
+                field=format(format="%s%s", args=[Paths[-1].dev, File.inode]),
+                value=full_path(cwd=Process.CWD, path=File.Path)
+              )
+          AND FALSE
+
+      // This query watches for the fchown system call. It takes a short sleep before
+      // looking up the path in the inode_to_path dict to give the new_file_events
+      // query a better chance to have the dict updated first.
+      LET fchown_events = SELECT
+          File.inode, Paths[-1].dev,
+          hex2dec(hex=Data.a1) AS UserID,
+          get(item=inode_to_path, field=format(format="%s%s", args=[Paths[0].dev, File.inode])) AS FullPath
+        FROM audit(rules=[
+            "-a always,exit -F arch=b64 -S fchown -k vrr_unknown_uid_fchown",
+            "-a always,exit -F arch=b32 -S fchown -k vrr_unknown_uid_fchown"
+        ])
+        WHERE "vrr_unknown_uid_fchown" IN Tags
+          AND sleep(ms=10)
+          AND FullPath // stop if path not in inode_to_path
+          AND NOT get(item=known_uids, field=UserID)
+
+      LET fchown_events_with_hashes = SELECT *,
+          hash(path=FullPath, hashselect=['SHA1', 'SHA256']) AS hashes
+        FROM fchown_events
+
+      LET fchownat_events = SELECT
+          full_path(cwd=Process.CWD, path=File.path) AS FullPath,
+          hex2dec(hex=Data.a2) AS UserID
+        FROM audit(rules=[
+            "-a always,exit -F arch=b64 -S fchownat -k vrr_unknown_uid_fchownat",
+            "-a always,exit -F arch=b32 -S fchownat -k vrr_unknown_uid_fchownat"
+        ])
+        WHERE "vrr_unknown_uid_fchownat" IN Tags
+          AND FullPath =~ directories_regex
+          AND NOT get(item=known_uids, field=UserID)
+
+      LET fchownat_events_with_hashes = SELECT *,
+          hash(path=FullPath, hashselect=['SHA1', 'SHA256']) AS hashes
+        FROM fchownat_events
+
+      SELECT * FROM chain(
+        async=TRUE,
+        a={
+          SELECT _ FROM new_file_events
+        },
+        b={
+          SELECT _ FROM update_known_uids
+        },
+        c={
+          SELECT
+            FullPath,
+            UserID,
+            hashes.SHA1 AS SHA1,
+            hashes.SHA256 AS SHA256
+          FROM fchown_events_with_hashes
+        },
+        d={
+          SELECT
+            FullPath,
+            UserID,
+            hashes.SHA1 AS SHA1,
+            hashes.SHA256 AS SHA256
+          FROM fchownat_events_with_hashes
+        }
+      )
+
