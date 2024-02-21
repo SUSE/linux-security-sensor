@@ -1,4 +1,4 @@
-name: Linux.Events.ImmutableFile
+name: SUSE.Linux.Events.ImmutableFile
 
 description: |
    Print events when a file gets the IMMUTABLE flag changed
