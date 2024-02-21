@@ -1,4 +1,4 @@
-name: Linux.Events.NewFiles
+name: SUSE.Linux.Events.NewFiles
 description: |
   This artifact collects Every new file in monitored
   directory from the Linux kernel.
