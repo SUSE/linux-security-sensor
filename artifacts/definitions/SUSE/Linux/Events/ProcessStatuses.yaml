@@ -1,4 +1,4 @@
-name: Linux.Events.ProcessStatuses
+name: SUSE.Linux.Events.ProcessStatuses
 description: |
   This artifact collects new processes created by non-root users from
   the Linux kernel audit events.
@@ -6,9 +6,6 @@ description: |
 precondition: SELECT OS From info() where OS = 'linux'
 
 type: CLIENT_EVENT
-
-required_permissions:
-  - EXECVE
 
 sources:
   - query: |

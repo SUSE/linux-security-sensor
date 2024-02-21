@@ -1,13 +1,10 @@
-name: Linux.Events.UserAccount
+name: SUSE.Linux.Events.UserAccount
 description: |
   This artifact collects Every change to User Accounts from the Linux kernel.
 
 precondition: SELECT OS From info() where OS = 'linux'
 
 type: CLIENT_EVENT
-
-required_permissions:
-  - EXECVE
 
 sources:
 
