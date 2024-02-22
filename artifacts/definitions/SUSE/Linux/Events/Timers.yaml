@@ -1,0 +1,30 @@
+name: SUSE.Linux.Events.Timers
+description: |
+   Print events when a systemd timer gets added/deleted/executed
+
+type: CLIENT_EVENT
+
+sources:
+  - name: TimerStateChange
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect event when a new timer is started or stopped
+    query: |
+      SELECT timestamp(string=REALTIME_TIMESTAMP) as Time,
+              JOB_TYPE AS Action,
+              UNIT As Timer
+        FROM watch_journal()
+        WHERE SYSLOG_IDENTIFIER = "systemd" AND CODE_FUNC = "job_emit_done_message" AND UNIT =~ ".*timer"
+
+  - name: TimerExecs
+    precondition: SELECT OS From info() where OS = 'linux'
+    description: Collect systemd timer executions from journal
+    query: |
+      LET timers = SELECT parse_json_array(data=Stdout) AS list
+        FROM execve(argv=['systemctl', 'list-timers', '--all', '-o', 'json', '--no-pager'])
+
+      LET timer_execs = SELECT *, {SELECT activates from timers.list} AS activates
+        FROM Artifact.SUSE.Linux.Events.Services()
+        WHERE format(format="%s%s" , args=[Service, ".service"]) in activates
+
+      SELECT Timestamp, PID, User, Process as Cmd, Description
+        FROM timer_execs
