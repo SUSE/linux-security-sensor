@@ -138,27 +138,27 @@ Then select the required artifacts to forward to Logscale. These parameters may 
 A good starting set would be:
 - `Generic.Client.Stats`
 
-- `Linux.Events.ExecutableFiles`
+- `SUSE.Linux.Events.ExecutableFiles`
 
-- `Linux.Events.NewFiles`
+- `SUSE.Linux.Events.NewFiles`
 
 - `Linux.Events.ProcessExecutions`
 
-- `Linux.Events.ProcessStatuses`
+- `SUSE.Linux.Events.ProcessStatuses`
 
-- `Linux.Events.UserAccount`
+- `SUSE.Linux.Events.UserAccount`
 
 - `Server.Monitor.Shell`
 
 - `SUSE.Linux.Events.Crontab/Connections`
 
-- `SUSE.Linux.Events.DNS/Connections`
+- `SUSE.Linux.Events.DNS`
 
-- `SUSE.Linux.Events.ImmutableFile/Connections`
+- `SUSE.Linux.Events.ImmutableFile`
 
 - `SUSE.Linux.Events.SSHLogin`
 
-- `SUSE.Linux.Events.Tcp/Connections`
+- `SUSE.Linux.Events.TCPConnections`
 
 - `SUSE.Linux.Events.UserGroupMembershipUpdates`
 

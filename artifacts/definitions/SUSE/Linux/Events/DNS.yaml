@@ -1,12 +1,11 @@
-name: Linux.Events.Network.DNS
+name: SUSE.Linux.Events.DNS
 description: |
    Prints all DNS resolution events
 
 type: CLIENT_EVENT
 
-sources:
-  - precondition:
-      SELECT OS From info() where OS = 'linux'
+precondition: SELECT OS From info() where OS = 'linux'
 
-    query: |
+sources:
+  - query: |
       SELECT Timestamp, Type, Question, Answers FROM dnssnoop()
