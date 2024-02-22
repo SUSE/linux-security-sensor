@@ -1,0 +1,51 @@
+name: SUSE.Linux.Events.Services
+
+description: |
+  This artifact collects new systemd services events.
+
+required_permissions:
+  - EXECVE
+
+precondition: |
+  SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+sources:
+  - query: |
+      -- grok pattern to parse systemctl show output
+      LET pattern = "%{NUMBER:pid}\n\{ path\=%{DATA:process} .*\n%{DATA:description}\n%{DATA:state}\n"
+
+      -- local function runs systemctl, parses output and deconstructs dict from grok
+      LET serviceDetails(name) = SELECT pid, process, description, state
+        FROM foreach(
+          row= { SELECT grok(data=stdout, grok=pattern) AS parsed
+                 FROM execve(argv=["systemctl", "show", name, "--value", "--property=ExecMainPID,ExecStart,Description,ActiveState"]) },
+          column="parsed")
+
+       -- the audit plugin may return "unset" for the uid when the event ran as root
+      LET normalize(uid) = if(condition=uid="unset", then="0", else=uid)
+
+      LET userCache <= memoize(
+        query={ SELECT User, Uid FROM Artifact.Linux.Sys.Users() },
+        key='Uid',
+        period=3600)
+
+      LET serviceStartEvents = SELECT
+        Timestamp,
+        Sequence,
+        str(str=Type) AS RecordType,
+        Data.unit AS Service,
+        { SELECT get(item=userCache, field=normalize(uid=Summary.Actor.Primary)).User FROM scope() } AS User,
+        { SELECT * FROM serviceDetails(name=Data.unit) } AS details
+      FROM audit()
+      WHERE RecordType = "SERVICE_START"
+
+      SELECT
+        Timestamp, Sequence, Service, User,
+        details.pid AS PID,
+        details.process AS Process,
+        details.description AS Description,
+        details.state AS State
+      FROM serviceStartEvents
+
