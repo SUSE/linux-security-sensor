@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux
 
 package bpf
 
@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"syscall"
 
-	"golang.org/x/sys/unix"
 	libbpf "github.com/aquasecurity/libbpfgo"
+	"golang.org/x/sys/unix"
+	"www.velocidex.com/golang/velociraptor/logging"
 	"www.velocidex.com/golang/velociraptor/vql/linux/bpf"
 )
 
@@ -34,7 +35,9 @@ func initSocket(bpfFd int) (int, error) {
 	return fd, nil
 }
 
-func initBpf() (*libbpf.Module, int, error) {
+func initBpf(logger *logging.LogContext) (*libbpf.Module, int, error) {
+	bpf.SetLoggerCallback(logger)
+
 	bpfModule, err := bpf.LoadBpfModule("dnssnoop", bpfCode)
 	if err != nil {
 		return nil, -1, err
