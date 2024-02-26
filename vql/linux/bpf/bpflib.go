@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux
 
 package bpf
 
@@ -7,6 +7,11 @@ import (
 	"os"
 
 	libbpf "github.com/aquasecurity/libbpfgo"
+	"www.velocidex.com/golang/velociraptor/logging"
+)
+
+const (
+	enableDebug = false
 )
 
 func LoadBpfModule(name string, bpfCode []byte) (*libbpf.Module, error) {
@@ -75,4 +80,24 @@ func AttachKretprobe(bpfModule *libbpf.Module, progName string, attachFunc strin
 func OSBTFEnabled() bool {
        _, err := os.Stat("/sys/kernel/btf/vmlinux")
        return err == nil
+}
+
+func SetLoggerCallback(logger *logging.LogContext) {
+	libbpf.SetLoggerCbs(libbpf.Callbacks{
+		Log: func(level int, msg string) {
+			switch level {
+			case libbpf.LibbpfInfoLevel:
+				logger.Info("%s", msg)
+			case libbpf.LibbpfWarnLevel:
+				logger.Warn("%s", msg)
+			case libbpf.LibbpfDebugLevel:
+				logger.Debug("%s", msg)
+			}
+		},
+		LogFilters: []func(level int, msg string) bool{
+			func(level int, msg string) bool {
+				return level == libbpf.LibbpfDebugLevel && !enableDebug
+			},
+		},
+	})
 }
