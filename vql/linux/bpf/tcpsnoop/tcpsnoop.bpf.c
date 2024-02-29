@@ -14,9 +14,6 @@
 /* The maximum number of items in maps */
 #define MAX_ENTRIES 8192
 
-/* The maximum number of ports to filter */
-#define MAX_PORTS 64
-
 #define TASK_COMM_LEN 16
 
 #define OUT_CONNECTION 0
@@ -40,12 +37,6 @@ struct event {
 	__u8 direction;
 };
 
-SEC(".rodata")
-int filter_ports[MAX_PORTS];
-const volatile int filter_ports_len = 0;
-const volatile uid_t filter_uid = -1;
-const volatile pid_t filter_pid = 0;
-
 /* Define here, because there are conflicts with include files */
 #define AF_INET		2
 #define AF_INET6	10
@@ -64,48 +55,11 @@ struct {
 	__type(value, struct sock *);
 } sockets SEC(".maps");
 
-static __always_inline bool filter_port(__u16 port)
-{
-	int i;
-
-	if (filter_ports_len == 0)
-		return false;
-
-	for (i = 0; i < filter_ports_len; i++) {
-		if (port == filter_ports[i])
-			return false;
-	}
-	return true;
-}
-
-static __always_inline bool filter_uid_pid(u32 pid)
-{
-	__u32 uid;
-
-	if (filter_pid && pid != filter_pid)
-		return true;
-
-	uid = bpf_get_current_uid_gid();
-	if (filter_uid != (uid_t) - 1 && uid != filter_uid)
-		return true;
-
-	return false;
-}
-
 static __always_inline int
 enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
-	__u32 uid;
-
-	if (filter_pid && pid != filter_pid)
-		return 0;
-
-	uid = bpf_get_current_uid_gid();
-	if (filter_uid != (uid_t) - 1 && uid != filter_uid)
-		return 0;
 
 	bpf_map_update_elem(&sockets, &tid, &sk, 0);
 	return 0;
@@ -132,8 +86,6 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	sk = *skpp;
 
 	lport = BPF_CORE_READ(sk, __sk_common.skc_num);
-	if (filter_port(lport) || filter_uid_pid(pid))
-		return 0;
 
 	rport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 	event.pid = pid;
@@ -179,8 +131,6 @@ static __always_inline int bpf__inet_csk_accept(struct pt_regs *ctx, int ret)
 		return 0;
 
 	lport = BPF_CORE_READ(sk, __sk_common.skc_num);
-	if (filter_port(lport) || filter_uid_pid(pid))
-		return 0;
 
 	rport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
