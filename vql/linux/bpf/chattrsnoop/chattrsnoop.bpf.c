@@ -56,7 +56,7 @@ process_dentry(struct buf_t *string_p, int buf_off, struct dentry *dentry)
 
 	if (sz > 1) {
 		buf_off -= 1;	// remove null byte termination with slash sign
-		bpf_probe_read(&(string_p->buf[IDX(buf_off)]), 1, &slash);
+		bpf_probe_read_kernel(&(string_p->buf[IDX(buf_off)]), 1, &slash);
 		buf_off -= sz - 1;
 	} else {
 		// If sz is 0 or 1 we have an error (path can't be null nor an empty string)
@@ -109,10 +109,10 @@ get_path_str(struct path *path, struct buf_t *string_p)
 
 	// Add leading slash
 	buf_off -= 1;
-	bpf_probe_read(&(string_p->buf[IDX(buf_off)]), 1, &slash);
+	bpf_probe_read_kernel(&(string_p->buf[IDX(buf_off)]), 1, &slash);
 	// Null terminate the path string, this replaces the final / with a null
 	// char
-	bpf_probe_read(&(string_p->buf[(MAX_PERCPU_BUFSIZE >> 1) - 1]), 1,
+	bpf_probe_read_kernel(&(string_p->buf[(MAX_PERCPU_BUFSIZE >> 1) - 1]), 1,
 		       &zero);
 
 	return buf_off;
