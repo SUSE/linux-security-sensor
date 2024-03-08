@@ -122,7 +122,7 @@ SEC("kprobe/do_vfs_ioctl")
 int BPF_KPROBE(trace_vfs_ioctl, struct file *filp, unsigned int fd,
 	       unsigned int cmd, unsigned long arg)
 {
-	unsigned long flags;
+	int flags;
 	struct inode *inode = BPF_CORE_READ(filp, f_inode);
 
 	if (cmd != FS_IOC_SETFLAGS)
