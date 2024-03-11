@@ -4,6 +4,7 @@ package bpf
 
 import (
 	_ "embed"
+	"encoding/binary"
 	"fmt"
 	"syscall"
 
@@ -18,7 +19,9 @@ import (
 var bpfCode []byte
 
 func htons(i uint16) uint16 {
-	return (i<<8)&0xff00 | i>>8
+	b := make([]byte, 2)
+	binary.BigEndian.PutUint16(b, i)
+	return binary.NativeEndian.Uint16(b)
 }
 
 func initSocket(bpfFd int) (int, error) {
