@@ -19,6 +19,7 @@ static inline int try_parse_l2packet(struct __sk_buff *skb)
 {
 	int offset = 0;
 	u16 protocol;
+	u8 ip_protocol;
 
 	if (bpf_skb_load_bytes
 	    (skb, offsetof(struct ethhdr, h_proto), &protocol, 2) < 0)
@@ -28,9 +29,8 @@ static inline int try_parse_l2packet(struct __sk_buff *skb)
 
 	switch (bpf_ntohs(protocol)) {
 	case ETH_P_IP:
-		protocol = 0;
 		if (bpf_skb_load_bytes
-		    (skb, offset + offsetof(struct iphdr, protocol), &protocol,
+		    (skb, offset + offsetof(struct iphdr, protocol), &ip_protocol,
 		     1) < 0)
 			 return -1;
 
@@ -38,9 +38,8 @@ static inline int try_parse_l2packet(struct __sk_buff *skb)
 
 		break;
 	case ETH_P_IPV6:
-		protocol = 0;
 		if (bpf_skb_load_bytes
-		    (skb, offset + offsetof(struct ipv6hdr, nexthdr), &protocol,
+		    (skb, offset + offsetof(struct ipv6hdr, nexthdr), &ip_protocol,
 		     1) < 0)
 			 return -1;
 
@@ -50,7 +49,7 @@ static inline int try_parse_l2packet(struct __sk_buff *skb)
 		return -1;
 	}
 
-	if (protocol != IPPROTO_UDP)
+	if (ip_protocol != IPPROTO_UDP)
 		return -1;
 
 	return offset;
