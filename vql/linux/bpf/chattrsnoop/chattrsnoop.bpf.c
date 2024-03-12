@@ -21,8 +21,6 @@ struct buf_t {
 	u8 buf[MAX_PERCPU_BUFSIZE];
 };
 
-static const char slash = '/';
-static const int zero = 0;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -45,6 +43,7 @@ process_dentry(struct buf_t *string_p, int buf_off, struct dentry *dentry)
 	struct qstr d_name = BPF_CORE_READ(dentry, d_name);
 	unsigned int len = (d_name.len + 1) & (PATH_MAX - 1);
 	unsigned int off = buf_off - len;
+	const char slash = '/';
 
 	// Is string buffer big enough for dentry name?
 	int sz = 0;
@@ -76,6 +75,8 @@ get_path_str(struct path *path, struct buf_t *string_p)
 	struct mount *mnt_parent_p = BPF_CORE_READ(mnt_p, mnt_parent);
 
 	int buf_off = (MAX_PERCPU_BUFSIZE >> 1);
+	const int zero = 0;
+	const char slash = '/';
 
 #pragma unroll
 	for (int i = 0; i < MAX_PATH_COMPONENTS; i++) {
@@ -124,6 +125,7 @@ int BPF_KPROBE(trace_vfs_ioctl, struct file *filp, unsigned int fd,
 {
 	int flags;
 	struct inode *inode = BPF_CORE_READ(filp, f_inode);
+	const int zero = 0;
 
 	if (cmd != FS_IOC_SETFLAGS)
 		return 0;
