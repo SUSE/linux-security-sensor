@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux
 
 package bpf
 
@@ -11,6 +11,9 @@ import (
 
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/velociraptor/acls"
+	"www.velocidex.com/golang/velociraptor/artifacts"
+	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
+	"www.velocidex.com/golang/velociraptor/logging"
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
@@ -53,8 +56,16 @@ func (self TcpsnoopPlugin) Call(
 			return
 		}
 
+		client_config_obj, ok := artifacts.GetConfig(scope)
+		if !ok {
+			scope.Log("tcpsnoop: unable to get config")
+			return
+		}
+		config_obj := &config_proto.Config{Client: client_config_obj}
+		logger := logging.GetLogger(config_obj, &logging.ClientComponent)
+
 		// Load bpf program and attach to tracepoints
-		bpf, err := initBpf()
+		bpf, err := initBpf(logger)
 		if err != nil {
 			scope.Log("tcpsnoop: %s", err)
 			return
