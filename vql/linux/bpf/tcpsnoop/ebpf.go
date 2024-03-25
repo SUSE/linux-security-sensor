@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux
 
 package bpf
 
@@ -6,7 +6,8 @@ import (
 	_ "embed"
 
 	libbpf "github.com/aquasecurity/libbpfgo"
-        "www.velocidex.com/golang/velociraptor/vql/linux/bpf"
+	"www.velocidex.com/golang/velociraptor/logging"
+	"www.velocidex.com/golang/velociraptor/vql/linux/bpf"
 )
 
 //go:generate make -C .. ${PWD}/tcpsnoop.bpf.o
@@ -32,7 +33,9 @@ type TcpsnoopEvent struct {
 	Dir   uint8
 }
 
-func initBpf() (*libbpf.Module, error) {
+func initBpf(logger *logging.LogContext) (*libbpf.Module, error) {
+	bpf.SetLoggerCallback(logger)
+
 	bpfModule, err := bpf.LoadBpfModule("tcpsnoop", bpfCode)
 	if err != nil {
 		return nil, err
