@@ -87,7 +87,7 @@ func (self TcpsnoopPlugin) Call(
 			var event TcpsnoopEvent
 
 			// Parses raw event from the ebpf map
-			err := binary.Read(bytes.NewBuffer(data), binary.LittleEndian, &event)
+			err := binary.Read(bytes.NewBuffer(data), binary.NativeEndian, &event)
 
 			// Now we make into a more userfriendly struct for sending to VRR
 			event2 := Event{
