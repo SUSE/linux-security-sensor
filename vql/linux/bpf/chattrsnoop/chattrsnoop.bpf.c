@@ -119,8 +119,8 @@ get_path_str(struct path *path, struct buf_t *string_p)
 	return buf_off;
 }
 
-SEC("kprobe/do_vfs_ioctl")
-int BPF_KPROBE(trace_vfs_ioctl, struct file *filp, unsigned int fd,
+SEC("kprobe/security_file_ioctl")
+int BPF_KPROBE(trace_security_file_ioctl, struct file *filp,
 	       unsigned int cmd, unsigned long arg)
 {
 	int flags;
