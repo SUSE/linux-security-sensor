@@ -138,7 +138,7 @@ int BPF_KPROBE(trace_security_file_ioctl, struct file *filp,
 			return 0;
 	}
 
-	if (bpf_probe_read_user(&flags, sizeof(unsigned long), (void *)arg) < 0)
+	if (bpf_probe_read_user(&flags, sizeof(int), (void *)arg) < 0)
 		return 0;
 
 	bool is_immutable = BPF_CORE_READ(inode, i_flags) & S_IMMUTABLE;
