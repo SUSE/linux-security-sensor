@@ -36,7 +36,7 @@ type TcpsnoopEvent struct {
 func initBpf(logger *logging.LogContext) (*libbpf.Module, error) {
 	bpf.SetLoggerCallback(logger)
 
-	bpfModule, err := bpf.LoadBpfModule("tcpsnoop", bpfCode)
+	bpfModule, err := bpf.LoadBpfModule("tcpsnoop", bpfCode, nil)
 	if err != nil {
 		return nil, err
 	}
