@@ -15,7 +15,7 @@ const (
 	enableDebug = false
 )
 
-func LoadBpfModule(name string, bpfCode []byte) (*libbpf.Module, error) {
+func LoadBpfModule(name string, bpfCode []byte, globals map[string]any) (*libbpf.Module, error) {
 	var bpfModule *libbpf.Module
 	var err error
 
@@ -39,6 +39,13 @@ func LoadBpfModule(name string, bpfCode []byte) (*libbpf.Module, error) {
 
 	if bpfModule, err = libbpf.NewModuleFromBufferArgs(moduleArgs); err != nil {
 		return nil, err
+	}
+
+	for name, value := range globals {
+		if err := bpfModule.InitGlobalVariable(name, value); err != nil {
+			bpfModule.Close()
+			return nil, err
+		}
 	}
 
 	if err = bpfModule.BPFLoadObject(); err != nil {
