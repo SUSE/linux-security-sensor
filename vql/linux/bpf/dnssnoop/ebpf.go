@@ -11,6 +11,7 @@ import (
 	libbpf "github.com/aquasecurity/libbpfgo"
 	"golang.org/x/sys/unix"
 	"www.velocidex.com/golang/velociraptor/logging"
+	"www.velocidex.com/golang/velociraptor/utils"
 	"www.velocidex.com/golang/velociraptor/vql/linux/bpf"
 )
 
@@ -21,7 +22,7 @@ var bpfCode []byte
 func htons(i uint16) uint16 {
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b, i)
-	return binary.NativeEndian.Uint16(b)
+	return utils.NativeEndian().Uint16(b)
 }
 
 func initSocket(bpfFd int) (int, error) {
