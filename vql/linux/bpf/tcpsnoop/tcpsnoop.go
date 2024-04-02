@@ -14,6 +14,7 @@ import (
 	"www.velocidex.com/golang/velociraptor/artifacts"
 	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
 	"www.velocidex.com/golang/velociraptor/logging"
+	"www.velocidex.com/golang/velociraptor/utils"
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
@@ -82,12 +83,13 @@ func (self TcpsnoopPlugin) Call(
 		}
 
 		perfBuffer.Start()
+		nativeEndian := utils.NativeEndian()
 
 		for data := range eventsChan {
 			var event TcpsnoopEvent
 
 			// Parses raw event from the ebpf map
-			err := binary.Read(bytes.NewBuffer(data), binary.NativeEndian, &event)
+			err := binary.Read(bytes.NewBuffer(data), nativeEndian, &event)
 
 			// Now we make into a more userfriendly struct for sending to VRR
 			event2 := Event{
