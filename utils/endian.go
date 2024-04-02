@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/binary"
 	"runtime"
 )
 
@@ -15,4 +16,11 @@ func init() {
 	default:
 		// nop
 	}
+}
+
+func NativeEndian() binary.ByteOrder {
+	if isBigEndian {
+		return binary.BigEndian
+	}
+	return binary.LittleEndian
 }
