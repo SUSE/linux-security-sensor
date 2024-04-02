@@ -33,6 +33,7 @@ sources:
         AND JOB_TYPE = "start"
         AND JOB_RESULT = "done"
         AND _PID = "1"
+        AND UNIT =~ "service$"
 
       SELECT
         Timestamp,
