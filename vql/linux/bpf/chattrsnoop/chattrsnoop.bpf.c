@@ -8,14 +8,14 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
-#define FS_IOC_SETFLAGS 0x40086602
-
 #define S_IMMUTABLE (1<<3)
 #define MAX_PERCPU_BUFSIZE (1<<15)
 #define PATH_MAX 4096
 #define MAX_PATH_COMPONENTS 20
 #define FS_IMMUTABLE_FL                 0x00000010
 #define IDX(x) ((x) & ((MAX_PERCPU_BUFSIZE>>1)-1))
+
+const volatile u32 FS_IOC_SETFLAGS;
 
 struct buf_t {
 	u8 buf[MAX_PERCPU_BUFSIZE];
@@ -119,8 +119,8 @@ get_path_str(struct path *path, struct buf_t *string_p)
 	return buf_off;
 }
 
-SEC("kprobe/do_vfs_ioctl")
-int BPF_KPROBE(trace_vfs_ioctl, struct file *filp, unsigned int fd,
+SEC("kprobe/security_file_ioctl")
+int BPF_KPROBE(trace_security_file_ioctl, struct file *filp,
 	       unsigned int cmd, unsigned long arg)
 {
 	int flags;
@@ -138,7 +138,7 @@ int BPF_KPROBE(trace_vfs_ioctl, struct file *filp, unsigned int fd,
 			return 0;
 	}
 
-	if (bpf_probe_read_user(&flags, sizeof(unsigned long), (void *)arg) < 0)
+	if (bpf_probe_read_user(&flags, sizeof(int), (void *)arg) < 0)
 		return 0;
 
 	bool is_immutable = BPF_CORE_READ(inode, i_flags) & S_IMMUTABLE;

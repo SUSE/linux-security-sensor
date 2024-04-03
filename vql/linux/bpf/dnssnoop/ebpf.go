@@ -42,7 +42,7 @@ func initSocket(bpfFd int) (int, error) {
 func initBpf(logger *logging.LogContext) (*libbpf.Module, int, error) {
 	bpf.SetLoggerCallback(logger)
 
-	bpfModule, err := bpf.LoadBpfModule("dnssnoop", bpfCode)
+	bpfModule, err := bpf.LoadBpfModule("dnssnoop", bpfCode, nil)
 	if err != nil {
 		return nil, -1, err
 	}

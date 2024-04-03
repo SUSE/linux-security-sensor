@@ -2,6 +2,11 @@
 
 package bpf
 
+/*
+#include <linux/fs.h>
+*/
+import "C"
+
 import (
 	_ "embed"
 
@@ -17,12 +22,15 @@ var bpfCode []byte
 func initBpf(logger *logging.LogContext) (*libbpf.Module, error) {
 	bpf.SetLoggerCallback(logger)
 
-	bpfModule, err := bpf.LoadBpfModule("chattrsnoop", bpfCode)
+	var globals = map[string]any{
+		"FS_IOC_SETFLAGS": uint32(C.FS_IOC_SETFLAGS),
+	}
+	bpfModule, err := bpf.LoadBpfModule("chattrsnoop", bpfCode, globals)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = bpf.AttachKprobe(bpfModule, "trace_vfs_ioctl", "do_vfs_ioctl"); err != nil {
+	if err = bpf.AttachKprobe(bpfModule, "trace_security_file_ioctl", "security_file_ioctl"); err != nil {
 		bpfModule.Close()
 		return nil, err
 	}
