@@ -8,8 +8,8 @@ type Refcount struct {
 	count atomic.Int32
 }
 
-func NewRefcount() Refcount {
-	ref := Refcount{}
+func NewRefcount() *Refcount {
+	ref := &Refcount{}
 	ref.count.Store(1)
 
 	return ref
@@ -36,4 +36,8 @@ func (self *Refcount) Put() bool {
 		return true
 	}
 	return false
+}
+
+func (self *Refcount) Reset() {
+	self.count.Store(1)
 }
