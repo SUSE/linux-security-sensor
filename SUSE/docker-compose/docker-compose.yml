@@ -31,10 +31,10 @@ services:
       - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
     restart: unless-stopped
   sensor-frontend:
-    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    image: ${SENSOR_IMAGE}
     hostname: sensor-frontend
     container_name: sensor-frontend
-    user: "1000:100"
+    user: "velociraptor:velociraptor"
     ports:
       - "8000:8000" # Frontend
       # - "8003:8003" # Monitoring
@@ -44,6 +44,7 @@ services:
       - ./config/velociraptor:/config
       - ./data/velociraptor:/data
       - ./logs/velociraptor:/logs
+      - ./artifacts:/artifacts
       - /var/lib/ca-certificates/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
     labels:
       traefik.enable: "true"
@@ -61,7 +62,7 @@ services:
     restart:
       unless-stopped
   sensor-client:
-    image: registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest
+    image: ${SENSOR_IMAGE}
     hostname: sensor-client
     container_name: sensor-client
     user: root

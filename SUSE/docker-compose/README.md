@@ -95,6 +95,13 @@ The initial user must be an email address associated with a valid remote account
 
 When configuring the authentication service, the callback URI should be the same as `public_url` above but with `/auth/oidc/callback` appended. For example, `https://sensor-demo.dyn.cloud.suse.de/auth/oidc/callback`
 
+The sensor frontend runs as user velociraptor in the container and needs permissions to some directories on the host. Find the ids that are baked into the image and chown the directories to those, e.g.:
+
+    # docker run --rm -t registry.opensuse.org/security/sensor/containers/linux-security-sensor:latest id velociraptor
+    uid=499(velociraptor) gid=486(velociraptor) groups=486(velociraptor)
+
+    # chown 499:486 config/velociraptor logs/velociraptor data/velociraptor artifacts
+
 ### Traefik
 
 An example `traefik.toml` file is provided as `config/traefik/traefik.toml.example`. Several values must be filled in and the resultant file installed in `config/traefik/traefik.toml`.

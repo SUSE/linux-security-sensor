@@ -1,8 +1,11 @@
 FROM opensuse/leap:15.4
 
+ARG SENSOR_BIN=velociraptor-v0.7.0-4-linux-amd64
+
 VOLUME /data
 VOLUME /logs
 VOLUME /config
+VOLUME /artifacts
 
 # API
 EXPOSE 8801
@@ -20,6 +23,9 @@ COPY entry-point.sh generate-config.sh /
 COPY init-config.json /etc/velociraptor/
 RUN chmod a+x /entry-point.sh /generate-config.sh
 RUN zypper -q --non-interactive install catatonit && zypper clean -a
-COPY velociraptor-v0.6.4-2-linux-amd64 /usr/bin/velociraptor
+COPY ${SENSOR_BIN} /usr/bin/velociraptor
+
+RUN groupadd velociraptor && useradd -c "Velociraptor User" -g velociraptor -d /var/lib/velociraptor -s /sbin/nologin velociraptor
+USER velociraptor:velociraptor
 
 CMD ["/usr/bin/catatonit", "--", "/entry-point.sh" ]
