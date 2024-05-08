@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -401,8 +402,8 @@ func (self *HTTPConnector) advanceToNextServer(ctx context.Context) {
 		wait := self.maxPoll + time.Duration(
 			GetRand()(int(self.maxPollDev)))*time.Second
 
-		self.logger.Info(
-			"Waiting for a reachable server: %v", wait)
+		fmt.Fprintf(os.Stderr,
+			"[INFO] Waiting for a reachable server: %v\n", wait)
 
 		// While we wait to reconnect we need to update the nanny or
 		// we get killed.
@@ -489,7 +490,7 @@ func (self *HTTPConnector) rekeyNextServer(ctx context.Context) error {
 	}
 
 	if err != nil {
-		self.logger.Error("While getting %v: %v", url, err)
+		fmt.Fprintf(os.Stderr, "[INFO] While getting %v: %v\n", url, err)
 		if strings.Contains(err.Error(), "cannot validate certificate") {
 			self.logger.Info("If you intend to connect to a self signed " +
 				"VelociraptorServer, make sure Client.use_self_signed_ssl " +
@@ -533,6 +534,7 @@ func (self *HTTPConnector) rekeyNextServer(ctx context.Context) error {
 
 	self.server_name = server_name
 	self.logger.Info("Received PEM for %v from %v", self.server_name, url)
+	fmt.Fprintf(os.Stderr, "[INFO] Connected to %v\n", url)
 
 	return nil
 }
