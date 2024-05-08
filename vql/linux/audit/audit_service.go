@@ -254,7 +254,7 @@ func (self *auditService) runService() error {
 
 	options := api.QueueOptions{
 		DisableFileBuffering: false,
-		FileBufferLeaseSize:  4096,
+		FileBufferLeaseSize:  64,
 		OwnerName:            "audit-plugin",
 	}
 
