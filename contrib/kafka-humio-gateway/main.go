@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/go-yaml/yaml"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 var (
