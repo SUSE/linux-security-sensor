@@ -1,0 +1,86 @@
+name: Kafka.Events.Clients
+description: |
+  This server monitoring artifact will watch a selection of client
+  monitoring artifacts for new events and push those to a kafka topic.
+
+  NOTE: You must ensure you are collecting these artifacts from the
+  clients by adding them to the "Client Events" GUI.
+
+type: SERVER_EVENT
+
+parameters:
+  - name: kafkaBrokerAddresses
+    description: Comma-separated list of host:port pairs for Kafka Brokers
+    default: 127.0.0.1:9092
+    type: string
+      #  - name: Username
+      #  - name: Password
+      #  - name: Apikey
+  - name: kafkaTopic
+    description: Topic that will receive generated messages
+    type: string
+    default: velociraptor-events
+  - name: keyField
+    description: Field to use as key in Kafka message
+    default: ""
+    type: string
+  - name: tagFields
+    description: Comma-separated list of field names to use as tags in the message; Can be renamed with <oldname>=<newname>.
+    default:
+    type: string
+  - name: numThreads
+    description: Number of threads to start up for consuming Events
+    type: int
+    default: 1
+  - name: partitionNumber
+    description: Which partition to use to send messages
+    type: int
+    default: -1
+  - name: WindowsDetectionPsexecService
+    description: Publish Windows.Detection.PsexecService to Kafka
+    type: bool
+  - name: WindowsEventsDNSQueries
+    description: Publish Windows.Events.DNSQueries to Kafka
+    type: bool
+  - name: WindowsEventsProcessCreation
+    description: Publish Windows.Events.ProcessCreation to Kafka
+    type: bool
+  - name: WindowsEventsServiceCreation
+    description: Publish Windows.Events.ServiceCreation to Kafka
+    type: bool
+  - name: kafkaBrokerAddresses
+    default: 127.0.0.1:9092
+      #  - name: Username
+      #  - name: Password
+      #  - name: Apikey
+  - name: artifactParameterMap
+    type: hidden
+    default: |
+      Artifact,Parameter
+      Windows.Detection.PsexecService,WindowsDetectionPsexecService
+      Windows.Events.DNSQueries,WindowsEventsDNSQueries
+      Windows.Events.ProcessCreation,WindowsEventsProcessCreation
+      Windows.Events.ServiceCreation,WindowsEventsServiceCreation
+
+sources:
+  - query: |
+      LET artifacts_to_watch = SELECT Artifact FROM parse_csv(
+             filename=artifactParameterMap, accessor='data')
+        WHERE get(item=scope(), member=Parameter) AND log(
+          message="Publishing artifact " + Artifact + " to Kafka")
+
+      LET events = SELECT * FROM foreach(
+          row=artifacts_to_watch,
+          async=TRUE,   // Required for event queries in foreach()
+          query={
+             SELECT *, Artifact, timestamp(epoch=now()) AS timestamp
+             FROM watch_monitoring(artifact=Artifact)
+          })
+
+      SELECT * FROM kafka_producer(
+          query=events,
+          addresses=split(string=kafkaBrokerAddresses, sep=","),
+          key_field=keyField,
+          tag_fields=split(string=tagFields, sep=","),
+          partition=partitionNumber,
+          topic=kafkaTopic)
