@@ -8,6 +8,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -32,6 +34,11 @@ var (
 	defaultConsumerGroup = "velociraptor-consumer"
 	defaultEventBatchSize = 500
 	defaultBatchingTimeoutMs = 3000
+	certFile string
+	keyFile string
+	caFile string
+	tlsSkipVerify bool
+	useTLS bool
 )
 
 type TransportConfig struct {
@@ -51,8 +58,12 @@ type TransportConfig struct {
 func init() {
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
-	flag.StringVar(&configFile, "config", "config.yml",
-		       "Path to YaML file containing configuration")
+	flag.StringVar(&configFile, "config", "config.yml", "Path to YaML file containing configuration")
+	flag.StringVar(&certFile, "cert", "", "Optional certificate file for kafka client authentication")
+	flag.StringVar(&keyFile, "key", "", "Optional key file for kafka client authentication")
+	flag.StringVar(&caFile, "cacert", "", "Optional certificate authority file for kafka client authentication")
+	flag.BoolVar(&tlsSkipVerify, "tls-skip-verify", false, "Whether to skip TLS server cert verification with kafka")
+	flag.BoolVar(&useTLS, "use-tls", false, "Use TLS to communicate with the kafka cluster")
 }
 
 func saramaBackoff(retries, maxRetries int) time.Duration {
@@ -65,6 +76,36 @@ func saramaBackoff(retries, maxRetries int) time.Duration {
 	}
 
 	return time.Duration(seconds) * time.Second
+}
+
+func createTLSConfiguration() (t *tls.Config) {
+	t = &tls.Config{
+		InsecureSkipVerify: tlsSkipVerify,
+	}
+
+	if certFile != "" && keyFile != "" && caFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		caCert, err := os.ReadFile(caFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			log.Fatal("failed to append cacert to pool")
+		}
+
+		t = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			RootCAs:            caCertPool,
+			InsecureSkipVerify: tlsSkipVerify,
+		}
+	}
+	return t
 }
 
 func main() {
@@ -142,6 +183,11 @@ func main() {
 	saramaConfig.Metadata.Retry.BackoffFunc = saramaBackoff
 	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs + 500) * time.Millisecond
 	saramaConfig.Consumer.MaxProcessingTime = maxTime
+
+	if useTLS {
+		saramaConfig.Net.TLS.Enable = true
+		saramaConfig.Net.TLS.Config = createTLSConfiguration()
+	}
 
 	client, err := sarama.NewConsumerGroup(consumer.config.Kafka.Brokers,
 					       consumer.config.Kafka.ConsumerGroup, saramaConfig)
