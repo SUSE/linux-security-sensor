@@ -47,6 +47,13 @@ This is the same container as the frontend but started in client mode.  This is 
 
 The `traefik`container is used to implement a TLS reverse proxy capable of obtaining its own certificates via the ACME protocol.
 
+### Kafka cluster
+
+This is optional and for use in environments where the `logscale_upload` plugin can't communicate with the Logscale server. Instead the `kafka_producer` plugin is used to forward events to Kafka, and the `kafka-humio-gateway` is used to pull the events from Kafka and forward them to Logscale.
+
+Certificates for mTLS must be generated before starting Kafka for the first time - see below.
+
+
 ## Configuration
 
 ### Example files
@@ -107,9 +114,21 @@ An example `traefik.toml` file is provided as `config/traefik/traefik.toml.examp
 
 If the CA you configure is not otherwise connected to a public chain of trust, the root certificate for the CA must be added to the system's certificate store first. Otherwise, registration will fail with an untrusted certificate error.
 
+### Kafka
+
+If Kafka is to be used, in `.env` set `COMPOSE_PROFILES=kafka` and set `KAFKA_0_FQDN`, `KAFKA_1_FQDN` and `KAFKA_2_FQDN`. These are the fully qualified domain names that `kafka-humio-gateway` will use to communicate with the Kafka cluster using mTLS. These names should resolve to the IP address of the host running docker-compose, by using DNS CNAMEs or other means. Also set `KAFKA_PASSWORD`.
+
+The script to generate the certificates requires the Java `keytool` program which is in the kafka container image
+
+    cd SUSE/docker-compose/
+    chown 1001 kafka-certs
+    docker run --rm -it -v $PWD/.env:/.env:ro -v $PWD/kafka-certs:/work -w /work bitnami/kafka:3.7.0 /work/generate.sh
+
+This will create the keys and certificates needed for the Kafka cluster to start. Copy the files in `kafka-certs/pem/` to the machine running `kafka-humio-gateway`.
+
 ## Startup
 
-Once these steps are completed, a simple `docker-compose up` will start up the application.
+Once these steps are completed, a simple `docker-compose up -d` will start up the application.
 
 ## Application Configuration
 
@@ -176,6 +195,61 @@ The following parameters must be used:
 - `tagFields` -> `Artifact`
 
 - `ArtifactNameRegex` -> `.`
+
+### `Kafka.Events.Clients`
+This artifact is responsible for listening to _all_ of the incoming events to the Velociraptor server and forwarding events from the selected artifacts to the Kafka cluster.
+The following parameters must be used:
+
+- `kafkaBrokerAddresses` -> `kafka-0:9092,kafka-1:9092,kafka-2:9092`
+
+- `kafkaTopics` -> `velociraptor-events`
+
+- `tagFields` -> `Artifact`
+
+Then select the required artifacts to forward to Kafka. These parameters may be updated at any time. When a new artifact is added to the system, it will not be forwarded automatically until it is added to the list of artifacts to forward.
+
+A good starting set would be:
+- `Generic.Client.Stats`
+
+- `Linux.Events.ExecutableFiles`
+
+- `Linux.Events.NewFiles`
+
+- `Linux.Events.ProcessExecutions`
+
+- `Linux.Events.ProcessStatuses`
+
+- `Linux.Events.UserAccount`
+
+- `Server.Monitor.Shell`
+
+- `SUSE.Linux.Events.Crontab/Connections`
+
+- `SUSE.Linux.Events.DNS/Connections`
+
+- `SUSE.Linux.Events.ImmutableFile/Connections`
+
+- `SUSE.Linux.Events.SSHLogin`
+
+- `SUSE.Linux.Events.Tcp/Connections`
+
+- `SUSE.Linux.Events.UserGroupMembershipUpdates`
+
+These artifacts may in turn need configuration, which will be described below.
+
+### `Kafka.Flows.Upload`
+This artifact is responsible for listening to all incoming flows to the Velociraptor server and forwarding them to the Kafka cluster.
+
+The following parameters must be used:
+
+- `kafkaBrokerAddresses` -> `kafka-0:9092,kafka-1:9092,kafka-2:9092`
+
+- `kafkaTopics` -> `velociraptor-events`
+
+- `tagFields` -> `Artifact`
+
+- `ArtifactNameRegex` -> `.`
+
 
 #### `Server.Monitor.Shell`
 This artifact is responsible for logging the output of remote shell sessions and is an important component of the audit trail.  There is no configuration required.

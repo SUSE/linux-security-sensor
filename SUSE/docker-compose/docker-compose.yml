@@ -4,6 +4,9 @@ version: '3'
 volumes:
   traefik-certs:
   client-data:
+  kafka-0-data:
+  kafka-1-data:
+  kafka-2-data:
 
 services:
   traefik:
@@ -35,6 +38,10 @@ services:
     hostname: sensor-frontend
     container_name: sensor-frontend
     user: "1000:100"
+    depends_on:
+      - kafka-0
+      - kafka-1
+      - kafka-2
     ports:
       - "8000:8000" # Frontend
       # - "8003:8003" # Monitoring
@@ -71,6 +78,105 @@ services:
     volumes:
       - ./config/velociraptor:/config:ro
       - client-data:/var/lib/velociraptor-client
+    restart:
+      unless-stopped
+
+  kafka-0:
+    image: bitnami/kafka:3.7.0
+    profiles: [kafka]
+    hostname: kafka-0
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,SSL://0.0.0.0:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-0:9092,SSL://${KAFKA_0_FQDN}:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_INITIAL_BROKER_REGISTRATION_TIMEOUT_MS=120000
+      - KAFKA_CFG_SSL_CLIENT_AUTH=required
+      - KAFKA_CFG_SSL_TRUSTSTORE_LOCATION=/opt/bitnami/kafka/config/certs/kafka.truststore.jks
+      - KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_SSL_KEYSTORE_LOCATION=/opt/bitnami/kafka/config/certs/kafka.keystore.jks
+      - KAFKA_CFG_SSL_KEYSTORE_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_SSL_KEY_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+    ports:
+      - "9094:9094"
+    volumes:
+      - kafka-0-data:/bitnami/kafka
+      - ./kafka-certs/keystore/${KAFKA_0_FQDN}.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro
+      - ./kafka-certs/truststore/kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro
+    restart:
+      unless-stopped
+
+  kafka-1:
+    image: bitnami/kafka:3.7.0
+    profiles: [kafka]
+    hostname: kafka-1
+    environment:
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,SSL://0.0.0.0:9095
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092,SSL://${KAFKA_1_FQDN}:9095
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_INITIAL_BROKER_REGISTRATION_TIMEOUT_MS=120000
+      - KAFKA_CFG_SSL_CLIENT_AUTH=required
+      - KAFKA_CFG_SSL_TRUSTSTORE_LOCATION=/opt/bitnami/kafka/config/certs/kafka.truststore.jks
+      - KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_SSL_KEYSTORE_LOCATION=/opt/bitnami/kafka/config/certs/kafka.keystore.jks
+      - KAFKA_CFG_SSL_KEYSTORE_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_SSL_KEY_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+    ports:
+      - "9095:9095"
+    volumes:
+      - kafka-1-data:/bitnami/kafka
+      - ./kafka-certs/keystore/${KAFKA_1_FQDN}.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro
+      - ./kafka-certs/truststore/kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro
+    restart:
+      unless-stopped
+
+  kafka-2:
+    image: bitnami/kafka:3.7.0
+    profiles: [kafka]
+    hostname: kafka-2
+    environment:
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,SSL://0.0.0.0:9096
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092,SSL://${KAFKA_2_FQDN}:9096
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_INITIAL_BROKER_REGISTRATION_TIMEOUT_MS=120000
+      - KAFKA_CFG_SSL_CLIENT_AUTH=required
+      - KAFKA_CFG_SSL_TRUSTSTORE_LOCATION=/opt/bitnami/kafka/config/certs/kafka.truststore.jks
+      - KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_SSL_KEYSTORE_LOCATION=/opt/bitnami/kafka/config/certs/kafka.keystore.jks
+      - KAFKA_CFG_SSL_KEYSTORE_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_SSL_KEY_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+    ports:
+      - "9096:9096"
+    volumes:
+      - kafka-2-data:/bitnami/kafka
+      - ./kafka-certs/keystore/${KAFKA_2_FQDN}.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro
+      - ./kafka-certs/truststore/kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro
     restart:
       unless-stopped
 
