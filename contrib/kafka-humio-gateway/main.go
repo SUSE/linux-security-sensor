@@ -383,7 +383,10 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 			}
 		case message, ok := <-eventChannel:
 			if !ok {
-				break
+				if debug {
+					log.Printf("sendEvents exiting")
+				}
+				return
 			}
 
 			postData = append(postData, message.Payload)
@@ -409,9 +412,6 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 			eventCount = 0
 			ticker.Reset(tickerTimeout)
 		}
-	}
-	if debug {
-		log.Printf("sendEvents exiting")
 	}
 }
 
