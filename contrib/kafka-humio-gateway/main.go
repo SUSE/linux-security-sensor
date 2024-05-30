@@ -28,30 +28,30 @@ import (
 )
 
 var (
-	debug = false
-	verbose  = false
-	configFile string
-	defaultConsumerGroup = "velociraptor-consumer"
-	defaultEventBatchSize = 500
+	debug                    = false
+	verbose                  = false
+	configFile               string
+	defaultConsumerGroup     = "velociraptor-consumer"
+	defaultEventBatchSize    = 500
 	defaultBatchingTimeoutMs = 3000
-	certFile string
-	keyFile string
-	caFile string
-	tlsSkipVerify bool
-	useTLS bool
+	certFile                 string
+	keyFile                  string
+	caFile                   string
+	tlsSkipVerify            bool
+	useTLS                   bool
 )
 
 type TransportConfig struct {
 	Kafka struct {
-		Brokers []string
-		Topics []string
+		Brokers       []string
+		Topics        []string
 		ConsumerGroup string `yaml:"consumer_group"`
 	}
 	Humio struct {
-		EndpointUrl string `yaml:"endpoint_url"`
-		IngestToken string `yaml:"ingest_token"`
-		BatchingTimeoutMs int `yaml:"batching_timeout_ms"`
-		EventBatchSize int  `yaml:"event_batch_size"`
+		EndpointUrl       string `yaml:"endpoint_url"`
+		IngestToken       string `yaml:"ingest_token"`
+		BatchingTimeoutMs int    `yaml:"batching_timeout_ms"`
+		EventBatchSize    int    `yaml:"event_batch_size"`
 	}
 }
 
@@ -119,7 +119,7 @@ func main() {
 	body, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatalf("error: could not open config file `%s': %s",
-			   configFile, err)
+			configFile, err)
 	}
 
 	consumer := Consumer{
@@ -129,7 +129,7 @@ func main() {
 	err = yaml.Unmarshal(body, &consumer.config)
 	if err != nil {
 		log.Fatalf("error: could not parse config file `%s': %s",
-			   configFile, err)
+			configFile, err)
 	}
 
 	if len(consumer.config.Kafka.Brokers) == 0 {
@@ -143,7 +143,7 @@ func main() {
 	if consumer.config.Kafka.ConsumerGroup == "" {
 		consumer.config.Kafka.ConsumerGroup = defaultConsumerGroup
 		log.Printf("warning: config missing `kafka.consumer_group'.  Using default `%s'",
-			   consumer.config.Kafka.ConsumerGroup)
+			consumer.config.Kafka.ConsumerGroup)
 	}
 
 	if consumer.config.Humio.EndpointUrl == "" {
@@ -161,7 +161,7 @@ func main() {
 	_, err = url.ParseRequestURI(consumer.config.Humio.EndpointUrl)
 	if err != nil {
 		log.Fatalf("Humio Endpoint Url `%s' is not valid: %v",
-			   consumer.config.Humio.EndpointUrl, err)
+			consumer.config.Humio.EndpointUrl, err)
 	}
 
 	if consumer.config.Humio.IngestToken == "" {
@@ -181,7 +181,7 @@ func main() {
 	saramaConfig.ClientID = "Kafka-Humio-Gateway"
 	saramaConfig.Metadata.Retry.Max = 15
 	saramaConfig.Metadata.Retry.BackoffFunc = saramaBackoff
-	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs + 500) * time.Millisecond
+	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs+500) * time.Millisecond
 	saramaConfig.Consumer.MaxProcessingTime = maxTime
 
 	if useTLS {
@@ -190,7 +190,7 @@ func main() {
 	}
 
 	client, err := sarama.NewConsumerGroup(consumer.config.Kafka.Brokers,
-					       consumer.config.Kafka.ConsumerGroup, saramaConfig)
+		consumer.config.Kafka.ConsumerGroup, saramaConfig)
 	if err != nil {
 		log.Panicf("Error creating consumer group client: %v", err)
 	}
@@ -250,10 +250,10 @@ func main() {
 
 // Consumer represents a Sarama consumer group consumer
 type Consumer struct {
-	setupOnce	 sync.Once
-	readyWg		*sync.WaitGroup
-	httpClient	 http.Client
-	config		 TransportConfig
+	setupOnce  sync.Once
+	readyWg    *sync.WaitGroup
+	httpClient http.Client
+	config     TransportConfig
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -269,44 +269,44 @@ func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 
 // VRRKafkaMessage RowData can be string or int. We don't care which. We just pass it through.
 type VRRKafkaMessage struct {
-        Tags       map[string]interface{}    `json:"tags"`
-        RowData    map[string]interface{}    `json:"row_data"`
-        Version    int                       `json:"version"`
+	Tags    map[string]interface{} `json:"tags"`
+	RowData map[string]interface{} `json:"row_data"`
+	Version int                    `json:"version"`
 }
 
 type HumioEvent struct {
 	// Could be string or int.  We don't need to care which.
-        Timestamp interface{}               `json:"timestamp"`
-        Attributes  map[string]interface{}  `json:"attributes"`
-        Timezone string                     `json:"timezone,omitempty"`
+	Timestamp  interface{}            `json:"timestamp"`
+	Attributes map[string]interface{} `json:"attributes"`
+	Timezone   string                 `json:"timezone,omitempty"`
 }
 
 type HumioPayload struct {
-        Events []HumioEvent                 `json:"events"`
-        Tags map[string]interface{}         `json:"tags,omitempty"`
+	Events []HumioEvent           `json:"events"`
+	Tags   map[string]interface{} `json:"tags,omitempty"`
 }
 
 type HumioSubmission struct {
-	Payload	HumioPayload
-	Message	*sarama.ConsumerMessage
+	Payload HumioPayload
+	Message *sarama.ConsumerMessage
 }
 
 // Submits the formatted JSON to the Humio server as a set of events.  If the submission is
 // successful, the messages are marked cleared.
 func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSession, payload []byte,
-					      messages []*sarama.ConsumerMessage) error {
+	messages []*sarama.ConsumerMessage) error {
 	if debug {
 		log.Printf("POSTing data: [%s]", payload)
 	}
 
 	req, err := http.NewRequest("POST", consumer.config.Humio.EndpointUrl,
-				    bytes.NewReader(payload))
+		bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("Error creating new request: %v", err)
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s",
-						    consumer.config.Humio.IngestToken))
+		consumer.config.Humio.IngestToken))
 
 	resp, err := consumer.httpClient.Do(req)
 	if err != nil {
@@ -336,9 +336,9 @@ func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSessio
 }
 
 func (consumer *Consumer) postFormattedEventsAsync(session sarama.ConsumerGroupSession,
-						   payload []byte,
-						   messages []*sarama.ConsumerMessage,
-						   wg *sync.WaitGroup) {
+	payload []byte,
+	messages []*sarama.ConsumerMessage,
+	wg *sync.WaitGroup) {
 	defer wg.Done()
 	err := consumer.postFormattedEvents(session, payload, messages)
 	if err != nil {
@@ -348,8 +348,8 @@ func (consumer *Consumer) postFormattedEventsAsync(session sarama.ConsumerGroupS
 
 // Meant to be called as the sendEvents routine exits so that the queue is cleared.
 func (consumer *Consumer) postUnformattedEvents(session sarama.ConsumerGroupSession,
-						postData *[]HumioPayload,
-						messages []*sarama.ConsumerMessage) error {
+	postData *[]HumioPayload,
+	messages []*sarama.ConsumerMessage) error {
 
 	payload, err := json.Marshal(postData)
 	if err != nil {
@@ -365,7 +365,7 @@ func (consumer *Consumer) postUnformattedEvents(session sarama.ConsumerGroupSess
 // Ownership of the messages is passed to the submission goroutine and will
 // be cleared if the submission is successful.
 func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
-				     eventChannel chan HumioSubmission, wg *sync.WaitGroup) {
+	eventChannel chan HumioSubmission, wg *sync.WaitGroup) {
 
 	postData := []HumioPayload{}
 	messageQueue := make([]*sarama.ConsumerMessage, 0)
@@ -382,7 +382,7 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 		postEvents := false
 
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			if eventCount > 0 {
 				postEvents = true
 			}
@@ -422,7 +422,7 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
-				       claim sarama.ConsumerGroupClaim) error {
+	claim sarama.ConsumerGroupClaim) error {
 
 	// This WaitGroup tracks the sentEvents goroutine and any submitter goroutines it starts up
 	wg := sync.WaitGroup{}
@@ -439,7 +439,7 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 		var err error
 		if debug {
 			log.Printf("Received message Topic[%s] Key[%s] Value[%s] Timestamp[%v]",
-				   message.Topic, message.Key, message.Value, message.Timestamp)
+				message.Topic, message.Key, message.Value, message.Timestamp)
 		}
 
 		var values VRRKafkaMessage
@@ -468,10 +468,10 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 		}
 
 		payload := HumioPayload{
-			Events: []HumioEvent {
+			Events: []HumioEvent{
 				{
-					Timestamp: timestamp,
-					Timezone: timezone,
+					Timestamp:  timestamp,
+					Timezone:   timezone,
 					Attributes: values.RowData,
 				},
 			},
