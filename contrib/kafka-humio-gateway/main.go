@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -23,8 +23,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-yaml/yaml"
 	"github.com/IBM/sarama"
+	"github.com/go-yaml/yaml"
 )
 
 var (
@@ -254,7 +254,6 @@ type Consumer struct {
 	readyWg		*sync.WaitGroup
 	httpClient	 http.Client
 	config		 TransportConfig
-	eventChannel	 chan HumioPayload
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -268,7 +267,7 @@ func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// The Row data can be string or int.  We don't care which.  We just pass it through.
+// VRRKafkaMessage RowData can be string or int. We don't care which. We just pass it through.
 type VRRKafkaMessage struct {
         Tags       map[string]interface{}    `json:"tags"`
         RowData    map[string]interface{}    `json:"row_data"`
@@ -302,6 +301,9 @@ func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSessio
 
 	req, err := http.NewRequest("POST", consumer.config.Humio.EndpointUrl,
 				    bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("Error creating new request: %v", err)
+	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s",
 						    consumer.config.Humio.IngestToken))
@@ -311,7 +313,10 @@ func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSessio
 		return fmt.Errorf("Error while POSTing data: %v", err)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Error while reading response body: %v", err)
+	}
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -464,7 +469,7 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 		payload := HumioPayload{
 			Events: []HumioEvent {
-				HumioEvent{
+				{
 					Timestamp: timestamp,
 					Timezone: timezone,
 					Attributes: values.RowData,
