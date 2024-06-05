@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-yaml/yaml"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 var (
@@ -41,6 +43,9 @@ var (
 	caFile                   string
 	tlsSkipVerify            bool
 	useTLS                   bool
+	errMaxRetriesExceded     = errors.New("max retries exceeded")
+	errContextCancelOnRetry  = errors.New("context canceled while waiting for retry")
+	errNonRetryable          = errors.New("non retryable error")
 )
 
 type TransportConfig struct {
@@ -184,7 +189,14 @@ func main() {
 	log.Printf("Joining consumer group `%s'", consumer.config.Kafka.ConsumerGroup)
 	log.Printf("Will post events to Humio Endpoint `%s'", consumer.config.Humio.EndpointUrl)
 
-	consumer.httpClient = http.Client{Timeout: time.Duration(1) * time.Second}
+	consumer.httpClient = RetryableClient{
+		client:           &http.Client{Timeout: 60 * time.Second},
+		url:              consumer.config.Humio.EndpointUrl,
+		token:            consumer.config.Humio.IngestToken,
+		minRetryInterval: 1 * time.Second,
+		maxRetryInterval: 30 * time.Second,
+		maxRetries:       12,
+	}
 
 	if verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.LstdFlags)
@@ -265,7 +277,7 @@ func main() {
 type Consumer struct {
 	setupOnce  sync.Once
 	readyWg    *sync.WaitGroup
-	httpClient http.Client
+	httpClient RetryableClient
 	config     TransportConfig
 }
 
@@ -304,79 +316,15 @@ type HumioSubmission struct {
 	Message *sarama.ConsumerMessage
 }
 
-// Submits the formatted JSON to the Humio server as a set of events.  If the submission is
-// successful, the messages are marked cleared.
-func (consumer *Consumer) postFormattedEvents(session sarama.ConsumerGroupSession, payload []byte,
-	messages []*sarama.ConsumerMessage) error {
-	if debug {
-		log.Printf("POSTing data: [%s]", payload)
-	}
-
-	req, err := http.NewRequest("POST", consumer.config.Humio.EndpointUrl,
-		bytes.NewReader(payload))
-	if err != nil {
-		return fmt.Errorf("Error creating new request: %v", err)
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s",
-		consumer.config.Humio.IngestToken))
-
-	resp, err := consumer.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("Error while POSTing data: %v", err)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("Error while reading response body: %v", err)
-	}
-	resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// We didn't land it in Humio - let the message sit until we can get to it
-		return fmt.Errorf("Failed to POST data [%s]: %s", resp.Status, body)
-	}
-
-	if verbose {
-		log.Printf("POSTed successfully.  Clearing %d messages", len(messages))
-	}
-
-	for _, msg := range messages {
-		// Message has landed, clear it
-		session.MarkMessage(msg, "")
-	}
-	return nil
-}
-
-func (consumer *Consumer) postFormattedEventsAsync(session sarama.ConsumerGroupSession,
-	payload []byte,
-	messages []*sarama.ConsumerMessage,
-	wg *sync.WaitGroup) {
-	defer wg.Done()
-	err := consumer.postFormattedEvents(session, payload, messages)
-	if err != nil {
-		log.Printf("Failed to send event [%s]: %s", payload, err)
-	}
-}
-
-// Meant to be called as the sendEvents routine exits so that the queue is cleared.
-func (consumer *Consumer) postUnformattedEvents(session sarama.ConsumerGroupSession,
-	postData *[]HumioPayload,
-	messages []*sarama.ConsumerMessage) error {
-
-	payload, err := json.Marshal(postData)
-	if err != nil {
-		log.Printf("Failed to Marshal %v: %s", postData, err)
-	}
-
-	return consumer.postFormattedEvents(session, payload, messages)
-}
-
 // Queues events until we hit a timeout since last submission or a set
 // count of events.  Once the conditions are met, the entire queue is marshaled
-// as JSON and sent to be submitted asynchronously to the Humio server.
-// Ownership of the messages is passed to the submission goroutine and will
-// be cleared if the submission is successful.
+// as JSON and submitted synchronously to the Humio server.
+// The messages will only be marked/cleared after the submission is successful.
+// If the session ends (due to kafka rebalance or program shutdown) any messages
+// that have been claimed but not yet posted will be dropped and left on Kafka
+// for a future session to reclaim and retry posting them.
+// If posting fails after all retries then we exit with an error code, and the
+// messages will remain on Kafka for a future incarnation to retry them.
 func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 	eventChannel chan HumioSubmission, wg *sync.WaitGroup) {
 
@@ -388,7 +336,6 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 	ticker := time.NewTicker(tickerTimeout)
 
 	defer ticker.Stop()
-	defer consumer.postUnformattedEvents(session, &postData, messageQueue)
 	defer wg.Done()
 
 	for {
@@ -422,8 +369,19 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 				log.Printf("Failed to Marshal %v: %s", postData, err)
 			}
 
-			wg.Add(1)
-			go consumer.postFormattedEventsAsync(session, data, messageQueue, wg)
+			err = consumer.httpClient.postWithRetry(session.Context(), data)
+			if err != nil && session.Context().Err() != nil {
+				log.Printf("Session expired while posting to Humio. A future session will try the messages again.")
+				return
+			} else if err != nil {
+				log.Printf("Failed posting to Humio: %v", err)
+				os.Exit(1)
+			}
+
+			// the messages can be cleared as they were successfully posted to Humio
+			for _, message := range messageQueue {
+				session.MarkMessage(message, "")
+			}
 
 			postData = []HumioPayload{}
 			messageQueue = make([]*sarama.ConsumerMessage, 0)
@@ -437,7 +395,7 @@ func (consumer *Consumer) sendEvents(session sarama.ConsumerGroupSession,
 func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 	claim sarama.ConsumerGroupClaim) error {
 
-	// This WaitGroup tracks the sentEvents goroutine and any submitter goroutines it starts up
+	// This WaitGroup tracks the sendEvents goroutine
 	wg := sync.WaitGroup{}
 	eventChannel := make(chan HumioSubmission, 1)
 
@@ -498,4 +456,76 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession,
 	wg.Wait()
 
 	return nil
+}
+
+// RetryableClient sends http POST requests to Logscale/Humio
+type RetryableClient struct {
+	client           *http.Client
+	url              string
+	token            string
+	minRetryInterval time.Duration
+	maxRetryInterval time.Duration
+	maxRetries       int
+}
+
+func (rc RetryableClient) doPost(ctx context.Context, payload []byte) (*http.Response, error) {
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rc.url, bytes.NewReader(payload))
+	if err != nil {
+		log.Printf("NewRequestWithContext: %s", err)
+		return nil, err
+	}
+
+	req.Header.Add("User-Agent", "kakfa-humio-gateway")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", rc.token))
+
+	return rc.client.Do(req)
+}
+
+func (rc RetryableClient) postWithRetry(ctx context.Context, payload []byte) error {
+	retries := 0
+	for {
+		resp, err := rc.doPost(ctx, payload)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			if retries > 0 {
+				log.Printf("retry was successful")
+			}
+
+			return nil
+		}
+
+		if err != nil {
+			log.Printf("request failed: %v", err)
+		} else {
+			body := &bytes.Buffer{}
+			_, err = io.Copy(body, resp.Body)
+			if err != nil {
+				resp.Body.Close()
+				return fmt.Errorf("copy of response body failed: %v, %v", resp.Status, err)
+			}
+			log.Printf("request failed: %v, %s", resp.Status, body)
+			resp.Body.Close()
+		}
+
+		shouldRetry, _ := retryablehttp.ErrorPropagatedRetryPolicy(ctx, resp, err)
+		if shouldRetry {
+			retries += 1
+			if rc.maxRetries >= 0 && retries > rc.maxRetries {
+				return fmt.Errorf("%w: %w", errMaxRetriesExceded, err)
+			}
+
+			wait := retryablehttp.DefaultBackoff(rc.minRetryInterval, rc.maxRetryInterval, retries, resp)
+			log.Printf("failed to post. Will retry #%d in %v", retries, wait)
+			ticker := time.NewTicker(wait)
+			select {
+			case <-ctx.Done():
+				return errContextCancelOnRetry
+			case <-ticker.C:
+			}
+			continue
+		}
+
+		return fmt.Errorf("%w: %w", errNonRetryable, err)
+	}
 }
