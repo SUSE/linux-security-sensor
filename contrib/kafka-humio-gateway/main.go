@@ -16,6 +16,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ import (
 var (
 	debug                    = false
 	verbose                  = false
+	pprofPort                int
 	configFile               string
 	defaultConsumerGroup     = "velociraptor-consumer"
 	defaultEventBatchSize    = 500
@@ -58,6 +60,7 @@ type TransportConfig struct {
 func init() {
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
+	flag.IntVar(&pprofPort, "pprof-port", 0, "enable go pprof debugging on this port")
 	flag.StringVar(&configFile, "config", "config.yml", "Path to YaML file containing configuration")
 	flag.StringVar(&certFile, "cert", "", "Optional certificate file for kafka client authentication")
 	flag.StringVar(&keyFile, "key", "", "Optional key file for kafka client authentication")
@@ -120,6 +123,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("error: could not open config file `%s': %s",
 			configFile, err)
+	}
+
+	if pprofPort != 0 {
+		pprofBaseURL := fmt.Sprintf("localhost:%d", pprofPort)
+		log.Printf("pprof on: http://%s/debug/pprof/", pprofBaseURL)
+		go func() {
+			if err := http.ListenAndServe(pprofBaseURL, nil); err != nil {
+				log.Panicf("starting pprof server: %v", err)
+			}
+		}()
 	}
 
 	consumer := Consumer{
