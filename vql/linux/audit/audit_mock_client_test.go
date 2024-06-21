@@ -6,6 +6,7 @@ package audit
 import (
 	"errors"
 	"reflect"
+	"sync"
 	"syscall"
 
 	libaudit "github.com/elastic/go-libaudit/v2"
@@ -23,6 +24,7 @@ type mockCommandClient struct {
 	failGetStatus  bool
 	failSetEnabled bool
 	failClose      bool
+	mu             sync.Mutex
 }
 
 func newMockCommandClient() *mockCommandClient {
@@ -33,6 +35,8 @@ func newMockCommandClient() *mockCommandClient {
 }
 
 func (self *mockCommandClient) Open() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.opened {
 		return syscall.EBUSY
 	}
@@ -47,6 +51,8 @@ func (self *mockCommandClient) Open() error {
 }
 
 func (self *mockCommandClient) AddRule(rule []byte) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if !self.opened || self.failAddRule {
 		return syscall.ENOTCONN
 	}
@@ -61,6 +67,8 @@ func (self *mockCommandClient) AddRule(rule []byte) error {
 }
 
 func (self *mockCommandClient) DeleteRule(rule []byte) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if !self.opened || self.failDeleteRule {
 		return syscall.ENOTCONN
 	}
@@ -69,7 +77,7 @@ func (self *mockCommandClient) DeleteRule(rule []byte) error {
 
 	for _, currentRule := range self.rules {
 		if !found && len(rule) == len(currentRule) &&
-		   reflect.DeepEqual(currentRule, rule) {
+			reflect.DeepEqual(currentRule, rule) {
 			found = true
 			continue
 		}
@@ -84,6 +92,8 @@ func (self *mockCommandClient) DeleteRule(rule []byte) error {
 }
 
 func (self *mockCommandClient) GetRules() ([][]byte, error) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if !self.opened || self.failGetRules {
 		return nil, syscall.ENOTCONN
 	}
@@ -91,6 +101,8 @@ func (self *mockCommandClient) GetRules() ([][]byte, error) {
 }
 
 func (self *mockCommandClient) GetStatus() (*libaudit.AuditStatus, error) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if !self.opened || self.failGetStatus {
 		return nil, syscall.ENOTCONN
 	}
@@ -98,6 +110,8 @@ func (self *mockCommandClient) GetStatus() (*libaudit.AuditStatus, error) {
 }
 
 func (self *mockCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if !self.opened || self.failSetEnabled {
 		return syscall.ENOTCONN
 	}
@@ -110,6 +124,8 @@ func (self *mockCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) er
 }
 
 func (self *mockCommandClient) Close() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if !self.opened || self.failClose {
 		return syscall.ENOTCONN
 	}
