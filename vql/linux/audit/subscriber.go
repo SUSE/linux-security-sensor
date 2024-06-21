@@ -46,7 +46,9 @@ type subscriber struct {
 	logChannel   chan string
 	rules        map[string]*AuditRule
 	wait         sync.WaitGroup
-	subscribed   bool
+
+	mu         sync.Mutex
+	subscribed bool
 }
 
 func newSubscriber() *subscriber {
@@ -83,6 +85,9 @@ func (self *subscriber) addRules(rules []string) error {
 }
 
 func (self *subscriber) connect() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	if self.subscribed {
 		return errors.New("subscriber already connected")
 	}
@@ -95,10 +100,19 @@ func (self *subscriber) connect() error {
 }
 
 func (self *subscriber) disconnect() {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	if self.subscribed {
 		close(self.eventChannel)
 		close(self.logChannel)
 	}
 
 	self.subscribed = false
+}
+
+func (self *subscriber) isSubscribed() bool {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	return self.subscribed
 }
