@@ -986,7 +986,7 @@ func (self *auditService) Subscribe(rules []string) (AuditEventSubscriber, error
 
 func (self *auditService) Unsubscribe(auditSubscriber AuditEventSubscriber) {
 	subscriber := auditSubscriber.(*subscriber)
-	if !subscriber.subscribed {
+	if !subscriber.isSubscribed() {
 		return
 	}
 
