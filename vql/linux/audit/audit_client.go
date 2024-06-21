@@ -4,18 +4,22 @@ package audit
 
 import (
 	"fmt"
+	"sync"
 	"syscall"
 
 	libaudit "github.com/elastic/go-libaudit/v2"
 )
 
 type realCommandClient struct {
+	mu     sync.Mutex
 	client *libaudit.AuditClient
 }
 
 var clientNotOpenErr = fmt.Errorf("audit client is not open: %w", syscall.ENOTCONN)
 
 func (self *realCommandClient) Open() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client != nil {
 		return fmt.Errorf("client already open: %w", syscall.EBUSY)
 	}
@@ -28,6 +32,8 @@ func (self *realCommandClient) Open() error {
 }
 
 func (self *realCommandClient) AddRule(rule []byte) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client == nil {
 		return clientNotOpenErr
 	}
@@ -35,6 +41,8 @@ func (self *realCommandClient) AddRule(rule []byte) error {
 }
 
 func (self *realCommandClient) DeleteRule(rule []byte) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client == nil {
 		return clientNotOpenErr
 	}
@@ -42,6 +50,8 @@ func (self *realCommandClient) DeleteRule(rule []byte) error {
 }
 
 func (self *realCommandClient) GetRules() ([][]byte, error) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client == nil {
 		return nil, clientNotOpenErr
 	}
@@ -49,6 +59,8 @@ func (self *realCommandClient) GetRules() ([][]byte, error) {
 }
 
 func (self *realCommandClient) GetStatus() (*libaudit.AuditStatus, error) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client == nil {
 		return nil, clientNotOpenErr
 	}
@@ -56,6 +68,8 @@ func (self *realCommandClient) GetStatus() (*libaudit.AuditStatus, error) {
 }
 
 func (self *realCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client == nil {
 		return clientNotOpenErr
 	}
@@ -63,6 +77,8 @@ func (self *realCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) er
 }
 
 func (self *realCommandClient) Close() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	if self.client == nil {
 		return clientNotOpenErr
 	}
