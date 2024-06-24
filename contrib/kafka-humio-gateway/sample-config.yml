@@ -5,6 +5,11 @@ kafka:
     - velociraptor-events                                                        
     - velociraptor-artifacts                                                     
   consumer_group: velociraptor-consumer                                                             
+  use_tls: true
+  cert_path: /etc/kafka-humio-gateway/client-certificate.pem
+  key_path: /etc/kafka-humio-gateway/client-private-key.pem
+  ca_cert_path: /etc/kafka-humio-gateway/ca-root.pem
+  tls_skip_verify: false
 humio:                                                                           
   endpoint_url: https://cloud.community.humio.com:443/api/v1/ingest/humio-structured
   ingest_token: your-token

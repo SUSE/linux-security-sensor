@@ -38,11 +38,6 @@ var (
 	defaultConsumerGroup     = "velociraptor-consumer"
 	defaultEventBatchSize    = 500
 	defaultBatchingTimeoutMs = 3000
-	certFile                 string
-	keyFile                  string
-	caFile                   string
-	tlsSkipVerify            bool
-	useTLS                   bool
 	errMaxRetriesExceded     = errors.New("max retries exceeded")
 	errContextCancelOnRetry  = errors.New("context canceled while waiting for retry")
 	errNonRetryable          = errors.New("non retryable error")
@@ -53,6 +48,11 @@ type TransportConfig struct {
 		Brokers       []string
 		Topics        []string
 		ConsumerGroup string `yaml:"consumer_group"`
+		UseTLS        bool   `yaml:"use_tls"`
+		Cert          string `yaml:"cert_path"`
+		Key           string `yaml:"key_path"`
+		CACert        string `yaml:"ca_cert_path"`
+		TLSSkipVerify bool   `yaml:"tls_skip_verify"`
 	}
 	Humio struct {
 		EndpointUrl       string `yaml:"endpoint_url"`
@@ -67,11 +67,6 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.IntVar(&pprofPort, "pprof-port", 0, "enable go pprof debugging on this port")
 	flag.StringVar(&configFile, "config", "config.yml", "Path to YaML file containing configuration")
-	flag.StringVar(&certFile, "cert", "", "Optional certificate file for kafka client authentication")
-	flag.StringVar(&keyFile, "key", "", "Optional key file for kafka client authentication")
-	flag.StringVar(&caFile, "cacert", "", "Optional certificate authority file for kafka client authentication")
-	flag.BoolVar(&tlsSkipVerify, "tls-skip-verify", false, "Whether to skip TLS server cert verification with kafka")
-	flag.BoolVar(&useTLS, "use-tls", false, "Use TLS to communicate with the kafka cluster")
 }
 
 func saramaBackoff(retries, maxRetries int) time.Duration {
@@ -86,34 +81,32 @@ func saramaBackoff(retries, maxRetries int) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
-func createTLSConfiguration() (t *tls.Config) {
-	t = &tls.Config{
+func createTLSConfiguration(certFile, keyFile, caFile string, tlsSkipVerify bool) (t *tls.Config) {
+
+	if certFile == "" || keyFile == "" || caFile == "" {
+		log.Fatal("cert_path, key_path and ca_cert_path must be specified in config.yml")
+	}
+
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	caCert, err := os.ReadFile(caFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		log.Fatal("failed to append cacert to pool")
+	}
+
+	return &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		RootCAs:            caCertPool,
 		InsecureSkipVerify: tlsSkipVerify,
 	}
-
-	if certFile != "" && keyFile != "" && caFile != "" {
-		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		caCert, err := os.ReadFile(caFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			log.Fatal("failed to append cacert to pool")
-		}
-
-		t = &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			RootCAs:            caCertPool,
-			InsecureSkipVerify: tlsSkipVerify,
-		}
-	}
-	return t
 }
 
 func main() {
@@ -209,9 +202,10 @@ func main() {
 	maxTime := time.Duration(consumer.config.Humio.BatchingTimeoutMs+500) * time.Millisecond
 	saramaConfig.Consumer.MaxProcessingTime = maxTime
 
-	if useTLS {
+	if consumer.config.Kafka.UseTLS {
 		saramaConfig.Net.TLS.Enable = true
-		saramaConfig.Net.TLS.Config = createTLSConfiguration()
+		saramaConfig.Net.TLS.Config = createTLSConfiguration(consumer.config.Kafka.Cert,
+			consumer.config.Kafka.Key, consumer.config.Kafka.CACert, consumer.config.Kafka.TLSSkipVerify)
 	}
 
 	client, err := sarama.NewConsumerGroup(consumer.config.Kafka.Brokers,

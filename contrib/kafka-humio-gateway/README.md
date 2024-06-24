@@ -3,6 +3,13 @@ kafka-humio-gateway
 
 This project acts as a Kafka consumer and feeds events to a Humio ingestion endpoint.
 
+Running
+-------
+
+To run outside of the systemd unit:
+
+`kafka-humio-gateway -verbose -config config.yml`
+
 Configuration
 -------------
 
@@ -19,6 +26,12 @@ kafka:
     - event-named-in-plugin-parameters-2
     - ...
   consumer_group: unique-consumer-group-name
+  use_tls: true
+  cert_path: /etc/kafka-humio-gateway/client-certificate.pem
+  key_path: /etc/kafka-humio-gateway/client-private-key.pem
+  ca_cert_path: /etc/kafka-humio-gateway/ca-root.pem
+  tls_skip_verify: false
+
 humio:
   endpoint_url: https://cloud.community.humio.com:443/api/v1/ingest/humio-structured
   ingest_token: your-ingest-token
@@ -27,11 +40,14 @@ humio:
 
 ```
 
-Every field except `consumer_group`, `batching_timeout_ms`, and `event_batch_size` is required.
-These fields use the following defaults:
+The `consumer_group`, `batching_timeout_ms`, and `event_batch_size` fields are not
+required and have the following defaults:
 - `consumer_group: velociraptor-consumer`
 - `batching_timeout_ms: 3000`
 - `event_batch_size: 500`
+
+To enable mTLS, set `use_tls: true` and the paths for `cert_path`, `key_path` and
+`ca_cert_path`.
 
 Data Format
 -----------
