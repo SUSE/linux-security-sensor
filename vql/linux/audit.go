@@ -92,7 +92,11 @@ func (self AuditPlugin) Call(
 				// Convert the events to dicts so they can be accessed easier.
 				dict := vfilter.RowToDict(ctx, scope, event)
 				dict.SetCaseInsensitive()
-				output_chan <- dict
+				select {
+				case <-ctx.Done():
+				        return
+				case output_chan <- dict:
+				}
 			}
 		}
 	}()
