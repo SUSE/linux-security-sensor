@@ -26,6 +26,8 @@ package http_comms
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -121,6 +123,9 @@ func (self *Sender) PumpExecutorToRingBuffer(ctx context.Context) {
 				self.urgent_buffer.Enqueue(serialized_msg)
 
 			} else {
+				if msg.VQLResponse != nil {
+					self.LogResponse(msg.VQLResponse.JSONLResponse)
+				}
 				// NOTE: This is kind of a hack. We hold in
 				// memory a bunch of VeloMessage proto objects
 				// and we want to serialize them into a
@@ -164,6 +169,38 @@ func (self *Sender) PumpExecutorToRingBuffer(ctx context.Context) {
 				self.mu.Unlock()
 			}
 		}
+	}
+}
+
+// LogResponse logs the results of VQL queries to a daily json file.
+// Administrators who want to see what is being collected on their
+// endpoints can enable this by creating a directory named "uploads"
+// in the same directory as the local_buffer file.
+func (self *Sender) LogResponse(response string) {
+	ringBufferDir := filepath.Dir(getLocalBufferName(self.config_obj))
+	uploadsDir := filepath.Join(ringBufferDir, "uploads")
+	_, err := os.Stat(uploadsDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return
+		}
+		self.logger.Debug("LogResponse stat: %s", err)
+		return
+	}
+
+	name := time.Now().Format("2006-01-02") + ".json"
+	path := filepath.Join(uploadsDir, name)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.FileMode(0600))
+	if err != nil {
+		self.logger.Debug("LogResponse open: %v", err)
+		return
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(response)
+	if err != nil {
+		self.logger.Debug("LogResponse write: %v", err)
+		return
 	}
 }
 
