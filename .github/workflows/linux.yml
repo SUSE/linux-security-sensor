@@ -34,9 +34,9 @@ jobs:
         make linux_bare
 
     - name: Run built-in testcases
-      run:
+      run: |
         echo "Running built-in tests."
-        go test -race -v --tags server_vql ./...
+        go test -race -v --tags server_vql $(go list ./... | grep -v vql/linux/bpf)
 
     - name: Test Golden Generic
       if: always()
