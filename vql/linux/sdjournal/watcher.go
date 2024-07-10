@@ -159,7 +159,7 @@ func (self *JournalWatcherService) monitorOnce(journal *sdjournal.Journal) (bool
 		entry, err := journal.GetEntry()
 		if err != nil {
 			logger := logging.GetLogger(self.config_obj, &logging.ClientComponent)
-			logger.Warning("Failed to read log entry: %v", err)
+			logger.Warn("Failed to read log entry: %v", err)
 			return true, err
 		}
 
