@@ -34,8 +34,6 @@ sources:
      // Enrich the original artifact with more data.
      SELECT Time, Pid, Ppid, UserId,
               { SELECT User from users WHERE Uid = UserId} AS User,
-              regex_replace(source=read_file(filename= "/proc/" + PPID + "/cmdline"),
-                            replace=" ", re="[\\0]") AS Parent,
               CmdLine,
               Exe, CWD,
               hashes.SHA1 AS SHA1,

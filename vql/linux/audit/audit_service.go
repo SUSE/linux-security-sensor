@@ -121,7 +121,7 @@ type auditService struct {
 	unsubscribeChannel    chan *subscriber
 	shutdownChan          chan struct{}
 
-	rawBufPool sync.Pool
+	rawBufPool *sync.Pool
 
 	// Used only for stats reporting
 	totalMessagesReceivedCounter   AtomicCounter
@@ -137,7 +137,7 @@ type auditService struct {
 type auditBuf struct {
 	data     []byte
 	size     int
-	refcount utils.Refcount
+	refcount *utils.Refcount
 	pool     *sync.Pool
 }
 
@@ -160,16 +160,17 @@ func (self *auditBuf) Get() {
 func (self *auditBuf) Put() {
 	if self.refcount.Put() {
 		self.size = 0
+		self.refcount.Reset()
 		self.pool.Put(self)
 	}
 }
 
 func newAuditService(config_obj *config_proto.Config, logger *logging.LogContext, listener auditListener, client commandClient) *auditService {
 	bufSize := unix.NLMSG_HDRLEN + libaudit.AuditMessageMaxLength
-	rawBufPool := sync.Pool{}
+	rawBufPool := &sync.Pool{}
 
 	rawBufPool.New = func() any {
-		return newAuditBuf(bufSize, &rawBufPool)
+		return newAuditBuf(bufSize, rawBufPool)
 	}
 
 	return &auditService{
@@ -253,7 +254,7 @@ func (self *auditService) runService() error {
 
 	options := api.QueueOptions{
 		DisableFileBuffering: false,
-		FileBufferLeaseSize:  4096,
+		FileBufferLeaseSize:  64,
 		OwnerName:            "audit-plugin",
 	}
 
@@ -421,7 +422,7 @@ func (self *auditService) acceptEvents(ctx context.Context,
 		buf := self.rawBufPool.Get().(*auditBuf)
 		msgType, err := self.receiveMessageBuf(buf)
 		if err != nil {
-			self.rawBufPool.Put(buf)
+			buf.Put()
 			// Increased socket receive buffer
 			if errors.Is(err, errRetryNeeded) {
 				continue
