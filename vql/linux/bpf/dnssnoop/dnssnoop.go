@@ -5,7 +5,10 @@ package bpf
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"os"
+	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -20,6 +23,10 @@ import (
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
+)
+
+var (
+	mu sync.Mutex
 )
 
 type DnssnoopPlugin struct{}
@@ -127,6 +134,9 @@ func (self DnssnoopPlugin) Call(
 	output_chan := make(chan vfilter.Row)
 
 	go func() {
+		mu.Lock()
+		defer mu.Unlock()
+
 		defer close(output_chan)
 
 		err := vql_subsystem.CheckAccess(scope, acls.MACHINE_STATE)
@@ -153,6 +163,12 @@ func (self DnssnoopPlugin) Call(
 		defer bpf.Close()
 		defer unix.Close(sockFd)
 
+		err = syscall.SetNonblock(sockFd, true)
+		if err != nil {
+			scope.Log("dnsnoop: SetNonBlock error: %s", err)
+			return
+		}
+
 		f := os.NewFile(uintptr(sockFd), "")
 		if f == nil {
 			scope.Log("Error opening file to socket descriptor")
@@ -160,16 +176,28 @@ func (self DnssnoopPlugin) Call(
 		}
 		defer f.Close()
 
-		received_data := make([]byte, 1500)
-
 		for {
-			_, err := f.Read(received_data)
-			if err != nil {
-				scope.Log("Error reading from socket: %v", err)
+			if ctx.Err() != nil {
 				return
 			}
 
-			packet := try_parse_packet(received_data)
+			err := f.SetReadDeadline(time.Now().Add(time.Second))
+			if err != nil {
+				scope.Log("dnssnoop: SetReadDeadline error: %v", err)
+				return
+			}
+
+			data := make([]byte, 1500)
+			_, err = f.Read(data)
+			if err != nil {
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					continue
+				}
+				scope.Log("dnssnoop: error reading from socket: %v", err)
+				return
+			}
+
+			packet := try_parse_packet(data)
 			if packet == nil {
 				continue
 			}
@@ -186,6 +214,7 @@ func (self DnssnoopPlugin) Call(
 					processAnswers(dns.Answers, output_chan)
 				}
 			}
+
 		}
 	}()
 

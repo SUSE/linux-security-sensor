@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Velocidex/ordereddict"
@@ -21,6 +22,10 @@ import (
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
 	"www.velocidex.com/golang/vfilter"
+)
+
+var (
+	mu sync.Mutex
 )
 
 type ChattrsnoopPlugin struct{}
@@ -56,6 +61,11 @@ func (self ChattrsnoopPlugin) Call(
 	output_chan := make(chan vfilter.Row)
 
 	go func() {
+		mu.Lock()
+		defer mu.Unlock()
+
+		defer close(output_chan)
+
 		err := vql_subsystem.CheckAccess(scope, acls.MACHINE_STATE)
 		if err != nil {
 			scope.Log("chattrsnoop: %s", err)
@@ -89,43 +99,53 @@ func (self ChattrsnoopPlugin) Call(
 
 		perfBuffer.Start()
 
-		for data := range eventsChan {
-			path := strings.Trim(string(data[1:]), "\x00")
-			var hash string
+		for {
+			select {
+			case <-ctx.Done():
+				return
 
-			f, err := os.Open(path)
-			if err != nil {
-				scope.Log("chattrsnoop: Error opening: %s: %s", path, err)
-				continue
-			}
+			case data, ok := <-eventsChan:
+				if !ok {
+					scope.Log("chattrsnoop: event channel was closed")
+					return
+				}
+				path := strings.Trim(string(data[1:]), "\x00")
+				var hash string
 
-			defer f.Close()
-			mode, err := f.Stat()
-			if err != nil {
-				scope.Log("chattrsnoop: Error stating: %s: %s", path, err)
-				continue
-			}
-
-			if !mode.IsDir() {
-				hash, err = calcSha256(f)
+				f, err := os.Open(path)
 				if err != nil {
-					scope.Log("chattrsnoop: Error hashing %s: %s", path, err)
+					scope.Log("chattrsnoop: Error opening: %s: %s", path, err)
 					continue
 				}
-			}
 
-			e := Event{
-				Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"), Path: path,
-				Dir: mode.IsDir(), Sha256sum: hash,
-			}
+				defer f.Close()
+				mode, err := f.Stat()
+				if err != nil {
+					scope.Log("chattrsnoop: Error stating: %s: %s", path, err)
+					continue
+				}
 
-			if data[0] == 0 {
-				e.Action = "CLEAR"
-			} else {
-				e.Action = "SET"
-			}
+				if !mode.IsDir() {
+					hash, err = calcSha256(f)
+					if err != nil {
+						scope.Log("chattrsnoop: Error hashing %s: %s", path, err)
+						continue
+					}
+				}
 
-			output_chan <- e
+				e := Event{
+					Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"), Path: path,
+					Dir: mode.IsDir(), Sha256sum: hash,
+				}
+
+				if data[0] == 0 {
+					e.Action = "CLEAR"
+				} else {
+					e.Action = "SET"
+				}
+
+				output_chan <- e
+			}
 		}
 	}()
 
