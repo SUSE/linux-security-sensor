@@ -92,6 +92,7 @@ type commandClient interface {
 	DeleteRule(rule []byte) error
 	GetRules() ([][]byte, error)
 	GetStatus() (*libaudit.AuditStatus, error)
+	SetPID(wm libaudit.WaitMode) error
 	SetEnabled(enabled bool, wm libaudit.WaitMode) error
 	Close() error
 }
@@ -243,6 +244,16 @@ func (self *auditService) runService() error {
 			return fmt.Errorf("failed to enable audit subsystem: %w", err)
 		}
 		self.logger.Info("audit: enabled kernel audit subsystem")
+	}
+
+	if status.PID == 0 {
+		err = self.commandClient.SetPID(libaudit.WaitForReply)
+		if err != nil {
+			cancel()
+			self.commandClient.Close()
+			self.listener.Close()
+			return fmt.Errorf("failed to set audit PID: %w", err)
+		}
 	}
 
 	// Can only fail if self is nil
