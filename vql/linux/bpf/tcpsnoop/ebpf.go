@@ -56,5 +56,15 @@ func initBpf(logger *logging.LogContext) (*libbpf.Module, error) {
 		return nil, err
 	}
 
+	if err = bpf.AttachKretprobe(bpfModule, "tcp_v6_connect_ret", "tcp_v6_connect"); err != nil {
+		bpfModule.Close()
+		return nil, err
+	}
+
+	if err = bpf.AttachKprobe(bpfModule, "tcp_v6_connect", "tcp_v6_connect"); err != nil {
+		bpfModule.Close()
+		return nil, err
+	}
+
 	return bpfModule, nil
 }
