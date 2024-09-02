@@ -21,12 +21,12 @@
 
 struct event {
 	union {
-		__u32 saddr_v4;
-		__u8 saddr_v6[16];
+		__u32 raddr_v4;
+		__u8 raddr_v6[16];
 	};
 	union {
-		__u32 daddr_v4;
-		__u8 daddr_v6[16];
+		__u32 laddr_v4;
+		__u8 laddr_v6[16];
 	};
 	char task[TASK_COMM_LEN];
 	__u32 af;		// AF_INET or AF_INET6
@@ -97,16 +97,16 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 
 	if (ip_ver == 4) {
 		event.af = AF_INET;
-		BPF_CORE_READ_INTO(&event.daddr_v4, sk,
+		BPF_CORE_READ_INTO(&event.laddr_v4, sk,
 				   __sk_common.skc_rcv_saddr);
-		BPF_CORE_READ_INTO(&event.saddr_v4, sk, __sk_common.skc_daddr);
+		BPF_CORE_READ_INTO(&event.raddr_v4, sk, __sk_common.skc_daddr);
 	} else if (ip_ver == 6
 		   && bpf_core_field_exists(sk->__sk_common.skc_v6_daddr)) {
 		event.af = AF_INET6;
-		BPF_CORE_READ_INTO(&event.saddr_v6, sk,
+		BPF_CORE_READ_INTO(&event.laddr_v6, sk,
 				   __sk_common.skc_v6_rcv_saddr.in6_u.
 				   u6_addr32);
-		BPF_CORE_READ_INTO(&event.daddr_v6, sk,
+		BPF_CORE_READ_INTO(&event.raddr_v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 
@@ -148,16 +148,16 @@ static __always_inline int bpf__inet_csk_accept(struct pt_regs *ctx, int ret)
 
 	if (family == AF_INET) {
 		event.af = AF_INET;
-		BPF_CORE_READ_INTO(&event.daddr_v4, sk,
+		BPF_CORE_READ_INTO(&event.laddr_v4, sk,
 				   __sk_common.skc_rcv_saddr);
-		BPF_CORE_READ_INTO(&event.saddr_v4, sk, __sk_common.skc_daddr);
+		BPF_CORE_READ_INTO(&event.raddr_v4, sk, __sk_common.skc_daddr);
 	} else if (family == AF_INET6
 		   && bpf_core_field_exists(sk->__sk_common.skc_v6_daddr)) {
 		event.af = AF_INET6;
-		BPF_CORE_READ_INTO(&event.saddr_v6, sk,
+		BPF_CORE_READ_INTO(&event.laddr_v6, sk,
 				   __sk_common.skc_v6_rcv_saddr.in6_u.
 				   u6_addr32);
-		BPF_CORE_READ_INTO(&event.daddr_v6, sk,
+		BPF_CORE_READ_INTO(&event.raddr_v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 
