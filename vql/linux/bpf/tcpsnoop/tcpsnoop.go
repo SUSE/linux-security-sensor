@@ -103,11 +103,11 @@ func (self TcpsnoopPlugin) Call(
 
 			if event.Af == AF_INET {
 				event2.Af = "IPv4"
-				event2.RemoteAddr = net.IP.String(event.Saddr[:4])
-				event2.LocalAddr = net.IP.String(event.Daddr[:4])
+				event2.RemoteAddr = net.IP.String(event.Raddr[:4])
+				event2.LocalAddr = net.IP.String(event.Laddr[:4])
 			} else {
-				event2.RemoteAddr = net.IP.String(event.Saddr[:])
-				event2.LocalAddr = net.IP.String(event.Daddr[:])
+				event2.RemoteAddr = net.IP.String(event.Raddr[:])
+				event2.LocalAddr = net.IP.String(event.Laddr[:])
 				event2.Af = "IPv6"
 			}
 

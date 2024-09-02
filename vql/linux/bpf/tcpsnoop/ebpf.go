@@ -22,8 +22,8 @@ const (
 )
 
 type TcpsnoopEvent struct {
-	Saddr [16]byte
-	Daddr [16]byte
+	Raddr [16]byte
+	Laddr [16]byte
 	Task  [16]byte
 	Af    uint32 // AF_INET or AF_INET6
 	Pid   uint32
