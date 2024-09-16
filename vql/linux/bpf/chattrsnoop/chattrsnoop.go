@@ -5,6 +5,7 @@ package bpf
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"os"
 	"strings"
 	"time"
@@ -31,10 +32,36 @@ func (self ChattrsnoopPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMa
 }
 
 type Event struct {
-	Timestamp string
+	Timestamp time.Time
 	Path      string
 	Dir       bool
 	Action    string
+}
+
+func parseData(data []byte) (Event, error) {
+	event := Event{
+		Timestamp: time.Now(),
+	}
+
+	if len(data) < 1 {
+		return event, errors.New("data empty")
+	}
+
+	event.Path = strings.Trim(string(data[1:]), "\x00")
+
+	stat, err := os.Stat(event.Path)
+	if err != nil {
+		return event, err
+	}
+	event.Dir = stat.IsDir()
+
+	if data[0] == 0 {
+		event.Action = "CLEAR"
+	} else {
+		event.Action = "SET"
+	}
+
+	return event, nil
 }
 
 func (self ChattrsnoopPlugin) Call(
@@ -77,33 +104,11 @@ func (self ChattrsnoopPlugin) Call(
 		perfBuffer.Start()
 
 		for data := range eventsChan {
-			path := strings.Trim(string(data[1:]), "\x00")
-
-			f, err := os.Open(path)
+			event, err := parseData(data)
 			if err != nil {
-				scope.Log("chattrsnoop: Error opening: %s: %s", path, err)
-				continue
+				scope.Log("chattrsnoop: parsing event: %v", err)
 			}
-
-			defer f.Close()
-			mode, err := f.Stat()
-			if err != nil {
-				scope.Log("chattrsnoop: Error stating: %s: %s", path, err)
-				continue
-			}
-
-			e := Event{
-				Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"), Path: path,
-				Dir: mode.IsDir(),
-			}
-
-			if data[0] == 0 {
-				e.Action = "CLEAR"
-			} else {
-				e.Action = "SET"
-			}
-
-			output_chan <- e
+			output_chan <- event
 		}
 	}()
 
