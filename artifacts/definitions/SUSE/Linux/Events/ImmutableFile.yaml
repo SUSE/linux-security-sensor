@@ -9,4 +9,16 @@ precondition: SELECT OS From info() where OS = 'linux'
 
 sources:
   - query: |
-      SELECT Timestamp, Path, Dir, Sha256sum, Action FROM chattrsnoop()
+      LET events = SELECT
+        *,
+        hash(path=Path, hashselect=["SHA1", "SHA256"]) as hashes
+      FROM chattrsnoop()
+
+      SELECT
+        Timestamp,
+        Path,
+        Dir,
+        Action,
+        hashes.SHA256 AS SHA256,
+        hashes.SHA1 AS SHA1
+      FROM events
