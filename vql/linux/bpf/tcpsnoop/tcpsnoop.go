@@ -81,7 +81,7 @@ func (self TcpsnoopPlugin) Call(
 			return
 		}
 
-		perfBuffer.Start()
+		perfBuffer.Poll(300)
 
 		for data := range eventsChan {
 			var event TcpsnoopEvent

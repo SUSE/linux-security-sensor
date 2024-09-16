@@ -101,7 +101,7 @@ func (self ChattrsnoopPlugin) Call(
 			return
 		}
 
-		perfBuffer.Start()
+		perfBuffer.Poll(300)
 
 		for data := range eventsChan {
 			event, err := parseData(data)
