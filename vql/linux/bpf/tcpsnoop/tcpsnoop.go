@@ -82,7 +82,7 @@ func (self TcpsnoopPlugin) Call(
 			return
 		}
 
-		perfBuffer.Start()
+		perfBuffer.Poll(300)
 		nativeEndian := utils.NativeEndian()
 
 		for data := range eventsChan {

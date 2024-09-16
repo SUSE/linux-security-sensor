@@ -53,7 +53,7 @@ func initBpf(logger *logging.LogContext) (*libbpf.Module, int, error) {
 		return nil, -1, fmt.Errorf("Couldn't find dnssnoop bpf program")
 	}
 
-	fd, err := initSocket(prog.GetFd())
+	fd, err := initSocket(prog.FileDescriptor())
 	if err != nil {
 		bpfModule.Close()
 		return nil, -1, err
