@@ -31,16 +31,55 @@ func (self TcpsnoopPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMap) 
 }
 
 type Event struct {
-	Timestamp  string `json:"timestamp"`
-	RemoteAddr string `json:"local_address"`
-	LocalAddr  string `json:"remote_address"`
-	Task       string `json:"task"`
-	Af         string `json:"protocol"` // AF_INET or AF_INET6
-	Pid        uint32 `json:"pid"`
-	Uid        uint32 `json:"uid"`
-	RemotePort uint16 `json:"remote_port"`
-	LocalPort  uint16 `json:"local_port"`
-	Dir        string `json:"con_dir"`
+	Timestamp  time.Time
+	RemoteAddr string
+	LocalAddr  string
+	Task       string
+	Af         string // AF_INET or AF_INET6
+	Pid        uint32
+	Uid        uint32
+	RemotePort uint16
+	LocalPort  uint16
+	Dir        string
+}
+
+func parseData(data []byte) (Event, error) {
+	var event TcpsnoopEvent
+
+	// Parses raw event from the ebpf map
+	nativeEndian := utils.NativeEndian()
+	err := binary.Read(bytes.NewBuffer(data), nativeEndian, &event)
+	if err != nil {
+		return Event{}, err
+	}
+
+	// Now we make into a more userfriendly struct for sending to VRR
+	event2 := Event{
+		Timestamp:  time.Now(),
+		LocalPort:  event.Lport,
+		RemotePort: event.Rport,
+		Uid:        event.Uid,
+		Pid:        event.Pid,
+		Task:       string(bytes.Trim(event.Task[:], "\000")),
+	}
+
+	if event.Af == AF_INET {
+		event2.Af = "IPv4"
+		event2.RemoteAddr = net.IP.String(event.Raddr[:4])
+		event2.LocalAddr = net.IP.String(event.Laddr[:4])
+	} else {
+		event2.RemoteAddr = net.IP.String(event.Raddr[:])
+		event2.LocalAddr = net.IP.String(event.Laddr[:])
+		event2.Af = "IPv6"
+	}
+
+	if event.Dir == OUT_CON {
+		event2.Dir = "OUTGOING"
+	} else {
+		event2.Dir = "INCOMING"
+	}
+
+	return event2, nil
 }
 
 func (self TcpsnoopPlugin) Call(
@@ -83,47 +122,15 @@ func (self TcpsnoopPlugin) Call(
 		}
 
 		perfBuffer.Poll(300)
-		nativeEndian := utils.NativeEndian()
 
 		for data := range eventsChan {
-			var event TcpsnoopEvent
-
-			// Parses raw event from the ebpf map
-			err := binary.Read(bytes.NewBuffer(data), nativeEndian, &event)
-
-			// Now we make into a more userfriendly struct for sending to VRR
-			event2 := Event{
-				Timestamp:  time.Now().UTC().Format("2006-01-02 15:04:05"),
-				LocalPort:  event.Lport,
-				RemotePort: event.Rport,
-				Uid:        event.Uid,
-				Pid:        event.Pid,
-				Task:       string(bytes.Trim(event.Task[:], "\000")),
-			}
-
-			if event.Af == AF_INET {
-				event2.Af = "IPv4"
-				event2.RemoteAddr = net.IP.String(event.Raddr[:4])
-				event2.LocalAddr = net.IP.String(event.Laddr[:4])
-			} else {
-				event2.RemoteAddr = net.IP.String(event.Raddr[:])
-				event2.LocalAddr = net.IP.String(event.Laddr[:])
-				event2.Af = "IPv6"
-			}
-
-			if event.Dir == OUT_CON {
-				event2.Dir = "OUTGOING"
-			} else {
-				event2.Dir = "INCOMING"
-			}
-
+			event, err := parseData(data)
 			if err != nil {
 				scope.Log("tcpsnoop: failed to decode received data: %s", err)
 				continue
 			}
 
-			// print the tcp event to VRR's channel
-			output_chan <- event2
+			output_chan <- event
 		}
 	}()
 
