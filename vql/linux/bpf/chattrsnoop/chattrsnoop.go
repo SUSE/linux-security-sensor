@@ -4,10 +4,7 @@ package bpf
 
 import (
 	"context"
-	"crypto/sha256"
 	_ "embed"
-	"encoding/hex"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -33,20 +30,10 @@ func (self ChattrsnoopPlugin) Info(scope vfilter.Scope, type_map *vfilter.TypeMa
 	}
 }
 
-func calcSha256(f *os.File) (string, error) {
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
 type Event struct {
 	Timestamp string
 	Path      string
 	Dir       bool
-	Sha256sum string
 	Action    string
 }
 
@@ -91,7 +78,6 @@ func (self ChattrsnoopPlugin) Call(
 
 		for data := range eventsChan {
 			path := strings.Trim(string(data[1:]), "\x00")
-			var hash string
 
 			f, err := os.Open(path)
 			if err != nil {
@@ -106,17 +92,9 @@ func (self ChattrsnoopPlugin) Call(
 				continue
 			}
 
-			if !mode.IsDir() {
-				hash, err = calcSha256(f)
-				if err != nil {
-					scope.Log("chattrsnoop: Error hashing %s: %s", path, err)
-					continue
-				}
-			}
-
 			e := Event{
 				Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"), Path: path,
-				Dir: mode.IsDir(), Sha256sum: hash,
+				Dir: mode.IsDir(),
 			}
 
 			if data[0] == 0 {
