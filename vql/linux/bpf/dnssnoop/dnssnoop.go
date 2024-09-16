@@ -146,7 +146,7 @@ func (self DnssnoopPlugin) Call(
 		// Load bpf program and attach to tracepoints
 		bpf, sockFd, err := initBpf(logger)
 		if err != nil {
-			scope.Log("dnssnoop: %s", err)
+			scope.Log("dnssnoop: initBpf: %s", err)
 			return
 		}
 
@@ -155,7 +155,7 @@ func (self DnssnoopPlugin) Call(
 
 		f := os.NewFile(uintptr(sockFd), "")
 		if f == nil {
-			scope.Log("Error opening file to socket descriptor")
+			scope.Log("dnssnoop: error opening file from socket descriptor")
 			return
 		}
 		defer f.Close()
@@ -165,7 +165,7 @@ func (self DnssnoopPlugin) Call(
 		for {
 			_, err := f.Read(received_data)
 			if err != nil {
-				scope.Log("Error reading from socket: %v", err)
+				scope.Log("dnssnoop: error reading from socket: %v", err)
 				return
 			}
 

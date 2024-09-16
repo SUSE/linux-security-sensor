@@ -68,7 +68,7 @@ func (self TcpsnoopPlugin) Call(
 		// Load bpf program and attach to tracepoints
 		bpf, err := initBpf(logger)
 		if err != nil {
-			scope.Log("tcpsnoop: %s", err)
+			scope.Log("tcpsnoop: initBpf: %s", err)
 			return
 		}
 		defer bpf.Close()
@@ -78,7 +78,7 @@ func (self TcpsnoopPlugin) Call(
 
 		perfBuffer, err := bpf.InitPerfBuf("events", eventsChan, lostChan, 128)
 		if err != nil {
-			scope.Log("tcpsnoop: %s", err)
+			scope.Log("tcpsnoop: InitPerfBuf: %s", err)
 			return
 		}
 
@@ -118,7 +118,7 @@ func (self TcpsnoopPlugin) Call(
 			}
 
 			if err != nil {
-				scope.Log("failed to decode received data: %s\n", err)
+				scope.Log("tcpsnoop: failed to decode received data: %s", err)
 				continue
 			}
 
