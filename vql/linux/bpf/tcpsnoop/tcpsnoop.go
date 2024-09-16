@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Velocidex/ordereddict"
@@ -17,7 +19,12 @@ import (
 	"www.velocidex.com/golang/velociraptor/utils"
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
+	"www.velocidex.com/golang/velociraptor/vql/linux/bpf"
 	"www.velocidex.com/golang/vfilter"
+)
+
+const (
+	TCPSNOOP = "tcpsnoop"
 )
 
 type TcpsnoopPlugin struct{}
@@ -104,37 +111,90 @@ func (self TcpsnoopPlugin) Call(
 		config_obj := &config_proto.Config{Client: client_config_obj}
 		logger := logging.GetLogger(config_obj, &logging.ClientComponent)
 
-		// Load bpf program and attach to tracepoints
-		bpf, err := initBpf(logger)
+		subscriber := bpf.GetManager().Subscribe(TCPSNOOP, &publisher{logger: logger})
+		defer bpf.GetManager().Unsubscribe(TCPSNOOP, subscriber)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case event := <-subscriber.EventCh:
+				output_chan <- event
+
+			case err := <-subscriber.ErrorCh:
+				scope.Log("%v", err)
+				return
+			}
+		}
+	}()
+
+	return output_chan
+}
+
+type publisher struct {
+	wg     sync.WaitGroup
+	cancel func()
+	logger *logging.LogContext
+}
+
+func (p *publisher) Start() {
+	var ctx context.Context
+	ctx, p.cancel = context.WithCancel(context.Background())
+	bpfModuleLoadDoneCh := make(chan struct{})
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+
+		bpfModule, err := initBpf(p.logger)
+		bpfModuleLoadDoneCh <- struct{}{}
 		if err != nil {
-			scope.Log("tcpsnoop: initBpf: %s", err)
+			e := fmt.Errorf("tcpsnoop: initBpf: %s", err)
+			bpf.GetManager().PublishError(ctx, TCPSNOOP, e)
 			return
 		}
-		defer bpf.Close()
+		defer bpfModule.Close()
 
 		eventsChan := make(chan []byte)
 		lostChan := make(chan uint64)
 
-		perfBuffer, err := bpf.InitPerfBuf("events", eventsChan, lostChan, 128)
+		perfBuffer, err := bpfModule.InitPerfBuf("events", eventsChan, lostChan, 128)
 		if err != nil {
-			scope.Log("tcpsnoop: InitPerfBuf: %s", err)
+			e := fmt.Errorf("tcpsnoop: InitPerfBuf: %s", err)
+			bpf.GetManager().PublishError(ctx, TCPSNOOP, e)
 			return
 		}
 
 		perfBuffer.Poll(300)
 
-		for data := range eventsChan {
-			event, err := parseData(data)
-			if err != nil {
-				scope.Log("tcpsnoop: failed to decode received data: %s", err)
-				continue
-			}
+		for {
+			select {
+			case <-ctx.Done():
+				return
 
-			output_chan <- event
+			case data, ok := <-eventsChan:
+				if !ok {
+					e := fmt.Errorf("tcpsnoop: events channel was closed")
+					bpf.GetManager().PublishError(ctx, TCPSNOOP, e)
+					return
+				}
+				event, err := parseData(data)
+				if err != nil {
+					p.logger.Warnf("tcpsnoop: failed to decode received data: %s", err)
+					continue
+				}
+				bpf.GetManager().PublishEvent(ctx, TCPSNOOP, event)
+			}
 		}
 	}()
 
-	return output_chan
+	<-bpfModuleLoadDoneCh // wait until the BPF module is loaded
+}
+
+func (p *publisher) Stop() {
+	p.cancel()
+	p.wg.Wait()
 }
 
 func init() {
