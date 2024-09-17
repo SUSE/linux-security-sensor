@@ -53,7 +53,7 @@ jobs:
         output/velociraptor* -v golden artifacts/testdata/linux/ --env srcDir=`pwd` --config artifacts/testdata/windows/test.config.yaml
 
     - name: StoreBinaries
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: Binaries.zip
         path: output
