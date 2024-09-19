@@ -158,7 +158,6 @@ require (
 	github.com/mooijtech/go-pst/v6 v6.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/rogpeppe/go-internal v1.14.1
-	github.com/sebdah/goldie v1.0.0
 	github.com/shirou/gopsutil/v4 v4.25.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/ulikunitz/xz v0.5.15
@@ -445,4 +444,4 @@ replace github.com/go-errors/errors => github.com/Velocidex/errors v0.0.0-202210
 // We'll always need the local version since we're building the C code.
 replace github.com/aquasecurity/libbpfgo => ./third_party/libbpfgo
 
-replace github.com/elastic/go-libaudit/v2 => github.com/jeffmahoney/go-libaudit/v2 v2.3.3-0.20230911192631-db54ebd6c467
+replace github.com/elastic/go-libaudit/v2 => github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd
