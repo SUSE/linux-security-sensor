@@ -5,27 +5,35 @@ package bpf
 import (
 	"context"
 	_ "embed"
+	"errors"
+	"fmt"
 	"os"
+	"sync"
+	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/Velocidex/ordereddict"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"golang.org/x/sys/unix"
 	"www.velocidex.com/golang/velociraptor/acls"
 	"www.velocidex.com/golang/velociraptor/artifacts"
 	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
 	"www.velocidex.com/golang/velociraptor/logging"
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
+	"www.velocidex.com/golang/velociraptor/vql/linux/bpf"
 	"www.velocidex.com/golang/vfilter"
+)
+
+const (
+	DNSSNOOP = "dnssnoop"
 )
 
 type DnssnoopPlugin struct{}
 
 type DnsReply struct {
-	Timestamp string
+	Timestamp time.Time
 	Type      string
 	Question  string
 	Answers   []string
@@ -59,7 +67,7 @@ func getKey(domainQuery string, dnsType layers.DNSType) DnsKey {
 	return DnsKey{q: domainQuery, Type: typeString}
 }
 
-func processAnswers(answers []layers.DNSResourceRecord, c chan vfilter.Row) {
+func processAnswers(answers []layers.DNSResourceRecord) map[DnsKey][]string {
 	replies := make(map[DnsKey][]string)
 
 	for _, answer := range answers {
@@ -82,13 +90,10 @@ func processAnswers(answers []layers.DNSResourceRecord, c chan vfilter.Row) {
 			} else {
 				replies[key] = []string{string(answer.MX.Name)}
 			}
-
 		}
 	}
 
-	for k, v := range replies {
-		c <- DnsReply{time.Now().UTC().Format("2006-01-02 15:04:05"), k.Type, k.q, v}
-	}
+	return replies
 }
 
 func isLocalPacket(packet gopacket.Packet) bool {
@@ -143,33 +148,93 @@ func (self DnssnoopPlugin) Call(
 		config_obj := &config_proto.Config{Client: client_config_obj}
 		logger := logging.GetLogger(config_obj, &logging.ClientComponent)
 
-		// Load bpf program and attach to tracepoints
-		bpf, sockFd, err := initBpf(logger)
+		subscriber := bpf.GetManager().Subscribe(DNSSNOOP, &publisher{logger: logger})
+		defer bpf.GetManager().Unsubscribe(DNSSNOOP, subscriber)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case event := <-subscriber.EventCh:
+				output_chan <- event
+
+			case err := <-subscriber.ErrorCh:
+				scope.Log("%v", err)
+				return
+			}
+		}
+	}()
+
+	return output_chan
+}
+
+type publisher struct {
+	wg     sync.WaitGroup
+	cancel func()
+	logger *logging.LogContext
+}
+
+func (p *publisher) Start() {
+	var ctx context.Context
+	ctx, p.cancel = context.WithCancel(context.Background())
+	bpfModuleLoadDoneCh := make(chan struct{})
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+
+		bpfModule, sockFd, err := initBpf(p.logger)
+		bpfModuleLoadDoneCh <- struct{}{}
 		if err != nil {
-			scope.Log("dnssnoop: %s", err)
+			e := fmt.Errorf("dnssnoop: initBpf: %s", err)
+			bpf.GetManager().PublishError(ctx, DNSSNOOP, e)
 			return
 		}
 
-		defer bpf.Close()
+		defer bpfModule.Close()
 		defer unix.Close(sockFd)
+
+		err = syscall.SetNonblock(sockFd, true)
+		if err != nil {
+			e := fmt.Errorf("dnsnoop: SetNonBlock error: %s", err)
+			bpf.GetManager().PublishError(ctx, DNSSNOOP, e)
+			return
+		}
 
 		f := os.NewFile(uintptr(sockFd), "")
 		if f == nil {
-			scope.Log("Error opening file to socket descriptor")
+			e := fmt.Errorf("dnssnoop: error opening file from socket descriptor")
+			bpf.GetManager().PublishError(ctx, DNSSNOOP, e)
 			return
 		}
 		defer f.Close()
 
-		received_data := make([]byte, 1500)
-
+		data := make([]byte, 1500)
 		for {
-			_, err := f.Read(received_data)
+			err := f.SetReadDeadline(time.Now().Add(time.Second))
 			if err != nil {
-				scope.Log("Error reading from socket: %v", err)
+				e := fmt.Errorf("dnssnoop: SetReadDeadline error: %v", err)
+				bpf.GetManager().PublishError(ctx, DNSSNOOP, e)
 				return
 			}
 
-			packet := try_parse_packet(received_data)
+			_, err = f.Read(data)
+
+			if ctx.Err() != nil {
+				return
+			}
+
+			if err != nil {
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					continue
+				}
+				e := fmt.Errorf("dnssnoop: error reading from socket: %v", err)
+				bpf.GetManager().PublishError(ctx, DNSSNOOP, e)
+				return
+			}
+
+			packet := try_parse_packet(data)
 			if packet == nil {
 				continue
 			}
@@ -183,13 +248,22 @@ func (self DnssnoopPlugin) Call(
 				dns, _ := dnsLayer.(*layers.DNS)
 
 				if dns.ANCount > 0 {
-					processAnswers(dns.Answers, output_chan)
+					replies := processAnswers(dns.Answers)
+					for k, v := range replies {
+						reply := DnsReply{time.Now(), k.Type, k.q, v}
+						bpf.GetManager().PublishEvent(ctx, DNSSNOOP, reply)
+					}
 				}
 			}
 		}
 	}()
 
-	return output_chan
+	<-bpfModuleLoadDoneCh // wait until the BPF module is loaded
+}
+
+func (p *publisher) Stop() {
+	p.cancel()
+	p.wg.Wait()
 }
 
 func init() {
