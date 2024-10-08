@@ -22,8 +22,8 @@ const (
 )
 
 type TcpsnoopEvent struct {
-	Saddr [16]byte
-	Daddr [16]byte
+	Raddr [16]byte
+	Laddr [16]byte
 	Task  [16]byte
 	Af    uint32 // AF_INET or AF_INET6
 	Pid   uint32
@@ -52,6 +52,16 @@ func initBpf(logger *logging.LogContext) (*libbpf.Module, error) {
 	}
 
 	if err = bpf.AttachKprobe(bpfModule, "tcp_v4_connect", "tcp_v4_connect"); err != nil {
+		bpfModule.Close()
+		return nil, err
+	}
+
+	if err = bpf.AttachKretprobe(bpfModule, "tcp_v6_connect_ret", "tcp_v6_connect"); err != nil {
+		bpfModule.Close()
+		return nil, err
+	}
+
+	if err = bpf.AttachKprobe(bpfModule, "tcp_v6_connect", "tcp_v6_connect"); err != nil {
 		bpfModule.Close()
 		return nil, err
 	}
