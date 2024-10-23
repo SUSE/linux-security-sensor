@@ -250,6 +250,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8Yc
 github.com/dchest/uniuri v1.2.0/go.mod h1:fSzm4SLHzNZvWLvWJew423PhAzkpNQYq+uNLq4kxhkY=
 github.com/dimchansky/utfbom v1.1.1 h1:vV6w1AhK4VMnhBno/TPVCoK9U/LP0PkLCS9tbxHdi/U=
 github.com/dimchansky/utfbom v1.1.1/go.mod h1:SxdoEBH5qIqFocHMyGOXVAybYJdr71b1Q/j0mACtrfE=
+github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd h1:JtgANE0pYw+DxwN1QYqTEoeThw/k/7ZoVttzxVtdbmU=
+github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd/go.mod h1:hfXkl/6sTI+fRPzNHNSJ2aLZBZqom9IMBjfmDXbg9E8=
 github.com/dlclark/regexp2 v1.2.0/go.mod h1:2pZnwuY/m+8K6iRw6wQdMtk+rH5tNGR1i55kozfMjCc=
 github.com/dlclark/regexp2 v1.7.0 h1:7lJfhqlPssTb1WQx4yvTHN0uElPEv52sbaECrAQxjAo=
 github.com/dlclark/regexp2 v1.7.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
@@ -480,8 +482,6 @@ github.com/jcmturner/gokrb5/v8 v8.4.4 h1:x1Sv4HaTpepFkXbt2IkL29DXRf8sOfZXo8eRKh6
 github.com/jcmturner/gokrb5/v8 v8.4.4/go.mod h1:1btQEpgT6k+unzCwX1KdWMEwPPkkgBtP+F6aCACiMrs=
 github.com/jcmturner/rpc/v2 v2.0.3 h1:7FXXj8Ti1IaVFpSAziCZWNzbNuZmnvw/i6CqLNdWfZY=
 github.com/jcmturner/rpc/v2 v2.0.3/go.mod h1:VUJYCIDm3PVOEHw8sgt091/20OJjskO/YJki3ELg/Hc=
-github.com/jeffmahoney/go-libaudit/v2 v2.3.3-0.20230911192631-db54ebd6c467 h1:pTuTrC+wqYqDuF+qMcJh7D6T+93pDAwkmYbbHgNSFwQ=
-github.com/jeffmahoney/go-libaudit/v2 v2.3.3-0.20230911192631-db54ebd6c467/go.mod h1:hfXkl/6sTI+fRPzNHNSJ2aLZBZqom9IMBjfmDXbg9E8=
 github.com/jeffmahoney/go-rpmdb v0.0.0-20221206190147-d916ed974102 h1:xqflzs5dvq19kY9uWsusWMuEcR9sh8Mt4lbsS21Fb5Q=
 github.com/jeffmahoney/go-rpmdb v0.0.0-20221206190147-d916ed974102/go.mod h1:eVDe/r6WqX8gq4pJ0wp9nlKL5mMKXzl3A7ryGN8DNmI=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
