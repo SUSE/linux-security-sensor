@@ -359,6 +359,8 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumC
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd h1:JtgANE0pYw+DxwN1QYqTEoeThw/k/7ZoVttzxVtdbmU=
 github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd/go.mod h1:hfXkl/6sTI+fRPzNHNSJ2aLZBZqom9IMBjfmDXbg9E8=
+github.com/djoreilly/go-rpmdb v0.0.0-20241106150710-2e9b5a9aee34 h1:S5+WizbPlMRYXHDCP9TSd+OzuGDAPD/S0JSl4HidJz4=
+github.com/djoreilly/go-rpmdb v0.0.0-20241106150710-2e9b5a9aee34/go.mod h1:nwpkQwtY9cRpoGyfNeArgYq+JAPFrTW947qOL1pnA/k=
 github.com/dlclark/regexp2 v1.2.0/go.mod h1:2pZnwuY/m+8K6iRw6wQdMtk+rH5tNGR1i55kozfMjCc=
 github.com/dlclark/regexp2 v1.7.0 h1:7lJfhqlPssTb1WQx4yvTHN0uElPEv52sbaECrAQxjAo=
 github.com/dlclark/regexp2 v1.7.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
@@ -559,8 +561,6 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jackwakefield/gopac v1.0.2 h1:TdHTGtC/kMc5kyYw7PEO5kqAHxcpuU4RFY4ztfg4nAM=
 github.com/jackwakefield/gopac v1.0.2/go.mod h1:yR1sfJXcndScUFYPx7Xqxj7bkNlCWw9AMmuJFMHLXm8=
-github.com/jeffmahoney/go-rpmdb v0.0.0-20221206190147-d916ed974102 h1:xqflzs5dvq19kY9uWsusWMuEcR9sh8Mt4lbsS21Fb5Q=
-github.com/jeffmahoney/go-rpmdb v0.0.0-20221206190147-d916ed974102/go.mod h1:eVDe/r6WqX8gq4pJ0wp9nlKL5mMKXzl3A7ryGN8DNmI=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jonboulle/clockwork v0.2.2/go.mod h1:Pkfl5aHPm1nk2H9h0bjmnJD/BcgbGXUBGnn1kMkgxc8=
 github.com/jonboulle/clockwork v0.5.0 h1:Hyh9A8u51kptdkR+cqRpT1EebBwTn1oK9YfGYbdFz6I=
@@ -596,8 +596,6 @@ github.com/klauspost/crc32 v1.3.0 h1:sSmTt3gUt81RP655XGZPElI0PelVTZ6YwCRnPSupoFM
 github.com/klauspost/crc32 v1.3.0/go.mod h1:D7kQaZhnkX/Y0tstFGf8VUzv2UofNGqCjnC3zdHB0Hw=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=
 github.com/klauspost/pgzip v1.2.6/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
-github.com/knqyf263/go-rpmdb v0.0.0-20221030135625-4082a22221ce h1:/w0hAcauo/FBVaBvNMQdPZgKjTu5Ip3jvGIM1+VUE7o=
-github.com/knqyf263/go-rpmdb v0.0.0-20221030135625-4082a22221ce/go.mod h1:zp6SMcRd0GB+uwNJjr+DkrNZdQZ4er2HMO6KyD0vIGU=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/fs v0.1.0 h1:Jskdu9ieNAYnjxsi0LbQp1ulIKZV1LAFgK1tWhpZgl8=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
