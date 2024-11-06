@@ -9,7 +9,7 @@ import (
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/Velocidex/ordereddict"
-	rpmdb "github.com/jeffmahoney/go-rpmdb/pkg"
+	rpmdb "github.com/djoreilly/go-rpmdb/pkg"
 	"www.velocidex.com/golang/velociraptor/acls"
 	"www.velocidex.com/golang/velociraptor/vql"
 	vql_subsystem "www.velocidex.com/golang/velociraptor/vql"
