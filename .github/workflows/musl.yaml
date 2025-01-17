@@ -53,7 +53,7 @@ jobs:
         go run make.go -v LinuxMusl
 
     - name: StoreBinaries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Binaries
         path: output
