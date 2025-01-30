@@ -1,15 +1,21 @@
 name: SUSE.Linux.Events.ProcessStatuses
-description: |
-  This artifact collects new processes created by non-root users from
-  the Linux kernel audit events.
 
-precondition: SELECT OS From info() where OS = 'linux'
+description: |
+  This artifact collects new processes created by non-root users using the
+  execsnoop plugin if client binary supports it and the kernel is 5.8+.
+  Otherwise, the audit plugin is used.
 
 type: CLIENT_EVENT
 
 sources:
-  - query: |
+  - precondition: |
+      SELECT OS, KernelVersion,
+        parse_string_with_regex(string=KernelVersion, regex='^(?P<kernel_ver>[0-9]+.[0-9]+)') AS parsed
+      FROM info()
+      WHERE OS = 'linux'
+        AND (version(plugin='execsnoop') = Null OR parse_float(string=parsed.kernel_ver) < 5.8)
 
+    query: |
      LET proc_stat_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
 
      LET proc_exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
@@ -37,3 +43,34 @@ sources:
               State,CmdLine,
               CWD, Exe AS ImagePath, Hash.SHA256 AS Hash_Sha256, Hash.SHA1 AS Hash_Sha1
        FROM proc_exec_log
+
+
+  - precondition: |
+      SELECT OS, KernelVersion,
+        parse_string_with_regex(string=KernelVersion, regex='^(?P<kernel_ver>[0-9]+.[0-9]+)') AS parsed
+      FROM info()
+      WHERE OS = 'linux'
+        AND version(plugin='execsnoop') != Null
+        AND parse_float(string=parsed.kernel_ver) >= 5.8
+
+    query: |
+      LET exec_log = SELECT * FROM execsnoop() WHERE Uid != 0
+
+      LET hash_log = SELECT *,
+          hash(path=Exe, hashselect=['SHA1', 'SHA256']) AS hashes
+        FROM exec_log
+
+      // Cache Uid -> Username mapping.
+      LET usrs <= SELECT User, atoi(string=Uid) AS UserID
+        FROM Artifact.Linux.Sys.Users()
+
+      SELECT Time, Pid, Ppid,
+        Uid AS UserID,
+        { SELECT User from usrs WHERE UserID = Uid } AS User,
+        "n/a" AS State,
+        Argv AS CmdLine,
+        Cwd AS CWD,
+        Exe AS ImagePath,
+        hashes.SHA256 AS Hash_Sha256,
+        hashes.SHA1 AS Hash_Sha1
+      FROM hash_log
