@@ -1371,6 +1371,11 @@
       per row
     repeated: true
   category: plugin
+- name: execsnoop
+  description: Report execve system calls on linux
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
 - name: execve
   description: |
     This plugin launches an external command and captures its STDERR,
