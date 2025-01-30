@@ -1,15 +1,21 @@
 name: Linux.Events.ProcessExecutions
 
 description: |
-  This artifact collects process execution events from the Linux audit system.
-
-precondition: SELECT OS From info() where OS = 'linux'
+  This artifact collects process execution events using the execsnoop eBPF plugin
+  if the client binary supports it and the kernel is 5.8+. Otherwise, the audit
+  plugin is used.
 
 type: CLIENT_EVENT
 
 sources:
-  - query: |
+  - precondition: |
+      SELECT OS, KernelVersion,
+        parse_string_with_regex(string=KernelVersion, regex='^(?P<kernel_ver>[0-9]+.[0-9]+)') AS parsed
+      FROM info()
+      WHERE OS = 'linux'
+        AND (version(plugin='execsnoop') = Null OR parse_float(string=parsed.kernel_ver) < 5.8)
 
+    query: |
      LET proc_exec_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
 
      LET exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
@@ -39,3 +45,31 @@ sources:
               hashes.SHA1 AS SHA1,
               hashes.SHA256 AS SHA256
        FROM hash_log
+
+  - precondition: |
+      SELECT OS, KernelVersion,
+        parse_string_with_regex(string=KernelVersion, regex='^(?P<kernel_ver>[0-9]+.[0-9]+)') AS parsed
+      FROM info()
+      WHERE OS = 'linux'
+        AND version(plugin='execsnoop') != Null
+        AND parse_float(string=parsed.kernel_ver) >= 5.8
+
+    query: |
+      LET exec_log = SELECT * FROM execsnoop()
+
+      LET hash_log = SELECT *,
+          hash(path=Exe, hashselect=['SHA1', 'SHA256']) AS hashes
+        FROM exec_log
+
+      // Cache Uid -> Username mapping.
+      LET users <= SELECT User, atoi(string=Uid) AS UserID
+        FROM Artifact.Linux.Sys.Users()
+
+      SELECT Time, Pid, Ppid, Uid,
+        { SELECT User from users WHERE UserID = Uid } AS User,
+        Argv AS CmdLine,
+        Exe,
+        Cwd AS CWD,
+        hashes.SHA1 AS SHA1,
+        hashes.SHA256 AS SHA256
+      FROM hash_log
