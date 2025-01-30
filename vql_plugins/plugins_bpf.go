@@ -23,4 +23,5 @@ import (
 	_ "www.velocidex.com/golang/velociraptor/vql/linux/bpf/tcpsnoop"
 	_ "www.velocidex.com/golang/velociraptor/vql/linux/bpf/dnssnoop"
 	_ "www.velocidex.com/golang/velociraptor/vql/linux/bpf/chattrsnoop"
+	_ "www.velocidex.com/golang/velociraptor/vql/linux/bpf/execsnoop"
 )

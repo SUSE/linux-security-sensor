@@ -35,3 +35,4 @@ SUSE/docker-compose/config/traefik/traefik.toml
 SUSE/docker-compose/config/velociraptor/*
 SUSE/docker-compose/data/velociraptor/*
 SUSE/docker-compose/logs/velociraptor/*
+vql/linux/bpf/*/*.bpf.o
