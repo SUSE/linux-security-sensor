@@ -2,6 +2,7 @@ package networking
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -59,14 +60,16 @@ func TestTLSVerification(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown authority")
 
+	cert, err := x509.ParseCertificate(ts.TLS.Certificates[0].Certificate[0])
+	assert.NoError(t, err)
+	thumbprint := hashCertificate(cert)
+
 	config_obj = &config_proto.ClientConfig{
 		Crypto: &config_proto.CryptoConfig{
 			CertificateVerificationMode: "PKI",
 			// We still ignore the thumbprint because we are in PKI
 			// mode.
-			CertificateThumbprints: []string{
-				"AB:60:19:14:43:6E:58:BA:BB:17:B9:16:61:55:CA:F9:7B:D7:E5:F8:DE:B9:B6:59:BC:DB:66:C5:8B:49:F3:23",
-			},
+			CertificateThumbprints: []string{thumbprint},
 		},
 	}
 	_, err = testHTTPConnection(config_obj, ts.URL)
@@ -77,9 +80,7 @@ func TestTLSVerification(t *testing.T) {
 	config_obj = &config_proto.ClientConfig{
 		Crypto: &config_proto.CryptoConfig{
 			CertificateVerificationMode: "PKI_OR_THUMBPRINT",
-			CertificateThumbprints: []string{
-				"AB:60:19:14:43:6E:58:BA:BB:17:B9:16:61:55:CA:F9:7B:D7:E5:F8:DE:B9:B6:59:BC:DB:66:C5:8B:49:F3:23",
-			},
+			CertificateThumbprints:      []string{thumbprint},
 		},
 	}
 	data, err := testHTTPConnection(config_obj, ts.URL)
@@ -90,9 +91,7 @@ func TestTLSVerification(t *testing.T) {
 	config_obj = &config_proto.ClientConfig{
 		Crypto: &config_proto.CryptoConfig{
 			CertificateVerificationMode: "THUMBPRINT_ONLY",
-			CertificateThumbprints: []string{
-				"AB601914436E58BABB17B9166155CAF97BD7E5F8DEB9B659BCDB66C58B49F323",
-			},
+			CertificateThumbprints:      []string{thumbprint},
 		},
 	}
 	data, err = testHTTPConnection(config_obj, ts.URL)
@@ -104,9 +103,7 @@ func TestTLSVerification(t *testing.T) {
 	config_obj = &config_proto.ClientConfig{
 		Crypto: &config_proto.CryptoConfig{
 			CertificateVerificationMode: "THUMBPRINT_ONLY",
-			CertificateThumbprints: []string{
-				"AB601914436E58BABB17B9166155CAF97BD7E5F8DEB9B659BCDB66C58B49F323",
-			},
+			CertificateThumbprints:      []string{thumbprint},
 		},
 	}
 	data, err = testHTTPConnection(config_obj, "https://www.google.com")
@@ -118,9 +115,7 @@ func TestTLSVerification(t *testing.T) {
 	config_obj = &config_proto.ClientConfig{
 		Crypto: &config_proto.CryptoConfig{
 			CertificateVerificationMode: "THUMBPRINT_ONLY",
-			CertificateThumbprints: []string{
-				"AB601914436E58BABB17B9166155CAF97BD7E5F8DEB9B659BCDB66C58B49F323",
-			},
+			CertificateThumbprints:      []string{thumbprint},
 		},
 		FallbackAddresses: map[string]string{
 			"nosuch-site.example.com:443": strings.TrimPrefix(ts.URL, "https://"),
