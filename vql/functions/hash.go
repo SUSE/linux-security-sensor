@@ -202,7 +202,8 @@ func (self *HashFunction) Call(ctx context.Context,
 	if useCache {
 		cache = GetHashResultCache(scope)
 
-		entry, isCached := cache.Get(path)
+		var isCached bool
+		entry, isCached = cache.Get(path)
 		if isCached {
 			isValid, _ := entry.Validate(path)
 			if isValid {
