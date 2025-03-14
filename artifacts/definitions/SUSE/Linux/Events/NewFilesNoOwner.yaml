@@ -23,9 +23,19 @@ sources:
         sep="|"
       )
 
+      // function to make audit keys from paths e.g. /var/log/ -> vrr_var_log
+      LET path2key(path) = "vrr_" + regex_replace(source=strip(string=path, prefix="/", suffix="/"), replace="_", re="/")
+
+      // ["/home", "/var/log"] -> ["-w /home -p w -k vrr_home", "-w /var/log -p w -k vrr_var_log"]
       LET new_files_audit_rules = array(
-        a={ SELECT format(format='-w %s -p w -k vrr_unknown_uid_watch', args=_value)
+        a={ SELECT "-w " + _value + " -p w -k " + path2key(path=_value)
             FROM foreach(row=directories) }
+      )
+
+      // ["/home", "/var/log"] -> "^vrr_home$|^vrr_var_log$"
+      LET new_files_audit_keys_regex = join(
+        array=array(a={ SELECT "^" + path2key(path=_value) + "$"  FROM foreach(row=directories) }),
+        sep="|"
       )
 
       // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
@@ -53,8 +63,8 @@ sources:
               Uid, set(item=known_uids, field=Uid, value=TRUE)
             FROM Artifact.Linux.Sys.Users()
           } AS _update_known_uids
-        FROM audit(rules="-w /etc/passwd -p w -k vrr_unknown_uids_etc_passwd")
-        WHERE "vrr_unknown_uids_etc_passwd" IN Tags
+        FROM audit(rules="-w /etc/passwd -p wa -k vrr_etc_passwd")
+        WHERE "vrr_etc_passwd" IN Tags
           AND Result = "success"
           AND Summary.action = "opened-file"
           AND log(message="/etc/passwd may have changed - reloading user uids", dedup=-1)
@@ -68,7 +78,7 @@ sources:
       // and adds a mapping to inode_to_path for each new file.
       LET new_file_events = SELECT _
         FROM audit(rules=new_files_audit_rules)
-        WHERE "vrr_unknown_uid_watch" IN Tags
+        WHERE any(items=Tags, regex=new_files_audit_keys_regex)
           AND Result = "success"
           AND Summary.action = "opened-file"
           AND Paths[-1].nametype = "CREATE"
