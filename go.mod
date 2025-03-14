@@ -443,4 +443,4 @@ replace github.com/go-errors/errors => github.com/Velocidex/errors v0.0.0-202210
 // We'll always need the local version since we're building the C code.
 replace github.com/aquasecurity/libbpfgo => ./third_party/libbpfgo
 
-replace github.com/elastic/go-libaudit/v2 => github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd
+replace github.com/elastic/go-libaudit/v2 => github.com/djoreilly/go-libaudit/v2 v2.0.0-20250314140858-1cffea2e4d95
