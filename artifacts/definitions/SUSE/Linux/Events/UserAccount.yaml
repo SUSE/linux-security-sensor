@@ -9,7 +9,7 @@ type: CLIENT_EVENT
 sources:
 
   - query: |
-     LET user_acct_rules =  ("-w /etc/shadow -p wa -k vrr_etc_shadow", "-w /etc/passwd -p wa -k vrr_etc_modifications", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
+     LET user_acct_rules =  ("-w /etc/shadow -p wa -k vrr_etc_shadow", "-w /etc/passwd -p wa -k vrr_etc_passwd", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
 
      LET user_acct_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
            atoi(string=Process.PID) AS Pid,
@@ -18,7 +18,7 @@ sources:
            join(array=[Summary.action,Summary.object.type, Summary.object.primary], sep=" ") AS Action,
            Process.Title AS CmdLine
        FROM audit(rules=user_acct_rules)
-       WHERE "vrr_etc_modifications" in Tags OR "vrr_etc_nsswitch_conf" in Tags OR "vrr_etc_shadow" in Tags
+       WHERE "vrr_etc_passwd" in Tags OR "vrr_etc_nsswitch_conf" in Tags OR "vrr_etc_shadow" in Tags
 
      // Cache Uid -> Username mapping.
      LET usrs <= SELECT User, atoi(string=Uid) AS Uid
