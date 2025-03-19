@@ -287,4 +287,4 @@ replace github.com/aquasecurity/libbpfgo => ./third_party/libbpfgo
 
 replace github.com/aquasecurity/libbpfgo/helpers => ./third_party/libbpfgo/helpers
 
-replace github.com/elastic/go-libaudit/v2 => github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd
+replace github.com/elastic/go-libaudit/v2 => github.com/djoreilly/go-libaudit/v2 v2.0.0-20250314140858-1cffea2e4d95

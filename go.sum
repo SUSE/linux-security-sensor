@@ -191,8 +191,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dimchansky/utfbom v1.1.1 h1:vV6w1AhK4VMnhBno/TPVCoK9U/LP0PkLCS9tbxHdi/U=
 github.com/dimchansky/utfbom v1.1.1/go.mod h1:SxdoEBH5qIqFocHMyGOXVAybYJdr71b1Q/j0mACtrfE=
-github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd h1:JtgANE0pYw+DxwN1QYqTEoeThw/k/7ZoVttzxVtdbmU=
-github.com/djoreilly/go-libaudit/v2 v2.0.0-20240930120146-860ca41845bd/go.mod h1:hfXkl/6sTI+fRPzNHNSJ2aLZBZqom9IMBjfmDXbg9E8=
+github.com/djoreilly/go-libaudit/v2 v2.0.0-20250314140858-1cffea2e4d95 h1:p+bbzJ+6Zr0Uq0rIOJHYQLnonYG1Uh2Qb6J2p5BfysM=
+github.com/djoreilly/go-libaudit/v2 v2.0.0-20250314140858-1cffea2e4d95/go.mod h1:hfXkl/6sTI+fRPzNHNSJ2aLZBZqom9IMBjfmDXbg9E8=
 github.com/djoreilly/go-rpmdb v0.0.0-20241106150710-2e9b5a9aee34 h1:S5+WizbPlMRYXHDCP9TSd+OzuGDAPD/S0JSl4HidJz4=
 github.com/djoreilly/go-rpmdb v0.0.0-20241106150710-2e9b5a9aee34/go.mod h1:nwpkQwtY9cRpoGyfNeArgYq+JAPFrTW947qOL1pnA/k=
 github.com/dlclark/regexp2 v1.2.0/go.mod h1:2pZnwuY/m+8K6iRw6wQdMtk+rH5tNGR1i55kozfMjCc=
