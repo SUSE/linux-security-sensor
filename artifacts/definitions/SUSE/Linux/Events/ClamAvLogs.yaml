@@ -1,0 +1,26 @@
+name: SUSE.Linux.Events.ClamAvLogs
+
+description: |
+  This artifact watches the systemd journal for messages from
+  the ClamAV clamd service, and collects any that match the
+  regex filter parameter.
+
+type: CLIENT_EVENT
+
+parameters:
+   - name: regex_filter
+     type: regex
+     default: ".+FOUND$"
+     description: Filter messages to be collected
+
+sources:
+  - precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      SELECT
+        timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+        MESSAGE as Message
+      FROM watch_journal()
+      WHERE SYSLOG_IDENTIFIER = "clamd"
+        AND MESSAGE =~ regex_filter
