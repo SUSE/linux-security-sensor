@@ -1,0 +1,31 @@
+name: SUSE.Linux.ClamAV.clamdscan
+
+description: |
+  Run clamdscan on a file or directory.
+
+type: CLIENT
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: path
+    default: /home
+    description: file or directory to be scanned
+  - name: show_summary
+    type: bool
+    default: False
+    description: display scan summary
+
+sources:
+  - precondition:
+      SELECT OS FROM info() WHERE OS = "linux"
+
+    query: |
+      LET rm_empty_opts(opts) = filter(list=opts, regex='^.+$')
+
+      LET summaryOpt = if(condition=show_summary, then="", else="--no-summary")
+
+      LET argv = rm_empty_opts(opts=["clamdscan", "--fdpass", "--stdout", summaryOpt, path])
+
+      SELECT * FROM execve(argv=argv, sep='\n')
