@@ -1,0 +1,100 @@
+name: SUSE.Linux.Event.ClamAVStatus
+
+description: |
+  This artifact checks the running ClamAV configuration at regular intervals.
+  It generates a row for each required option that is missing or has the wrong
+  argument, and each option that is configured but is not required.
+
+type: CLIENT_EVENT
+
+parameters:
+  - name: clamd_conf
+    description: Path to clamd.conf
+    type: string
+    default: /etc/clamd.conf
+  - name: check_period
+    description: Time between checks in seconds
+    type: int
+    default: 7200
+  - name: required_options
+    description: Options and arguments that are required to be set in clamd.conf
+    type: csv
+    default: |
+      Option,Argument
+      LogSyslog,yes
+      LogFacility,LOG_MAIL
+      PidFile,/run/clamav/clamd.pid
+      LocalSocket,/run/clamav/clamd.sock
+      User,vscan
+      OnAccessIncludePath,/home
+      OnAccessExcludeUname,vscan
+
+sources:
+  - precondition:
+      SELECT OS From info() WHERE OS = 'linux'
+
+    query: |
+      SELECT * FROM foreach(
+        row={
+            SELECT * FROM clock(start=0, period=check_period)
+        },
+        query={
+          -- The query plugin is used so that the materialized queries
+          -- get recreated on each iteration of the foreach loop.
+          SELECT * FROM query(query='''
+            LET status <= dict(OK=true)
+
+            LET required_dict <= to_dict(item={
+              SELECT Option AS _key, Argument AS _value FROM required_options
+            })
+
+            LET conf_exists <= if(
+              condition={ SELECT * from stat(filename=clamd_conf) },
+              then=true, else=false
+            )
+
+            LET running_conf <= SELECT Option, Argument
+              FROM parse_csv(filename=clamd_conf, auto_headers=false, separator=" ", comment="#", columns=["Option", "Argument"])
+              WHERE conf_exists
+
+            LET running_dict <= to_dict(item={
+               SELECT Option AS _key, Argument AS _value FROM running_conf WHERE conf_exists
+            })
+
+            SELECT * FROM chain(
+              a={
+                SELECT
+                  format(format="%s is missing option: \"%s %s\"", args=[clamd_conf, Option, Argument]) AS Message
+                FROM required_options
+                WHERE conf_exists
+                  AND get(item=running_dict, field=Option) != Argument
+                  AND set(item=status, field="OK", value=false)
+              },
+              b={
+                SELECT
+                  format(format="%s has unrequired option: \"%s %s\"", args=[clamd_conf, Option, Argument]) AS Message
+                FROM running_conf
+                WHERE conf_exists
+                  AND NOT get(item=required_dict, field=Option)
+                  AND set(item=status, field="OK", value=false)
+              },
+              c={
+                SELECT
+                  format(format="%s does not exist", args=[clamd_conf]) AS Message
+                FROM scope()
+                WHERE NOT conf_exists
+                  AND set(item=status, field="OK", value=false)
+              },
+              d={
+                SELECT
+                  "Configuration is good" AS Message
+                FROM scope()
+                WHERE status.OK
+              }
+            )
+
+            ''',
+            env=dict(clamd_conf=clamd_conf, required_options=required_options)
+          )
+        }
+      )
