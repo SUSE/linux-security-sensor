@@ -485,6 +485,7 @@ func send_client_messages(server_obj *Server) http.Handler {
 
 		message_info, err := server_obj.Decrypt(req.Context(), body)
 		if err != nil {
+			server_obj.Error("Unable to decrypt body from %v: %v", req.RemoteAddr, err)
 			// Just plain reject with a 403.
 			http.Error(w, "", http.StatusForbidden)
 			return
