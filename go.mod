@@ -56,7 +56,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-pointer v0.0.0-20180825124634-49522c3f3791
-	github.com/mattn/go-sqlite3 v1.14.12
+	github.com/mattn/go-sqlite3 v1.14.15
 	github.com/microcosm-cc/bluemonday v1.0.23
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/panicwrap v1.0.0
@@ -119,7 +119,7 @@ require (
 	github.com/aquasecurity/libbpfgo/helpers v0.0.0-00010101000000-000000000000
 	github.com/clayscode/Go-Splunk-HTTP/splunk/v2 v2.0.1-0.20221027171526-76a36be4fa02
 	github.com/coreos/go-oidc/v3 v3.9.0
-	github.com/djoreilly/go-rpmdb v0.0.0-20241106150710-2e9b5a9aee34
+	github.com/djoreilly/go-rpmdb v0.0.0-20250618160408-ec049dd092e4
 	github.com/elastic/go-libaudit/v2 v2.3.1-0.20221118223002-d56d27cfa498
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/fsnotify/fsnotify v1.6.0
@@ -233,16 +233,16 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	lukechampine.com/uint128 v1.1.1 // indirect
-	modernc.org/cc/v3 v3.36.0 // indirect
-	modernc.org/ccgo/v3 v3.16.6 // indirect
-	modernc.org/libc v1.16.7 // indirect
-	modernc.org/mathutil v1.4.1 // indirect
-	modernc.org/memory v1.1.1 // indirect
-	modernc.org/opt v0.1.1 // indirect
-	modernc.org/sqlite v1.17.3 // indirect
-	modernc.org/strutil v1.1.1 // indirect
-	modernc.org/token v1.0.0 // indirect
+	lukechampine.com/uint128 v1.2.0 // indirect
+	modernc.org/cc/v3 v3.40.0 // indirect
+	modernc.org/ccgo/v3 v3.16.13-0.20221017192402-261537637ce8 // indirect
+	modernc.org/libc v1.21.2 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.4.0 // indirect
+	modernc.org/opt v0.1.3 // indirect
+	modernc.org/sqlite v1.19.3 // indirect
+	modernc.org/strutil v1.1.3 // indirect
+	modernc.org/token v1.0.1 // indirect
 	www.velocidex.com/golang/binparsergen v0.1.1-0.20220107080050-ae6122c5ed14 // indirect
 )
 
