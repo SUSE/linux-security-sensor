@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"www.velocidex.com/golang/velociraptor/json"
 	"www.velocidex.com/golang/velociraptor/vtesting/assert"
+	"www.velocidex.com/golang/vfilter"
 )
 
 type ShellTestSuite struct {
@@ -93,6 +94,27 @@ func (self *ShellTestSuite) TestSplit() {
 	// Last line consists of the left over line before
 	assert.Equal(self.T(), []string{"part lineAnother"}, parts)
 	assert.Equal(self.T(), 4, offset)
+}
+
+func (self *ShellTestSuite) TestAlwaysAllow() {
+	testCases := []struct {
+		argv   []string
+		env    vfilter.LazyExpr
+		cwd    string
+		expect bool
+	}{
+		{[]string{"systemctl", "show", "apache"}, nil, "", true},
+		{[]string{"systemctl", "list-timers"}, nil, "", true},
+		{[]string{"systemctl", "stop", "firewalld"}, nil, "", false},
+		{[]string{"ls", "-l"}, nil, "", false},
+		{[]string{"systemctl", "show", "apache"}, nil, "/tmp", false},
+		{[]string{"systemctl", "show", "apache"}, &vfilter.LazyExprImpl{}, "", false},
+	}
+
+	for _, tc := range testCases {
+		args := &ShellPluginArgs{Argv: tc.argv, Env: tc.env, Cwd: tc.cwd}
+		assert.Equal(self.T(), tc.expect, alwaysAllow(args), "args: %+v, expected: %v", args, tc.expect)
+	}
 }
 
 func TestExecvePlugin(t *testing.T) {

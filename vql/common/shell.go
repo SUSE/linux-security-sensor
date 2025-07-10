@@ -69,17 +69,17 @@ func (self ShellPlugin) Call(
 			return
 		}
 
-		// Check the config if we are allowed to execve at all.
-		config_obj, ok := artifacts.GetConfig(scope)
-		if ok && config_obj.PreventExecve {
-			scope.Log("shell: Not allowed to execve by configuration.")
-			return
-		}
-
 		arg := &ShellPluginArgs{}
 		err = arg_parser.ExtractArgsWithContext(ctx, scope, args, arg)
 		if err != nil {
 			scope.Log("shell: %v", err)
+			return
+		}
+
+		// Check the config if we are allowed to execve at all.
+		config_obj, ok := artifacts.GetConfig(scope)
+		if ok && config_obj.PreventExecve && !alwaysAllow(arg) {
+			scope.Log("shell: Not allowed to execve by configuration.")
 			return
 		}
 
@@ -385,6 +385,20 @@ func defaultPipeReader(
 		}
 	}
 	return nil
+}
+
+// alwaysAllow returns true for execve calls required by artifacts.
+func alwaysAllow(args *ShellPluginArgs) bool {
+	if args.Env != nil || args.Cwd != "" || len(args.Argv) < 2 {
+		return false
+	}
+
+	switch strings.Join(args.Argv[:2], " ") {
+	case "systemctl show", "systemctl list-timers":
+		return true
+	}
+
+	return false
 }
 
 func init() {
