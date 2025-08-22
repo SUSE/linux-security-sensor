@@ -5712,6 +5712,31 @@
     are emitted. Any further queries are ignored.
   type: Plugin
   category: plugin
+- name: systemctl
+  type: plugin
+  description: |
+    Get information about systemd services via dbus.
+    #### Example
+    ```
+    SELECT Description, ActiveState
+    FROM systemctl(command="show", unit="bluetooth.service", properties=["Description", "ActiveState"])'
+    ```
+  args:
+    - name: command
+      required: true
+      description: Command to run. Only "show" implemented.
+      type: string
+    - name: Unit
+      required: false
+      description: Unit to show. Required for show command.
+      type: string
+    - name: properties
+      required: false
+      description: List of properties to show with the show command.
+      repeated: true
+  category: linux
+  metadata:
+    permissions: MACHINE_STATE
 - name: tcpsnoop
   description: Report incoming/outgoing tcp connections
   type: Plugin
