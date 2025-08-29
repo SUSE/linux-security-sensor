@@ -119,6 +119,7 @@ require (
 	github.com/aquasecurity/libbpfgo/helpers v0.0.0-00010101000000-000000000000
 	github.com/clayscode/Go-Splunk-HTTP/splunk/v2 v2.0.1-0.20221027171526-76a36be4fa02
 	github.com/coreos/go-oidc/v3 v3.9.0
+	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/djoreilly/go-rpmdb v0.0.0-20250618160408-ec049dd092e4
 	github.com/elastic/go-libaudit/v2 v2.3.1-0.20221118223002-d56d27cfa498
 	github.com/evanphx/json-patch/v5 v5.6.0
@@ -175,6 +176,7 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
