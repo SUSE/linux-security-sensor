@@ -9401,6 +9401,25 @@
   platforms:
   - linux_amd64_cgo
   - windows_amd64_cgo
+- name: rsyslog_upload
+  description: Upload rows to rsyslog
+  type: Plugin
+  args:
+  - name: query
+    type: StoredQuery
+    description: Source for rows to upload.
+    required: true
+  - name: unix_domain
+    type: string
+    description: path to unix domain socket rsyslog listens on
+    required: true
+  - name: threads
+    type: int
+    description: How many threads to use to send events.
+  metadata:
+    permissions: COLLECT_SERVER
+  platforms:
+  - linux_amd64_cgo
 - name: s3
   description: |
     Allows access to S3 buckets.
