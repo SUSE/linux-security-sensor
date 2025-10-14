@@ -11,7 +11,7 @@ sources:
   - query: |
       LET events = SELECT
         *,
-        hash(path=Path, hashselect=["SHA1", "SHA256"]) as hashes
+        hash(path=Path, hashselect=["SHA256"]) as hashes
       FROM chattrsnoop()
 
       SELECT
@@ -19,6 +19,5 @@ sources:
         Path,
         Dir,
         Action,
-        hashes.SHA256 AS SHA256,
-        hashes.SHA1 AS SHA1
+        hashes.SHA256 AS SHA256
       FROM events
