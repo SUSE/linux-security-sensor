@@ -30,7 +30,7 @@ sources:
        WHERE "vrr_procmon" in Tags AND Result = 'success'
 
      LET hash_log = SELECT *,
-           hash(path=Exe, hashselect=['SHA1', 'SHA256']) AS hashes
+           hash(path=Exe, hashselect=['SHA256']) AS hashes
        FROM exec_log
 
      // Cache Uid -> Username mapping.
@@ -42,7 +42,6 @@ sources:
               { SELECT User from users WHERE Uid = UserId} AS User,
               CmdLine,
               Exe, CWD,
-              hashes.SHA1 AS SHA1,
               hashes.SHA256 AS SHA256
        FROM hash_log
 
@@ -58,7 +57,7 @@ sources:
       LET exec_log = SELECT * FROM execsnoop()
 
       LET hash_log = SELECT *,
-          hash(path=Exe, hashselect=['SHA1', 'SHA256']) AS hashes
+          hash(path=Exe, hashselect=['SHA256']) AS hashes
         FROM exec_log
 
       // Cache Uid -> Username mapping.
@@ -70,6 +69,5 @@ sources:
         Argv AS CmdLine,
         Exe,
         Cwd AS CWD,
-        hashes.SHA1 AS SHA1,
         hashes.SHA256 AS SHA256
       FROM hash_log
