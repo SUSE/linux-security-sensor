@@ -52,8 +52,8 @@ sources:
       LET new_hidden_files_with_hashes = SELECT *,
         { SELECT * FROM if(
             condition=action="opened-file",
-            then={ SELECT hash(path=Path, hashselect=['SHA1', 'SHA256']) FROM scope() },
-            else={ SELECT dict(SHA1=null, SHA256=null) FROM scope() })
+            then={ SELECT hash(path=Path, hashselect=['SHA256']) FROM scope() },
+            else={ SELECT dict(SHA256=null) FROM scope() })
         } AS hashes
         FROM hidden_files_events
 
@@ -61,7 +61,6 @@ sources:
         Time,
         Filename,
         Path,
-        hashes.SHA1 AS SHA1,
         hashes.SHA256 AS SHA256
       FROM new_hidden_files_with_hashes
 

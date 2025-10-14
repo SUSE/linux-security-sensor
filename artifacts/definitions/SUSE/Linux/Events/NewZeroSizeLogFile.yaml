@@ -40,7 +40,7 @@ sources:
 
       LET zero_size_files_with_hashes = SELECT
           *,
-          hash(path=FilePath, hashselect=["SHA1", "SHA256"]) AS hashes
+          hash(path=FilePath, hashselect=["SHA256"]) AS hashes
       FROM zero_size_files
 
       SELECT
@@ -48,7 +48,6 @@ sources:
         Sequence,
         FileName,
         FilePath,
-        hashes.SHA1 AS SHA1,
         hashes.SHA256 AS SHA256
       FROM zero_size_files_with_hashes
 

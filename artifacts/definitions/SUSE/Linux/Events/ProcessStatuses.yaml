@@ -41,7 +41,7 @@ sources:
      SELECT Time, Pid, Ppid, UserId,
               { SELECT User from usrs WHERE Uid = UserId} AS User,
               State,CmdLine,
-              CWD, Exe AS ImagePath, Hash.SHA256 AS Hash_Sha256, Hash.SHA1 AS Hash_Sha1
+              CWD, Exe AS ImagePath, Hash.SHA256 AS SHA256
        FROM proc_exec_log
 
 
@@ -57,7 +57,7 @@ sources:
       LET exec_log = SELECT * FROM execsnoop() WHERE Uid != 0
 
       LET hash_log = SELECT *,
-          hash(path=Exe, hashselect=['SHA1', 'SHA256']) AS hashes
+          hash(path=Exe, hashselect=['SHA256']) AS hashes
         FROM exec_log
 
       // Cache Uid -> Username mapping.
@@ -71,6 +71,5 @@ sources:
         Argv AS CmdLine,
         Cwd AS CWD,
         Exe AS ImagePath,
-        hashes.SHA256 AS Hash_Sha256,
-        hashes.SHA1 AS Hash_Sha1
+        hashes.SHA256 AS SHA256
       FROM hash_log

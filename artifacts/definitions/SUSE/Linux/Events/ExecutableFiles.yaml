@@ -44,7 +44,7 @@ sources:
 
      LET hash_log = SELECT Time, UserId,
            State, FileName, FilePath,
-           hash(path=FilePath, hashselect=["SHA1", "SHA256"]) AS hashes
+           hash(path=FilePath, hashselect=["SHA256"]) AS hashes
        FROM exec_bit_log
        WHERE FilePath =~ directories_regex
 
@@ -57,6 +57,5 @@ sources:
      SELECT Time, UserId,
               get(item=uids_to_names, field=UserId).User AS User,
               State, FileName, FilePath,
-              hashes.SHA256 AS SHA256,
-              hashes.SHA1 AS SHA1
+              hashes.SHA256 AS SHA256
      FROM hash_log
