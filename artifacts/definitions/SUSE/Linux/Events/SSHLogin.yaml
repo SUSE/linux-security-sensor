@@ -26,12 +26,15 @@ sources:
   - precondition: SELECT OS From info() where OS = 'linux'
     description: Collect successful SSH login attempts from syslog
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       -- Basic syslog parsing via GROK expressions.
       LET success_login = SELECT grok(grok=SSHGrok, data=Line) AS Event, Line
         FROM watch_syslog(filename=syslogAuthLogPath)
         WHERE Event.program = "sshd" AND Event.event = "Accepted"
 
       SELECT timestamp(string=Event.timestamp) AS Time,
+              MachineID,
               Event.user AS User,
               Event.method AS Method,
               Event.IP AS SourceIP,
@@ -44,10 +47,13 @@ sources:
   - precondition: SELECT OS From info() where OS = 'linux'
     description: Collect successful SSH login attempts from systemd journal
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       LET success_login = SELECT REALTIME_TIMESTAMP, _PID, MESSAGE, _SYSTEMD_UNIT, grok(grok=SSHGrok, data=MESSAGE) AS Event
         FROM watch_journal()
         WHERE _TRANSPORT != 'kernel' AND _SYSTEMD_UNIT = SSHSystemdUnit AND Event.event = "Accepted"
       SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+               MachineID,
                Event.user AS User,
                Event.method AS Method,
                Event.ip as SourceIP,

@@ -12,6 +12,7 @@ required_permissions:
 
 sources:
   - query: |
+     LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
      LET change_log_rules = ("-w /etc/group -p wa -k vrr_etc_group", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
 
@@ -29,7 +30,7 @@ sources:
        FROM Artifact.Linux.Sys.Users()
 
      // Enrich the original artifact with more data.
-     SELECT Time, UserId,
+     SELECT Time, MachineID, UserId,
             { SELECT User from usrs WHERE Uid = UserId} AS User,
             State, CmdLine, Exe, CWD
      FROM change_log
