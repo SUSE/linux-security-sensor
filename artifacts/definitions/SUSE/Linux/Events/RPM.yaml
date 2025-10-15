@@ -16,13 +16,14 @@ parameters:
 
 sources:
   - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
       LET pkgFiles <= SELECT OSPath
                       FROM glob(root="/var/lib/rpm", globs=["Packages", "Packages.db", "rpmdb.sqlite"])
 
       -- Check the modification time of the packages file every period seconds,
       -- and only run the rpm plugin if the file has changed since the previous check.
-      SELECT * FROM foreach(
+      SELECT MachineID, * FROM foreach(
         row={
           SELECT * FROM foreach(
             row = {

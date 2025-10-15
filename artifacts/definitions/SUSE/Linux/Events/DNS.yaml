@@ -8,4 +8,6 @@ precondition: SELECT OS From info() where OS = 'linux'
 
 sources:
   - query: |
-      SELECT Timestamp, Type, Question, Answers FROM dnssnoop()
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      SELECT Timestamp, MachineID, Type, Question, Answers FROM dnssnoop()

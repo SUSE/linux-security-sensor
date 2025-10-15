@@ -8,5 +8,7 @@ precondition: SELECT OS From info() where OS = 'linux'
 
 sources:
   - query: |
-      SELECT Timestamp, RemoteAddr, LocalAddr, Task, Af, Pid, Uid,
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      SELECT Timestamp, MachineID, RemoteAddr, LocalAddr, Task, Af, Pid, Uid,
              RemotePort, LocalPort, Dir FROM tcpsnoop()

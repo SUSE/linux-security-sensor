@@ -10,24 +10,27 @@ sources:
       SELECT OS From info() where OS = 'linux'
 
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
       LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM audit() WHERE auth_category = 'user-login' AND auth_type = 'USER_AUTH' AND Result = 'success'
-      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+      SELECT MachineID, * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
 
   - name: FailedLogins
     precondition:
       SELECT OS From info() where OS = 'linux'
 
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
       LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM audit() WHERE auth_category = 'user-login' AND auth_type = 'USER_AUTH' AND Result = 'fail'
-      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+      SELECT MachineID, * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
 
   - name: SuccessfulLogouts
     precondition:
       SELECT OS From info() where OS = 'linux'
 
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
       LET SYSTEM_LOGINS = SELECT Timestamp, Sequence, Result, Session, str(str=Category) as auth_category, str(str=Type) as auth_type, Data.acct as Account, Data.op as Method, Data.addr as Source_IP, Data.hostname as Source_Hostname, Data.terminal as Terminal FROM audit() WHERE auth_category = 'user-login' AND auth_type = 'USER_END' AND Result = 'success' AND Method != 'login'
-      SELECT * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
+      SELECT MachineID, * FROM foreach(row=SYSTEM_LOGINS, query={SELECT Timestamp, Sequence, Result, Session, Method, Account as User, Source_IP, Source_Hostname, Terminal FROM scope()})
 
 reports:
   - type: MONITORING_DAILY

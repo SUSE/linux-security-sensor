@@ -16,6 +16,7 @@ parameters:
 
 sources:
   - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
       // ["a", "b", "c"] -> "^a|^b|^c"
       LET directories_regex = join(
@@ -134,6 +135,7 @@ sources:
         },
         c={
           SELECT
+            MachineID,
             FullPath,
             UserID,
             hashes.SHA256 AS SHA256
@@ -141,6 +143,7 @@ sources:
         },
         d={
           SELECT
+            MachineID,
             FullPath,
             UserID,
             hashes.SHA256 AS SHA256

@@ -13,6 +13,8 @@ type: CLIENT_EVENT
 
 sources:
   - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       -- grok pattern to parse systemctl show output
       LET pattern = "%{NUMBER:pid}\n\{ path\=%{DATA:process} .*\n%{DATA:description}\n%{DATA:state}\n"
 
@@ -37,6 +39,7 @@ sources:
 
       SELECT
         Timestamp,
+        MachineID,
         Service,
         "root" AS User,
         details.pid AS PID,
