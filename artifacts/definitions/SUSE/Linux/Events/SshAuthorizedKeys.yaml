@@ -17,8 +17,14 @@ parameters:
 
 sources:
   - query: |
-      SELECT Mtime AS Timestamp, User, Uid, OSPath AS Path, Diff AS Change, Key, Comment FROM diff(
-        query={ SELECT *, join(array=[User, Key]) AS _diffKey FROM Artifact.Linux.Ssh.AuthorizedKeys() },
-        key="_diffKey",
-        period=period)
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
+      SELECT Mtime AS Timestamp, MachineID, User, Uid, OSPath AS Path, Diff AS Change, Key, Comment
+      FROM diff(
+        query={
+          SELECT *, join(array=[User, Key]) AS _diffKey
+          FROM Artifact.Linux.Ssh.AuthorizedKeys()
+        },
+        key="_diffKey",
+        period=period
+      )

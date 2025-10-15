@@ -16,6 +16,8 @@ sources:
         AND (version(plugin='execsnoop') = Null OR parse_float(string=parsed.kernel_ver) < 5.8)
 
     query: |
+     LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
      LET proc_stat_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
 
      LET proc_exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
@@ -38,7 +40,7 @@ sources:
        FROM Artifact.Linux.Sys.Users()
 
      // Enrich the original artifact with more data.
-     SELECT Time, Pid, Ppid, UserId,
+     SELECT Time, MachineID, Pid, Ppid, UserId,
               { SELECT User from usrs WHERE Uid = UserId} AS User,
               State,CmdLine,
               CWD, Exe AS ImagePath, Hash.SHA256 AS Hash_Sha256, Hash.SHA1 AS Hash_Sha1
@@ -54,6 +56,8 @@ sources:
         AND parse_float(string=parsed.kernel_ver) >= 5.8
 
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       LET exec_log = SELECT * FROM execsnoop() WHERE Uid != 0
 
       LET hash_log = SELECT *,
@@ -64,7 +68,7 @@ sources:
       LET usrs <= SELECT User, atoi(string=Uid) AS UserID
         FROM Artifact.Linux.Sys.Users()
 
-      SELECT Time, Pid, Ppid,
+      SELECT Time, MachineID, Pid, Ppid,
         Uid AS UserID,
         { SELECT User from usrs WHERE UserID = Uid } AS User,
         "n/a" AS State,

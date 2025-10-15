@@ -9,6 +9,8 @@ type: CLIENT_EVENT
 
 sources:
   - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       LET audit_rules = ("-w /var/log -p w -k vrr_var_log")
 
       // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
@@ -45,6 +47,7 @@ sources:
 
       SELECT
         Time,
+        MachineID,
         Sequence,
         FileName,
         FilePath,

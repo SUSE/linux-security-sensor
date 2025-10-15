@@ -9,6 +9,8 @@ type: CLIENT_EVENT
 sources:
 
   - query: |
+     LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
      LET user_acct_rules =  ("-w /etc/shadow -p wa -k vrr_etc_shadow", "-w /etc/passwd -p wa -k vrr_etc_passwd", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
 
      LET user_acct_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
@@ -25,7 +27,7 @@ sources:
        FROM Artifact.Linux.Sys.Users()
 
      // Enrich the original artifact with more data.
-     SELECT Time, UserId,
+     SELECT Time, MachineID, UserId,
               { SELECT User from usrs WHERE Uid = UserId} AS User,
               State, Action, CmdLine
      FROM user_acct_log

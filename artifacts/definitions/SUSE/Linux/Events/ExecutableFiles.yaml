@@ -16,6 +16,8 @@ parameters:
 sources:
 
   - query: |
+     LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
      LET exec_bit_rules = ("-a always,exit -F arch=b64 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b64 -S fchmod -F a1&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmod -F a1&73 -k vrr_exec_bit_addition")
 
      // ["/a", "/b", "/c"] -> "^/a|^/b|^/c"
@@ -54,7 +56,7 @@ sources:
        period=3600
      )
 
-     SELECT Time, UserId,
+     SELECT Time, MachineID, UserId,
               get(item=uids_to_names, field=UserId).User AS User,
               State, FileName, FilePath,
               hashes.SHA256 AS SHA256,
