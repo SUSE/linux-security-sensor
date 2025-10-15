@@ -16,6 +16,8 @@ parameters:
 
 sources:
   - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       // function to make audit keys from paths e.g. /var/log/ -> vrr_var_log
       LET path2key(path) = "vrr_" + regex_replace(source=strip(string=path, prefix="/", suffix="/"), replace="_", re="/")
 
@@ -59,6 +61,7 @@ sources:
 
       SELECT
         Time,
+        MachineID,
         Filename,
         Path,
         hashes.SHA256 AS SHA256

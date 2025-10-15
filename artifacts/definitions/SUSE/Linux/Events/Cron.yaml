@@ -20,16 +20,21 @@ sources:
       SELECT OS From info() where OS = 'linux'
 
     query: |
-      SELECT * from cronsnoop(spool_dir='/var/spool/cron/tabs',system_dirs=['/etc/crontab', '/etc/cron.d', '/etc/cron.hourly', '/etc/cron.monthly', '/etc/cron.daily', '/etc/cron.weekly'])
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      SELECT MachineID, * from cronsnoop(spool_dir='/var/spool/cron/tabs',system_dirs=['/etc/crontab', '/etc/cron.d', '/etc/cron.hourly', '/etc/cron.monthly', '/etc/cron.daily', '/etc/cron.weekly'])
 
   - name: JournalTaskExecs
     precondition: SELECT OS From info() where OS = 'linux'
     description: Collect cron task executions from systemd journal
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       LET cron_exec = SELECT REALTIME_TIMESTAMP, _PID, MESSAGE, grok(grok=CronGrok, data=MESSAGE) AS Event
         FROM watch_journal()
         WHERE _TRANSPORT != 'kernel' AND SYSLOG_IDENTIFIER = "CRON" and Event.action = "CMD"
       SELECT timestamp(epoch=REALTIME_TIMESTAMP) AS Time,
+               MachineID,
                Event.user AS User,
                Event.cmd AS Cmd,
                _PID AS Pid,
@@ -40,11 +45,14 @@ sources:
     precondition: SELECT OS From info() where OS = 'linux'
     description: Collect cron task executions from syslog
     query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
       -- Basic cron parsing via GROK expressions.
       LET cron_exec = SELECT grok(grok=CronGrok, data=Line) AS Event, Line
         FROM watch_syslog(filename=syslogCronLogPath)
         WHERE (Event.program = "CRON" OR Event.program = "cron") AND Event.action = "CMD"
       SELECT timestamp(string=Event.timestamp) AS Time,
+              MachineID,
               Event.user AS User,
               Event.cmd AS Cmd,
               Event.pid AS Pid,
