@@ -30,11 +30,11 @@ sources:
      LET hash_log = SELECT Time, UserId,
            { SELECT User from usrs WHERE Uid = UserId} AS User,
            State, FileName, FilePath,
-           hash(path=FilePath, hashselect=['SHA1', 'SHA256']) AS Hash
+           hash(path=FilePath, hashselect=['SHA256']) AS Hash
        FROM new_file_log
 
      // Enrich the original artifact with more data.
      SELECT Time, UserId, User,
             State, FileName, FilePath, 
-            Hash.SHA256 AS Hash_SHA256, Hash.SHA1 AS Hash_SHA1
+            Hash.SHA256 AS SHA256
      FROM hash_log
