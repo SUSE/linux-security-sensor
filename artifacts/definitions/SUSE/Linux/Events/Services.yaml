@@ -19,7 +19,7 @@ sources:
       LET pattern = "%{NUMBER:pid}\n\{ path\=%{DATA:process} .*\n%{DATA:description}\n%{DATA:state}\n"
 
       -- local function runs systemctl, parses output and deconstructs dict from grok
-      LET serviceDetails(name) = SELECT pid, process, description, state
+      LET serviceDetails(name) = SELECT *
         FROM foreach(
           row= { SELECT grok(data=stdout, grok=pattern) AS parsed
                  FROM execve(argv=["systemctl", "show", name, "--value", "--property=ExecMainPID,ExecStart,Description,ActiveState"]) },
