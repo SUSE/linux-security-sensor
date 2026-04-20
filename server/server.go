@@ -155,7 +155,7 @@ func (self *Server) ProcessSingleUnauthenticatedMessage(
 
 		err = enroll(ctx, config_obj, self, message.CSR)
 		if err != nil {
-			self.logger.Error(fmt.Sprintf("Enrol Error: %s", err))
+			self.logger.Error("%s", fmt.Sprintf("Enrol Error: %s", err))
 		}
 		return err
 	}
