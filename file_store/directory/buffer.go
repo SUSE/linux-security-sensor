@@ -205,7 +205,7 @@ func (self *FileBasedRingBuffer) LeaseSerialized(count int) [][]byte {
 			return nil
 		})
 	if err != nil {
-		self.log_ctx.Error(err.Error())
+		self.log_ctx.Error("%s", err.Error())
 		return nil
 	}
 
@@ -223,7 +223,7 @@ func (self *FileBasedRingBuffer) Lease(count int) []*ordereddict.Dict {
 			return err
 		})
 	if err != nil {
-		self.log_ctx.Error(err.Error())
+		self.log_ctx.Error("%s", err.Error())
 		return nil
 	}
 	return result

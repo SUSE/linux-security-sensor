@@ -89,11 +89,11 @@ func SetLoggerCallback(logger *logging.LogContext) {
 		Log: func(level int, msg string) {
 			switch level {
 			case libbpf.LibbpfInfoLevel:
-				logger.Info(msg)
+				logger.Info("%s", msg)
 			case libbpf.LibbpfWarnLevel:
-				logger.Warn(msg)
+				logger.Warn("%s", msg)
 			case libbpf.LibbpfDebugLevel:
-				logger.Debug(msg)
+				logger.Debug("%s", msg)
 			}
 		},
 		LogFilters: []func(level int, msg string) bool{

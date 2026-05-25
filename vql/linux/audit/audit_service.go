@@ -562,7 +562,7 @@ func (self *auditService) subscriberDistributionLoop() {
 			for _, subscriber := range subscribers {
 				subscriber.logChannel <- msg
 			}
-			self.logger.Info(msg)
+			self.logger.Info("%s", msg)
 		case rule, ok := <-self.missingRuleLogChannel:
 			if !ok {
 				return

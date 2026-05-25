@@ -28,7 +28,7 @@ func doBanner() {
 	}
 	for _, line := range strings.Split(banner, "\n") {
 		if len(line) > 0 {
-			logging.Prelog(line)
+			logging.Prelog("%s", line)
 		}
 	}
 

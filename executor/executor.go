@@ -124,7 +124,7 @@ func (self *ClientExecutor) processRequestPlugin(
 		r := recover()
 		if r != nil {
 			logger := logging.GetLogger(config_obj, &logging.ClientComponent)
-			logger.Error(fmt.Sprintf("Panic %v: %v",
+			logger.Error("%s", fmt.Sprintf("Panic %v: %v",
 				r, string(debug.Stack())))
 		}
 	}()

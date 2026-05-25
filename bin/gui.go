@@ -72,7 +72,7 @@ func doGUI() error {
 		// client. It is useful for demonstration purposes and
 		// to just be able to use the notebook and build an
 		// offline collector.
-		logging.Prelog("No valid config found - " +
+		logging.Prelog("%s", "No valid config found - " +
 			"will generare a new one at <green>" + server_config_path)
 
 		config_obj = config.GetDefaultConfig()

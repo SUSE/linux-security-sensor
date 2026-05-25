@@ -206,7 +206,7 @@ func doRemoteQuery(
 		}
 
 		if response.Log != "" {
-			logger.Info(response.Log)
+			logger.Info("%s", response.Log)
 			continue
 		}
 
