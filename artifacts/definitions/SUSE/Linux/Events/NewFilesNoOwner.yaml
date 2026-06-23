@@ -18,26 +18,26 @@ sources:
   - query: |
       LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
-      // ["a", "b", "c"] -> "^a|^b|^c"
-      LET directories_regex = join(
-        array=array(a={ SELECT "^" + _value FROM foreach(row=directories) }),
-        sep="|"
+      LET utils <= starl(code='''
+      # ["/home", "/var/tmp"] ->  ["-w /home -p w -k vrr_home", "-w /var/tmp -p w -k vrr_var_tmp"]
+      def audit_rules(dirs):
+          return ["-w {} -p w -k vrr{}".format(d, d.replace('/', '_')) for d in dirs]
+
+      # ["/home", "/var/log"] -> "^vrr_home$|^vrr_var_log$"
+      def audit_keys_regex(dirs):
+          return "|".join(["^vrr{}$".format(d.replace('/', '_')) for d in dirs])
+
+      # ["a", "b", "c"] -> "^a|^b|^c"
+      def directories_regex(dirs):
+          return "|".join(["^{}".format(d) for d in dirs])
+      '''
       )
 
-      // function to make audit keys from paths e.g. /var/log/ -> vrr_var_log
-      LET path2key(path) = "vrr_" + regex_replace(source=strip(string=path, prefix="/", suffix="/"), replace="_", re="/")
+      LET directories_regex <= utils.directories_regex(dirs=directories)
 
-      // ["/home", "/var/log"] -> ["-w /home -p w -k vrr_home", "-w /var/log -p w -k vrr_var_log"]
-      LET new_files_audit_rules = array(
-        a={ SELECT "-w " + _value + " -p w -k " + path2key(path=_value)
-            FROM foreach(row=directories) }
-      )
+      LET new_files_audit_rules <= utils.audit_rules(dirs=directories)
 
-      // ["/home", "/var/log"] -> "^vrr_home$|^vrr_var_log$"
-      LET new_files_audit_keys_regex = join(
-        array=array(a={ SELECT "^" + path2key(path=_value) + "$"  FROM foreach(row=directories) }),
-        sep="|"
-      )
+      LET new_files_audit_keys_regex <= utils.audit_keys_regex(dirs=directories)
 
       // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
       LET clean_path(path) = "/" + relpath(path=path, base="/")
