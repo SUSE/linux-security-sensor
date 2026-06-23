@@ -20,11 +20,13 @@ sources:
 
      LET exec_bit_rules = ("-a always,exit -F arch=b64 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmodat -F a2&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b64 -S fchmod -F a1&73 -k vrr_exec_bit_addition", "-a always,exit -F arch=b32 -S fchmod -F a1&73 -k vrr_exec_bit_addition")
 
-     // ["/a", "/b", "/c"] -> "^/a|^/b|^/c"
-     LET directories_regex = join(
-       array=array(a={ SELECT "^" + _value FROM foreach(row=directories) }),
-       sep="|"
-     )
+     LET utils = starl(code='''
+     # ["/a", "/b", "/c"] -> "^/a|^/b|^/c"
+     def directories_regex(dirs):
+         return "|".join([d for d in dirs])
+     ''')
+
+     LET directories_regex <= utils.directories_regex(dirs=directories)
 
      // cleans path with relpath - see https://pkg.go.dev/path/filepath#Rel
      LET clean_path(path) = "/" + relpath(path=path, base="/")
