@@ -1,6 +1,7 @@
-//go:build linux && (arm64 || amd64)
+//go:build linux && (arm64 || amd64) && tracee
 // +build linux
 // +build arm64 amd64
+// +build tracee
 
 package ebpf
 
