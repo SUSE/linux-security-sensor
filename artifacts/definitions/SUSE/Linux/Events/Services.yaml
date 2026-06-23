@@ -15,15 +15,10 @@ sources:
   - query: |
       LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
-      -- grok pattern to parse systemctl show output
-      LET pattern = "%{NUMBER:pid}\n\{ path\=%{DATA:process} .*\n%{DATA:description}\n%{DATA:state}\n"
-
-      -- local function runs systemctl, parses output and deconstructs dict from grok
-      LET serviceDetails(name) = SELECT *
-        FROM foreach(
-          row= { SELECT grok(data=stdout, grok=pattern) AS parsed
-                 FROM execve(argv=["systemctl", "show", name, "--value", "--property=ExecMainPID,ExecStart,Description,ActiveState"]) },
-          column="parsed")
+      LET serviceDetails(name) = SELECT
+        to_dict(item={ SELECT Column0 AS _key, Column1 AS _value
+                       FROM split_records(accessor="data", filenames=Stdout, regex="=", count=2) }) AS details
+      FROM execve(argv=["systemctl", "show", name, "--property=ExecMainPID,ExecStart,Description,ActiveState"])
 
       LET serviceStartEvents = SELECT
         timestamp(epoch=REALTIME_TIMESTAMP) AS Timestamp,
@@ -42,9 +37,9 @@ sources:
         MachineID,
         Service,
         "root" AS User,
-        details.pid AS PID,
-        details.process AS Process,
-        details.description AS Description,
-        details.state AS State
+        details.ExecMainPID AS PID,
+        regex_replace(source=details.ExecStart, re="{ path=([^\\s]+)(.*)", replace="$1") AS Process,
+        details.Description AS Description,
+        details.ActiveState AS State
       FROM serviceStartEvents
 
