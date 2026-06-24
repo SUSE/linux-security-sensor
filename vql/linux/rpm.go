@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"github.com/ProtonMail/gopenpgp/v3/crypto"
 	"github.com/Velocidex/ordereddict"
 	rpmdb "github.com/djoreilly/go-rpmdb/pkg"
 	"www.velocidex.com/golang/velociraptor/acls"
