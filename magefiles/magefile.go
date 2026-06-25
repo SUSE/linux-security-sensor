@@ -740,7 +740,7 @@ func ensure_assets() error {
 		}
 	}
 
-	return UpdateDependentTools()
+	return nil
 }
 
 func musl_exists() bool {
