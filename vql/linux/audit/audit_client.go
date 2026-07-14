@@ -67,6 +67,13 @@ func (self *realCommandClient) GetStatus() (*libaudit.AuditStatus, error) {
 	return self.client.GetStatus()
 }
 
+func (self *realCommandClient) SetPID(wm libaudit.WaitMode) error {
+	if self.client == nil {
+		return clientNotOpenErr
+	}
+	return self.client.SetPID(wm)
+}
+
 func (self *realCommandClient) SetEnabled(enabled bool, wm libaudit.WaitMode) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
