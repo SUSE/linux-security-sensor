@@ -1,0 +1,48 @@
+name: SUSE.Linux.Events.ClamAVServices
+
+description: |
+  This artifact checks the ClamAV systemd services every
+  `check_period` seconds and generate a row for each one
+  found not to be running.
+
+type: CLIENT_EVENT
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: check_period
+    description: Time between checks in seconds.
+    type: int
+    default: 7200
+  - name: services
+    description: List of ClamAV services to check.
+    type: json_array
+    default: '["clamd", "clamonacc", "freshclam.timer"]'
+
+sources:
+  - precondition:
+      SELECT OS From info() WHERE OS = 'linux'
+
+    query: |
+      LET is_active(service) = SELECT *
+        FROM execve(argv=["systemctl", "is-active", "--quiet", service])
+        WHERE ReturnCode = 0
+
+      SELECT * FROM foreach(
+         row={
+           SELECT * FROM clock(start=0, period=check_period)
+         },
+         query={
+           SELECT * FROM foreach(
+             row={
+               SELECT _value AS service FROM items(item=services)
+             },
+             query={
+               SELECT format(format="%s is not running", args=[service]) AS Message
+               FROM scope()
+               WHERE NOT is_active(service=service)
+             }
+           )
+         }
+       )
