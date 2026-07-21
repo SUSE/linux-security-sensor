@@ -29,7 +29,9 @@ sources:
 
       // ["/home", "/var/log"] -> ["-w /home -p w -k vrr_home", "-w /var/log -p w -k vrr_var_log"]
       LET new_files_audit_rules = array(
-        a={ SELECT "-w " + _value + " -p w -k " + path2key(path=_value)
+        a={ SELECT "-a always,exit -F arch=b32 -F perm=w -F dir=" + _value + " -k " + path2key(path=_value)
+            FROM foreach(row=directories) },
+        b={ SELECT "-a always,exit -F arch=b64 -F perm=w -F dir=" + _value + " -k " + path2key(path=_value)
             FROM foreach(row=directories) }
       )
 
@@ -64,7 +66,8 @@ sources:
               Uid, set(item=known_uids, field=Uid, value=TRUE)
             FROM Artifact.Linux.Sys.Users()
           } AS _update_known_uids
-        FROM audit(rules="-w /etc/passwd -p wa -k vrr_etc_passwd")
+        FROM audit(rules=["-a always,exit -F arch=b32 -F path=/etc/passwd -F perm=wa -F key=vrr_etc_passwd",
+                          "-a always,exit -F arch=b64 -F path=/etc/passwd -F perm=wa -F key=vrr_etc_passwd"])
         WHERE "vrr_etc_passwd" IN Tags
           AND Result = "success"
           AND Summary.action = "opened-file"

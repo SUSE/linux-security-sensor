@@ -14,7 +14,12 @@ sources:
   - query: |
      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
-     LET change_log_rules = ("-w /etc/group -p wa -k vrr_etc_group", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
+     LET change_log_rules = (
+       "-a always,exit -F arch=b32 -F path=/etc/group -F perm=wa -k vrr_etc_group",
+       "-a always,exit -F arch=b64 -F path=/etc/group -F perm=wa -k vrr_etc_group",
+       "-a always,exit -F arch=b32 -F path=/etc/nsswitch.conf -F perm=wa -k vrr_etc_nsswitch_conf",
+       "-a always,exit -F arch=b64 -F path=/etc/nsswitch.conf -F perm=wa -k vrr_etc_nsswitch_conf",
+     )
 
      LET change_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
            atoi(string=Summary.Actor.Primary) AS UserId,

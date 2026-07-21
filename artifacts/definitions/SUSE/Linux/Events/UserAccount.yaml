@@ -11,7 +11,14 @@ sources:
   - query: |
      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
 
-     LET user_acct_rules =  ("-w /etc/shadow -p wa -k vrr_etc_shadow", "-w /etc/passwd -p wa -k vrr_etc_passwd", "-w /etc/nsswitch.conf -p wa -k vrr_etc_nsswitch_conf")
+     LET user_acct_rules = (
+       "-a always,exit -F arch=b32 -F path=/etc/shadow -F perm=wa -k vrr_etc_shadow",
+       "-a always,exit -F arch=b64 -F path=/etc/shadow -F perm=wa -k vrr_etc_shadow",
+       "-a always,exit -F arch=b32 -F path=/etc/passwd -F perm=wa -k vrr_etc_passwd",
+       "-a always,exit -F arch=b64 -F path=/etc/passwd -F perm=wa -k vrr_etc_passwd",
+       "-a always,exit -F arch=b32 -F path=/etc/nsswitch.conf -F perm=wa -k vrr_etc_nsswitch_conf",
+       "-a always,exit -F arch=b64 -F path=/etc/nsswitch.conf -F perm=wa -k vrr_etc_nsswitch_conf"
+     )
 
      LET user_acct_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
            atoi(string=Process.PID) AS Pid,
