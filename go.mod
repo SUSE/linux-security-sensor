@@ -68,10 +68,10 @@ require (
 	github.com/xor-gate/debpkg v1.0.0
 	go.starlark.net v0.0.0-20230925163745-10651d5192ab
 	golang.org/x/crypto v0.53.0
-	golang.org/x/mod v0.36.0
-	golang.org/x/net v0.55.0
+	golang.org/x/mod v0.37.0
+	golang.org/x/net v0.56.0
 	golang.org/x/sys v0.46.0
-	golang.org/x/text v0.38.0
+	golang.org/x/text v0.39.0
 	golang.org/x/time v0.14.0
 	google.golang.org/api v0.258.0
 	google.golang.org/genproto v0.0.0-20251222181119-0a764e51fe1b // indirect
@@ -360,7 +360,7 @@ require (
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
 	golang.org/x/term v0.44.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260523011958-0a33c5d7ca68 // indirect
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.71 // indirect
