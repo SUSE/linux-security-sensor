@@ -1,0 +1,71 @@
+name: SUSE.Linux.Events.SshAuthorizedKeys
+
+description: |
+  This monitoring artifact watches for changes to the .ssh/authorized_keys
+  in each user home directory.
+
+precondition: |
+  SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+parameters:
+  - name: period
+    description: Seconds between checks
+    type: int
+    default: 600
+  - name: keyTypes
+    type: regex
+    description: A regex to identify supported key types
+    default: "sk-ecdsa-sha2-nistp256|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|sk-ssh-ed25519|ssh-ed25519|ssh-dss|ssh-rsa"
+
+sources:
+  - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      LET users = SELECT User, Uid, Homedir
+      FROM split_records(
+             filenames="/etc/passwd",
+             regex=":", record_regex="\r?\n",
+             columns=["User", "X", "Uid", "Gid", "Description", "Homedir", "Shell"])
+      WHERE Shell != "/usr/sbin/nologin"
+
+      LET auth_keys_files = SELECT *
+      FROM foreach(
+        row=users,
+        query={
+          SELECT OSPath, Mtime, Ctime, User, Uid
+          FROM glob(root=Homedir, globs=".ssh/authorized_keys")
+        }
+      )
+
+      -- Split each line into parts considering possible quoting
+      LET Parse(OSPath) =
+         -- Pad a bit so index does not wrap.
+         SELECT ParseParts(Parts=commandline_split(command=Line, bash_style=TRUE) + ("", "", "", "", "")) AS Parsed
+         FROM parse_lines(filename=OSPath)
+         WHERE NOT Line =~ "^#" AND Parsed.keytype =~ keyTypes
+
+      -- The option may or may not be there - determine by the key regex
+      LET ParseParts(Parts) = if(condition= Parts[0] =~ keyTypes,
+        then=dict(options="", keytype=Parts[0], base64key=Parts[1], comment=Parts[2] || ""),
+        else=dict(options=Parts[0], keytype=Parts[1], base64key=Parts[2], comment=Parts[3] || ""))
+
+
+      LET auth_keys = SELECT * FROM foreach(
+        row=auth_keys_files,
+        query={
+          SELECT User, Uid, Mtime, OSPath, *
+          FROM foreach(column="Parsed", row=Parse(OSPath=OSPath))
+        }
+      )
+
+      SELECT Mtime AS Timestamp, MachineID, User, Uid, OSPath AS Path, Diff AS Change, base64key AS Key, comment AS Comment
+      FROM diff(
+        query={
+          SELECT *, join(array=[User, base64key]) AS _diffKey
+          FROM auth_keys
+        },
+        key="_diffKey",
+        period=period
+      )

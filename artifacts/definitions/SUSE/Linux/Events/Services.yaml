@@ -1,0 +1,45 @@
+name: SUSE.Linux.Events.Services
+
+description: |
+  This artifact collects new systemd services events.
+
+required_permissions:
+  - EXECVE
+
+precondition: |
+  SELECT OS From info() where OS = 'linux'
+
+type: CLIENT_EVENT
+
+sources:
+  - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      LET serviceDetails(name) = SELECT
+        to_dict(item={ SELECT Column0 AS _key, Column1 AS _value
+                       FROM split_records(accessor="data", filenames=Stdout, regex="=", count=2) }) AS details
+      FROM execve(argv=["systemctl", "show", name, "--property=ExecMainPID,ExecStart,Description,ActiveState"])
+
+      LET serviceStartEvents = SELECT
+        timestamp(epoch=REALTIME_TIMESTAMP) AS Timestamp,
+        UNIT AS Service,
+        _UID AS UID,
+        { SELECT * FROM serviceDetails(name=UNIT) } AS details
+      FROM watch_journal()
+      WHERE SYSLOG_IDENTIFIER = "systemd"
+        AND JOB_TYPE = "start"
+        AND JOB_RESULT = "done"
+        AND _PID = "1"
+        AND UNIT =~ "service$"
+
+      SELECT
+        Timestamp,
+        MachineID,
+        Service,
+        "root" AS User,
+        details.ExecMainPID AS PID,
+        regex_replace(source=details.ExecStart, re="{ path=([^\\s]+)(.*)", replace="$1") AS Process,
+        details.Description AS Description,
+        details.ActiveState AS State
+      FROM serviceStartEvents
+

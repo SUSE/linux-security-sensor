@@ -28,3 +28,11 @@ __debug*
 debug.test*
 artifacts/testdata/server/hunts/H.*
 artifacts/testdata/server/users/
+.*sw?
+.vim*
+.env
+SUSE/docker-compose/config/traefik/traefik.toml
+SUSE/docker-compose/config/velociraptor/*
+SUSE/docker-compose/data/velociraptor/*
+SUSE/docker-compose/logs/velociraptor/*
+vql/linux/bpf/*/*.bpf.o

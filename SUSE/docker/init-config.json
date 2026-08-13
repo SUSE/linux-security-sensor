@@ -1,0 +1,47 @@
+{ "Client" :
+  { "writeback_linux" : "/var/lib/velociraptor-client/velociraptor.writeback.yaml",
+    "writeback_darwin" : "",
+    "writeback_windows" : "",
+    "tempdir_windows" : "",
+    "windows_installer" : { "service_name": "", "install_path": "", "service_description" : ""},
+    "darwin_installer" : { "service_name": "", "install_path": "", "service_description" : ""},
+    "version" : { "name": "", "version" : "", "build_time" : "" },
+    "local_buffer" : {
+            "filename_windows" : "",
+            "filename_darwin" : "",
+            "filename_linux" : "/var/lib/velociraptor-client/Velociraptor_Buffer.bin"
+    },
+    "use_self_signed_ssl" : true,
+    "server_urls" : [ "https://sensor-frontend:8000/" ]
+  },
+  "Datastore" :
+   {
+     "location": "/data",
+     "filestore_directory" : "/data"
+   },
+  "Logging" :
+  {
+    "output_directory" : "/logs"
+  },
+  "API":
+  {
+    "bind_address": "0.0.0.0"
+  },
+  "Frontend":
+  {
+    "bind_address": "0.0.0.0"
+  },
+  "GUI":
+  {
+    "bind_address": "0.0.0.0",
+    "initial_users" : [ {
+        "name" : "admin",
+        "password_hash" : "5c39c98764173fba7cc290553f06d631c1205b2727317e413b2e62e4a1133b60",
+        "password_salt" : "af1904fcca4dd3f8fa97ecf2431ecb718513b2ef361515e1830d400d23b03f3e"
+    }]
+  },
+  "Monitoring":
+  {
+    "bind_address": "0.0.0.0"
+  }
+}

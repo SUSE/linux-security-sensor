@@ -1,0 +1,30 @@
+FROM opensuse/leap:15.4
+
+VOLUME /data
+VOLUME /logs
+VOLUME /config
+
+# API
+EXPOSE 8801
+
+# GUI
+EXPOSE 8889
+
+# Frontend
+EXPOSE 8000
+
+# Monitoring
+EXPOSE 8003
+
+COPY entry-point.sh generate-config.sh obs-signing-key.key /
+COPY init-config.json /etc/velociraptor/
+
+RUN chmod a+x /entry-point.sh /generate-config.sh
+RUN rpm --import /obs-signing-key.key
+RUN zypper -q ar obs://security:sensor/ "obs://security/sensor" && \
+    zypper -q --non-interactive refresh && \
+    zypper -q --non-interactive install velociraptor catatonit && \
+    zypper clean -a && \
+    rm -f /obs-signing-key.key
+
+CMD ["/usr/bin/catatonit", "--", "/entry-point.sh" ]

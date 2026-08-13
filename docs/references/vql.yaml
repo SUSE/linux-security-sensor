@@ -392,6 +392,11 @@
     You should configure the audit subsystem using the `auditctl`
     binary before using this plugin.
   type: Plugin
+  args:
+  - name: rules
+    type: string
+    description: List of rules
+    repeated: true
   category: linux
   metadata:
     permissions: MACHINE_STATE
@@ -874,6 +879,13 @@
   - windows_386_cgo
   - windows_amd64_cgo
   free_form_args: true
+- name: chattrsnoop
+  description: Shows when a file has the IMMUTABLE flag changed
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: cidr_contains
   description: |
     Calculates if an IP address falls within a range of CIDR specified
@@ -1707,6 +1719,23 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: cronsnoop
+  description: Snoops changes to cron files
+  type: Plugin
+  args:
+  - name: spool_dir
+    type: string
+    description: Spool directory where user cron files are located
+    required: true
+  - name: system_dirs
+    type: string
+    description: Directories to be watched where system cron files are located
+    repeated: true
+    required: true
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: crypto_rc4
   description: Apply rc4 to the string and key.
   type: Function
@@ -2075,6 +2104,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: dnssnoop
+  description: Snoop dns replies
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: ebpf_events
   description: |
     Dumps information about potential ebpf_events that can be used by the
@@ -2394,6 +2430,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: execsnoop
+  description: Report execve system calls
+  type: Plugin
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: execve
   description: |
     This plugin launches an external command and captures its STDERR,
@@ -5432,6 +5475,16 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: lsattr
+  description: Queries the attributes for a file.
+  type: Function
+  args:
+  - name: file
+    type: string
+    description: The file whose attributes we require
+    required: true
+  platforms:
+  - linux_amd64_cgo
 - name: lzxpress_decompress
   description: |
     Decompress an lzxpress blob.
@@ -9235,6 +9288,22 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: rpm
+  description: Query the installed packages on a Linux system using RPMs
+  type: Plugin
+  args:
+  - name: paths
+    type: string
+    description: 'Paths to search for rpm database (default: /var/lib/rpm)'
+    repeated: true
+  - name: tags
+    type: string
+    description: 'List of tags to retreive for each package (default: Name,Summary,Version,Release,InstallTime,PublicKey,PublicKeyName)'
+    repeated: true
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
 - name: rpm_create
   description: Create a deployable RPM package for client or server.
   type: Plugin
@@ -9332,6 +9401,25 @@
   platforms:
   - linux_amd64_cgo
   - windows_amd64_cgo
+- name: rsyslog_upload
+  description: Upload rows to rsyslog
+  type: Plugin
+  args:
+  - name: query
+    type: StoredQuery
+    description: Source for rows to upload.
+    required: true
+  - name: unix_domain
+    type: string
+    description: path to unix domain socket rsyslog listens on
+    required: true
+  - name: threads
+    type: int
+    description: How many threads to use to send events.
+  metadata:
+    permissions: COLLECT_SERVER
+  platforms:
+  - linux_amd64_cgo
 - name: s3
   description: |
     Allows access to S3 buckets.
@@ -9410,6 +9498,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: scan_journal
+  description: Scan the systemd journal for events
+  type: Plugin
+  metadata:
+    permissions: SERVER_ADMIN
+  platforms:
+  - linux_amd64_cgo
 - name: scope
   description: |
     Present the content of a scope variable as a file.
@@ -10608,6 +10703,13 @@
   description: Collect system information on Linux clients
   type: Function
   category: linux
+  metadata:
+    permissions: MACHINE_STATE
+  platforms:
+  - linux_amd64_cgo
+- name: tcpsnoop
+  description: Report incoming/outgoing tcp connections
+  type: Plugin
   metadata:
     permissions: MACHINE_STATE
   platforms:
@@ -12465,6 +12567,13 @@
   - linux_amd64_cgo
   - windows_386_cgo
   - windows_amd64_cgo
+- name: watch_journal
+  description: Watch the systemd journal for events
+  type: Plugin
+  metadata:
+    permissions: SERVER_ADMIN
+  platforms:
+  - linux_amd64_cgo
 - name: watch_journald
   description: 'Watch a journald file and stream events from it. '
   type: Plugin

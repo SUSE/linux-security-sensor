@@ -1,0 +1,79 @@
+name: SUSE.Linux.Events.ProcessStatuses
+
+description: |
+  This artifact collects new processes created by non-root users using the
+  execsnoop plugin if client binary supports it and the kernel is 5.8+.
+  Otherwise, the audit plugin is used.
+
+type: CLIENT_EVENT
+
+sources:
+  - precondition: |
+      SELECT OS, KernelVersion,
+        parse_string_with_regex(string=KernelVersion, regex='^(?P<kernel_ver>[0-9]+.[0-9]+)') AS parsed
+      FROM info()
+      WHERE OS = 'linux'
+        AND (version(plugin='execsnoop') = Null OR parse_float(string=parsed.kernel_ver) < 5.8)
+
+    query: |
+     LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+     LET proc_stat_rules = ("-a always,exit -F arch=b64 -S execve -k vrr_procmon", "-a always,exit -F arch=b32 -S execve -k vrr_procmon")
+
+     LET proc_exec_log = SELECT timestamp(string=Timestamp) AS Time, Sequence,
+           atoi(string=Process.PID) AS Pid,
+           atoi(string=Process.PPID) AS Ppid,
+           Process.PPID AS PPID,
+           atoi(string=Summary.Actor.Primary) AS UserId,
+           Result AS State,
+           Process.Title AS CmdLine,
+           Process.Exe AS Exe,
+           Process.CWD AS CWD,
+           hash(path=Process.Exe) AS Hash
+       FROM audit(rules=proc_stat_rules)
+       WHERE "vrr_procmon" in Tags 
+           AND atoi(string=Summary.Actor.Primary) != -1 
+           AND atoi(string=Summary.Actor.Secondary) != 0
+
+     // Cache Uid -> Username mapping.
+     LET usrs <= SELECT User, atoi(string=Uid) AS Uid
+       FROM Artifact.Linux.Sys.Users()
+
+     // Enrich the original artifact with more data.
+     SELECT Time, MachineID, Pid, Ppid, UserId,
+              { SELECT User from usrs WHERE Uid = UserId} AS User,
+              State,CmdLine,
+              CWD, Exe AS ImagePath, Hash.SHA256 AS SHA256
+       FROM proc_exec_log
+
+
+  - precondition: |
+      SELECT OS, KernelVersion,
+        parse_string_with_regex(string=KernelVersion, regex='^(?P<kernel_ver>[0-9]+.[0-9]+)') AS parsed
+      FROM info()
+      WHERE OS = 'linux'
+        AND version(plugin='execsnoop') != Null
+        AND parse_float(string=parsed.kernel_ver) >= 5.8
+
+    query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      LET exec_log = SELECT * FROM execsnoop() WHERE Uid != 0
+
+      LET hash_log = SELECT *,
+          hash(path=Exe, hashselect=['SHA256']) AS hashes
+        FROM exec_log
+
+      // Cache Uid -> Username mapping.
+      LET usrs <= SELECT User, atoi(string=Uid) AS UserID
+        FROM Artifact.Linux.Sys.Users()
+
+      SELECT Time, MachineID, Pid, Ppid,
+        Uid AS UserID,
+        { SELECT User from usrs WHERE UserID = Uid } AS User,
+        "n/a" AS State,
+        Argv AS CmdLine,
+        Cwd AS CWD,
+        Exe AS ImagePath,
+        hashes.SHA256 AS SHA256
+      FROM hash_log
