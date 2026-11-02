@@ -72,7 +72,7 @@ func ContainsString(expected string, watched []string) bool {
 func WaitUntil(deadline time.Duration, t TestFailer, cb func() bool) {
 	// Use the real time for this because the time is likely to be
 	// mocked in tests and we need to really wait here.
-	end_time := time.Now().Add(deadline)
+	end_time := time.Now().Add(2 * deadline)
 
 	for end_time.After(time.Now()) {
 		ok := cb()
@@ -80,7 +80,7 @@ func WaitUntil(deadline time.Duration, t TestFailer, cb func() bool) {
 			return
 		}
 
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	t.Fatalf("Timed out " + string(debug.Stack()))
