@@ -1,0 +1,176 @@
+# Test default tags
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'summary', 'installtime']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "summary": "Zstandard compression tools",
+  "installtime": "2024-07-19T09:40:55Z"
+ }
+]
+
+# Test specified tags
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'summary', 'installtime']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "summary": "Zstandard compression tools",
+  "installtime": "2024-07-19T09:40:55Z"
+ }
+]
+
+# Test case-insensitive tag names are represented in output (1)
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['NaMe', 'SuMmArY', 'InStAlLtImE']) WHERE name = 'zstd'
+Output: []
+
+# Test case-insensitive tag names are represented in output (2)
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['NaMe', 'SuMmArY', 'InStAlLtImE']) WHERE NaMe = 'zstd'
+Output: [
+ {
+  "NaMe": "zstd",
+  "SuMmArY": "Zstandard compression tools",
+  "InStAlLtImE": "2024-07-19T09:40:55Z"
+ }
+]
+
+# Test that PGP works without related fields
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'pgp']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "installtime": "2024-07-19T09:40:55Z",
+  "pgp": "RSA/SHA256, Thu May  9 08:59:58 2024, Key ID f74f09bc3fa1d6ce"
+ }
+]
+
+# Test that PGP works on package without signature
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'pgp']) WHERE name = 'hello'
+Output: [
+ {
+  "name": "hello",
+  "installtime": "2024-07-19T09:47:10Z",
+  "pgp": ""
+ }
+]
+
+# Test that searching for empty PGP works
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PGP']) WHERE PGP = ''
+Output: [
+ {
+  "name": "hello",
+  "PGP": ""
+ }
+]
+
+# Test that searching for empty PublicKey works
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKey']) WHERE PublicKey = ''
+Output: [
+ {
+  "name": "hello",
+  "PublicKey": ""
+ }
+]
+
+# Test that searching for specified PublicKey works
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKey']) WHERE PublicKey = 'EB3E94ADBE1229CF'
+Output: []
+
+# Test that searching for empty PublicKeyName works
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKeyName']) WHERE PublicKeyName = ''
+Output: [
+ {
+  "name": "hello",
+  "PublicKeyName": ""
+ }
+]
+
+# Test that searching for specified PublicKeyName works
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'PublicKeyName']) WHERE PublicKeyName =~ 'OBS Project'
+Output: []
+
+# Test that PublicKey works without related fields
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'publickey']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "installtime": "2024-07-19T09:40:55Z",
+  "publickey": "F74F09BC3FA1D6CE"
+ }
+]
+
+# Test that PublicKeyName works without related fields
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'installtime', 'publickeyname']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "installtime": "2024-07-19T09:40:55Z",
+  "publickeyname": "gpg(SUSE Package Signing Key \u003cbuild@suse.de\u003e)"
+ }
+]
+
+# Test integer tags
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'size']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "size": 1817198
+ }
+]
+
+# Test integer array tags
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'filemodes']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "filemodes": [
+   33261,
+   41471,
+   33261,
+   41471,
+   33261,
+   33261,
+   41471,
+   16877,
+   33188,
+   33188,
+   16877,
+   33188,
+   33188,
+   33188,
+   41471,
+   33188,
+   41471,
+   33188,
+   33188
+  ]
+ }
+]
+
+# Test string array tags
+Query: SELECT * FROM rpm( paths=[srcDir + "/artifacts/testdata/files/"], tags=['name', 'basenames']) WHERE name = 'zstd'
+Output: [
+ {
+  "name": "zstd",
+  "basenames": [
+   "pzstd",
+   "unzstd",
+   "zstd",
+   "zstdcat",
+   "zstdgrep",
+   "zstdless",
+   "zstdmt",
+   "zstd",
+   "CHANGELOG",
+   "README.md",
+   "zstd",
+   "COPYING",
+   "LICENSE",
+   "pzstd.1.gz",
+   "unzstd.1.gz",
+   "zstd.1.gz",
+   "zstdcat.1.gz",
+   "zstdgrep.1.gz",
+   "zstdless.1.gz"
+  ]
+ }
+]
+

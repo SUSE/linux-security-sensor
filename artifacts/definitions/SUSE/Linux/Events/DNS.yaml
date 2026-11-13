@@ -1,0 +1,13 @@
+name: SUSE.Linux.Events.DNS
+description: |
+   Prints all DNS resolution events
+
+type: CLIENT_EVENT
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+sources:
+  - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      SELECT Timestamp, MachineID, Type, Question, Answers FROM dnssnoop()

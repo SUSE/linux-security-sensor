@@ -145,8 +145,6 @@ func (self *Builder) Env() map[string]string {
 	if self.cc != "" {
 		env.Set("CC", self.cc)
 	}
-	fmt.Printf("Build Environment: %v\n",
-		json.MustMarshalString(env))
 
 	res := make(map[string]string)
 	for _, item := range env.Items() {
@@ -183,18 +181,40 @@ func (self Builder) Run() error {
 		return err
 	}
 
+	env := self.Env()
+
+	bpf := NewBPFBuildEnv()
+	bpfTags, bpfEnv, err := bpf.PrepareModules(self.arch, self.goos)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range bpfEnv {
+		_, ok := env[k]
+		if ok {
+			env[k] += " " + v
+		} else {
+			env[k] = v
+		}
+	}
+
+	tags := self.tags() 
+	tags += bpfTags
+
 	args := []string{
 		"build",
 		// Uncomment this to force a rebuild.
 		// "-a",
 		"-o", filepath.Join("output", self.Name()),
-		"-tags", self.tags(),
+		"-tags", tags,
 		"-ldflags= " + self.ldflags(),
 	}
 	args = append(args, self.extra_flags...)
 	args = append(args, "./bin/")
 
-	return sh.RunWith(self.Env(), mg.GoCmd(), args...)
+	fmt.Printf("Build Environment: %v\n", json.MustMarshalString(env))
+
+	return sh.RunWith(env, mg.GoCmd(), args...)
 }
 
 func Auto() error {
@@ -259,11 +279,18 @@ func Release(ctx context.Context) error {
 	return Windows(ctx)
 }
 
-func Linux() error {
+func LinuxAmd64() error {
 	return Builder{
 		extra_tags: " release yara ",
 		goos:       "linux",
 		arch:       "amd64"}.Run()
+}
+
+func Linux() error {
+	return Builder{
+		extra_tags: " release yara ",
+		goos:       "linux",
+		arch:       runtime.GOARCH}.Run()
 }
 
 func LinuxDebug() error {
@@ -333,11 +360,18 @@ func Linux386() error {
 }
 
 // A Linux binary without the GUI
-func LinuxBare() error {
+func LinuxBareAmd64() error {
 	return Builder{
 		extra_tags: " release yara disable_gui ",
 		goos:       "linux",
 		arch:       "amd64"}.Run()
+}
+
+func LinuxBare() error {
+	return Builder{
+		extra_tags: " release yara disable_gui ",
+		goos:       "linux",
+		arch:       runtime.GOARCH}.Run()
 }
 
 func Freebsd() error {
@@ -575,6 +609,8 @@ func DarwinBase() error {
 
 // Clean all build artifacts (e.g. assets, GUI etc)
 func Clean() error {
+	bpf := NewBPFBuildEnv()
+	bpf.Clean()
 	for _, target := range assets {
 		go_target := filepath.Join(filepath.Dir(target), "ab0x.go")
 		err := sh.Rm(go_target)
@@ -704,7 +740,7 @@ func ensure_assets() error {
 		}
 	}
 
-	return UpdateDependentTools()
+	return nil
 }
 
 func musl_exists() bool {

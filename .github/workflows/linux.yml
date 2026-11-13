@@ -1,0 +1,58 @@
+# Only trigger when a PR is committed.
+name: Linux
+on: [pull_request,workflow_dispatch]
+
+jobs:
+  build:
+    name: Test
+    runs-on: ubuntu-26.04
+    steps:
+
+    - name: Check out code and submodules into the Go module directory
+      uses: actions/checkout@v7
+      with:
+        submodules: recursive
+
+    - uses: actions/setup-go@v7
+      with:
+        go-version: '^1.27'
+
+    - run: go version
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+        sudo apt-get update
+        sudo apt-get install libsystemd-dev clang llvm libelf-dev git make libzstd-dev
+
+    - name: Build GUI-less binary
+      run: |
+        mkdir ./output/
+        export PATH=$PATH:~/go/bin/
+        make linux_bare
+
+    - name: Run built-in testcases
+      run: |
+        echo "Running built-in tests."
+        export CGO_CFLAGS="-I${PWD}/third_party/libbpfgo/output"
+        go test -short -p 2 --tags "server_vql tracee" -skip "TestLSPServer|TestShellSession|TestHTTPComms|TestExecutorTestSuite" ./...
+
+    - name: Test Golden Generic
+      if: always()
+      run: |
+        echo "Running OS generic tests."
+
+        output/velociraptor* -v golden artifacts/testdata/server/testcases/ --env srcDir=`pwd` --config artifacts/testdata/windows/test.config.yaml
+
+    - name: Test Golden Linux
+      if: always()
+      run: |
+        echo "Running Linux tests."
+
+        output/velociraptor* -v golden artifacts/testdata/linux/ --env srcDir=`pwd` --config artifacts/testdata/windows/test.config.yaml
+
+    - name: StoreBinaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: Binaries.zip
+        path: output

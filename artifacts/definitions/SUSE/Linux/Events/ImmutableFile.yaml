@@ -1,0 +1,26 @@
+name: SUSE.Linux.Events.ImmutableFile
+
+description: |
+   Print events when a file gets the IMMUTABLE flag changed
+
+type: CLIENT_EVENT
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+sources:
+  - query: |
+      LET MachineID <= strip(string=read_file(filename="/etc/machine-id"), suffix="\n")
+
+      LET events = SELECT
+        *,
+        hash(path=Path, hashselect=["SHA256"]) as hashes
+      FROM chattrsnoop()
+
+      SELECT
+        Timestamp,
+        MachineID,
+        Path,
+        Dir,
+        Action,
+        hashes.SHA256 AS SHA256
+      FROM events

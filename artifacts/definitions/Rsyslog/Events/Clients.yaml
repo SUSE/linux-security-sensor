@@ -1,0 +1,44 @@
+name: RsyslogShipper.Events.Clients
+
+description: |
+  This server side event monitoring artifact will watch a selection of client
+  monitoring artifacts for new events and push them rsyslog.
+
+  NOTE: You must ensure you are collecting these artifacts from the
+  clients by adding them to the "Client Events" GUI.
+
+type: SERVER_EVENT
+
+parameters:
+  - name: UnixSocket
+    description: Path to the Unix Domain Socket to send events to
+    type: string
+    default: /tmp/velo-socket
+
+  - name: Threads
+    description: Number of threads to start up to post events
+    type: int
+    default: 2
+
+  - name: Artifacts
+    type: artifactset
+    artifact_type: CLIENT_EVENT
+    description: Client artifacts to monitor
+
+sources:
+  - query: |
+      LET _ <= SELECT log(message="ERROR: parameter Artifacts cannot be empty!") FROM scope() WHERE len(list=Artifacts) = 0
+
+      LET artifacts_to_watch = SELECT Artifact FROM Artifacts
+        WHERE log(message="Sending events from client artifact " + Artifact + " to rsyslog")
+
+      LET events = SELECT * FROM foreach(
+          row=artifacts_to_watch,
+          async=TRUE,   // Required for event queries in foreach()
+          query={
+             SELECT *, Artifact, timestamp(epoch=now()) AS timestamp
+             FROM watch_monitoring(artifact=Artifact)
+          })
+
+      SELECT * FROM rsyslog_upload(query=events, unix_domain=UnixSocket, threads=Threads)
+
